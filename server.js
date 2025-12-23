@@ -503,16 +503,73 @@ function findProjects(currentPath, categoryPath = []) {
  */
 app.get('/api/projects', (req, res) => {
     try {
-        // First, check if PROJECT_FOLDER actually exists
-        if (!fs.existsSync(PROJECT_FOLDER)) {
-            return res.status(404).json({
-                error: 'PROJECT_INSTRUCTIONS folder not found',
-                path: PROJECT_FOLDER
-            });
-        }
+        let projects = [];
 
-        // Scan PROJECT_FOLDER recursively to find all projects
-        const projects = findProjects(PROJECT_FOLDER, []);
+        // Check if PROJECT_FOLDER exists (OFFLINE/LOCAL mode)
+        if (fs.existsSync(PROJECT_FOLDER)) {
+            // OFFLINE MODE: Scan local folder for projects
+            projects = findProjects(PROJECT_FOLDER, []);
+        } else {
+            // ONLINE MODE: Return sample projects with YouTube videos
+            console.log('[ONLINE MODE] Returning sample projects with YouTube videos');
+            projects = [
+                {
+                    id: 'SCRATCH/Beginner/101 - Getting Started',
+                    name: '101 - Getting Started with Scratch',
+                    category: 'SCRATCH > Beginner',
+                    categoryArray: ['SCRATCH', 'Beginner'],
+                    videos: ['https://youtu.be/M12_LT5lto4?si=EIajoB5SZEZTlsHo'],
+                    icon: null,
+                    pdf: null,
+                    videoCount: 1,
+                    isYouTube: true
+                },
+                {
+                    id: 'SCRATCH/Beginner/102 - Animation Basics',
+                    name: '102 - Animation Basics',
+                    category: 'SCRATCH > Beginner',
+                    categoryArray: ['SCRATCH', 'Beginner'],
+                    videos: ['https://youtu.be/UiMg566PREA?si=jU77yyoh1B3KfDmS'],
+                    icon: null,
+                    pdf: null,
+                    videoCount: 1,
+                    isYouTube: true
+                },
+                {
+                    id: 'PYTHON/Beginner/201 - Python Intro',
+                    name: '201 - Introduction to Python',
+                    category: 'PYTHON > Beginner',
+                    categoryArray: ['PYTHON', 'Beginner'],
+                    videos: ['https://youtu.be/KIsuIj-Ll3k?si=ykO2VTY1mJHfW9RJ'],
+                    icon: null,
+                    pdf: null,
+                    videoCount: 1,
+                    isYouTube: true
+                },
+                {
+                    id: 'PYTHON/Beginner/202 - Variables',
+                    name: '202 - Variables and Data Types',
+                    category: 'PYTHON > Beginner',
+                    categoryArray: ['PYTHON', 'Beginner'],
+                    videos: ['https://youtu.be/hS7_ejQ5mA4?si=l9qxLVbGD2lOSnZ7'],
+                    icon: null,
+                    pdf: null,
+                    videoCount: 1,
+                    isYouTube: true
+                },
+                {
+                    id: 'PYTHON/Intermediate/301 - Functions',
+                    name: '301 - Functions in Python',
+                    category: 'PYTHON > Intermediate',
+                    categoryArray: ['PYTHON', 'Intermediate'],
+                    videos: ['https://youtu.be/vxt4mcOxvFU?si=3fIVcrQfzIK3rT_n'],
+                    icon: null,
+                    pdf: null,
+                    videoCount: 1,
+                    isYouTube: true
+                }
+            ];
+        }
 
         // Sort projects alphabetically by name
         projects.sort((a, b) => a.name.localeCompare(b.name));
