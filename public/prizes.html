@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnToBot Class - Prizes</title>
+    <link rel="stylesheet" href="kids-theme.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111827;
+            min-height: 100vh;
+            padding-top: 90px;
+            color: #E5E7EB;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border-bottom: 2px solid #3B82F6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.8em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3B82F6;
+        }
+
+        .page-content {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3em;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #9CA3AF;
+        }
+
+        .prizes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 30px;
+            padding: 20px 0;
+        }
+
+        .prize-card {
+            background: #1F2937;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 2px solid #374151;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            /* Remove underline for anchor tag */
+            color: inherit;
+            /* Inherit text color */
+        }
+
+        .prize-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: #F59E0B;
+        }
+
+        .prize-image-container {
+            width: 100%;
+            height: 250px;
+            background: #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .prize-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .prize-card:hover .prize-image {
+            transform: scale(1.1);
+        }
+
+        .prize-content {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .prize-name {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #E5E7EB;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .prize-points {
+            display: inline-block;
+            background: #F59E0B;
+            color: #fff;
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 0.9em;
+            box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+            margin-top: auto;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #9CA3AF;
+            font-size: 1.5em;
+            grid-column: 1 / -1;
+        }
+
+        .error-message {
+            background: #EF4444;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px;
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/prizes.html" class="navbar-link active">Prizes</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                <a href="/" class="navbar-btn">Back to Projects</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="header">
+            <h1>🏆 Reward Store</h1>
+            <p>Complete projects, earn points, and win awesome prizes!</p>
+        </div>
+
+        <div class="prizes-grid" id="prizesGrid">
+            <div class="loading">Loading prizes...</div>
+        </div>
+    </div>
+
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
+    <script>
+        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchPrizes();
+        });
+
+        async function fetchPrizes() {
+            try {
+                const response = await fetch(SHEET_URL);
+                if (!response.ok) throw new Error('Failed to fetch prizes data');
+
+                const csvText = await response.text();
+
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function (results) {
+                        renderPrizes(results.data);
+                    },
+                    error: function (error) {
+                        console.error('CSV Parsing Error:', error);
+                        showError('Failed to parse prizes data.');
+                    }
+                });
+
+            } catch (error) {
+                console.error('Fetch Error:', error);
+                showError('Failed to load prizes. Please try again later.');
+            }
+        }
+
+        function renderPrizes(prizes) {
+            const grid = document.getElementById('prizesGrid');
+            grid.innerHTML = '';
+
+            prizes.forEach(prize => {
+                // Check if prize has necessary data
+                if (!prize['Prize Name'] || !prize['Prize Image']) return;
+
+                const card = document.createElement('a'); // Change to anchor tag
+                card.className = 'prize-card';
+                card.href = prize['Prize Link'] || '#';
+                card.target = '_blank'; // Open in new tab
+
+                // Fallback for missing points
+                const points = prize['Prize Points'] || '?';
+
+                card.innerHTML = `
+                    <div class="prize-image-container">
+                        <img src="${prize['Prize Image']}" alt="${prize['Prize Name']}" class="prize-image" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
+                    </div>
+                    <div class="prize-content">
+                        <div class="prize-name">${prize['Prize Name']}</div>
+                        <div>
+                            <span class="prize-points">💎 ${points} Points</span>
+                        </div>
+                    </div>
+                `;
+
+                grid.appendChild(card);
+            });
+
+            if (prizes.length === 0) {
+                grid.innerHTML = '<div class="loading">No prizes found.</div>';
+            }
+        }
+
+        function showError(message) {
+            const grid = document.getElementById('prizesGrid');
+            grid.innerHTML = `<div class="error-message">${message}</div>`;
+        }
+    </script>
+</body>
+
+</html>

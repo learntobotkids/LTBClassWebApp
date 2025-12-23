@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Open Folder</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            background: #f0f0f0;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .log {
+            background: #333;
+            color: lime;
+            font-family: monospace;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            min-height: 100px;
+        }
+
+        .help {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #ffeeba;
+        }
+
+        a.test-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #007bff;
+            text-decoration: none;
+            border-bottom: 1px solid #007bff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>📂 Folder Open Debugger</h1>
+
+        <div class="help">
+            <strong>Prerequisites:</strong><br>
+            1. Run <code>Install.bat</code> (as Admin) on this client computer.<br>
+            2. Ensure the server folder is shared and accessible.
+        </div>
+
+        <label for="folderName">Folder Name (subfolder of FINAL KIDS FILES)</label>
+        <input type="text" id="folderName" value="TestFolder" placeholder="e.g. Alice">
+
+        <div>
+            <button onclick="tryOpen()">Open via Protocol</button>
+            <a href="#" id="directLink" class="test-link" onclick="updateLink()">Direct Link (Right Click -> Copy
+                Address)</a>
+        </div>
+
+        <h3>Debug Log</h3>
+        <div id="log" class="log">Waiting for action...</div>
+    </div>
+
+    <script>
+        const logEl = document.getElementById('log');
+        const inputEl = document.getElementById('folderName');
+        const linkEl = document.getElementById('directLink');
+
+        function log(msg) {
+            const time = new Date().toLocaleTimeString();
+            logEl.textContent = `[${time}] ${msg}\n` + logEl.textContent;
+        }
+
+        function getProtocolUrl() {
+            const folder = inputEl.value.trim();
+            const hostname = window.location.hostname; // e.g., 192.168.1.5 or localhost
+            // Construct: studentfolder://hostname/folderName
+            return `studentfolder://${hostname}/${encodeURIComponent(folder)}`;
+        }
+
+        function updateLink() {
+            const url = getProtocolUrl();
+            linkEl.href = url;
+            linkEl.textContent = `Link: ${url}`;
+            return url;
+        }
+
+        function tryOpen() {
+            const url = updateLink();
+            log(`Attempting to open: ${url}`);
+
+            try {
+                // Method 1: window.open
+                log("Triggering window.open(url, '_self')...");
+                window.open(url, '_self');
+
+                // Method 2 (Backup): Hidden iframe
+                // log("Triggering via iframe...");
+                // const iframe = document.createElement('iframe');
+                // iframe.style.display = 'none';
+                // iframe.src = url;
+                // document.body.appendChild(iframe);
+                // setTimeout(() => document.body.removeChild(iframe), 1000);
+            } catch (e) {
+                log(`Error: ${e.message}`);
+            }
+        }
+
+        // Init
+        updateLink();
+        inputEl.addEventListener('input', updateLink);
+
+        // Populate hostname
+        log(`Detected Server Hostname: ${window.location.hostname}`);
+    </script>
+</body>
+
+</html>

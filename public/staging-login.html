@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Class Login | LearnToBot</title>
+    <link rel="stylesheet" href="kids-theme.css">
+    <style>
+        body {
+            background-color: #111827;
+            color: #E5E7EB;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            color: #60A5FA;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .date-display {
+            font-size: 1.2em;
+            color: #9CA3AF;
+            margin-top: 10px;
+        }
+
+        .class-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+
+        .class-section {
+            background: #1F2937;
+            border-radius: 20px;
+            padding: 20px;
+            border: 1px solid #374151;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .class-title {
+            font-size: 1.5em;
+            color: #FBBF24;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #374151;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+
+        .students-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+        }
+
+        .student-card {
+            background: #374151;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border: 2px solid transparent;
+        }
+
+        .student-card:hover {
+            transform: translateY(-5px);
+            background: #4B5563;
+            border-color: #60A5FA;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .student-headshot {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 10px;
+            border: 3px solid #60A5FA;
+            background-color: #111827;
+        }
+
+        .student-initial {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5em;
+            background: #3B82F6;
+            color: white;
+            margin-bottom: 10px;
+            border: 3px solid #60A5FA;
+        }
+
+        .student-name {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #F3F4F6;
+            line-height: 1.2;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.5em;
+            color: #9CA3AF;
+            margin-top: 50px;
+        }
+
+        .error-message {
+            background: #7F1D1D;
+            color: #FECACA;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .class-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>👋 Welcome to Class!</h1>
+        <div class="date-display" id="currentDate"></div>
+    </div>
+
+    <div id="mainContent">
+        <div class="loading">Loading today's classes...</div>
+    </div>
+
+    <script>
+        // Set today's date
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', dateOptions);
+
+        async function init() {
+            try {
+                // 1. Fetch Students (for headshots)
+                const studentsResp = await fetch('/api/students');
+                const studentsData = await studentsResp.json();
+
+                // Create map of Name -> Student Object
+                const studentMap = new Map();
+                if (studentsData.students) {
+                    studentsData.students.forEach(s => {
+                        const name = typeof s === 'object' ? s.name : s;
+                        studentMap.set(name.toLowerCase().trim(), s);
+                    });
+                }
+
+                // 2. Fetch Today's Classes
+                const boxingsResp = await fetch('/api/today-classes');
+                const bookingsData = await boxingsResp.json();
+
+                if (!bookingsData.success) throw new Error(bookingsData.error || 'Failed to fetch bookings');
+
+                renderClasses(bookingsData.bookings, studentMap);
+
+            } catch (err) {
+                console.error('Error:', err);
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="error-message">
+                        <h3>Oops! Something went wrong.</h3>
+                        <p>${err.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderClasses(bookings, studentMap) {
+            const container = document.getElementById('mainContent');
+            container.innerHTML = '';
+
+            // Filter for today?
+            // The sheet date format is typically "MMM D, YYYY" e.g. "Jul 1, 2024"
+            // Let's filter client side to be safe, if we can parse the date.
+            // Or assume the user maintains the sheet for active classes.
+            // Requirement was: "shows the classes of today"
+            // Let's try to match today's date.
+
+            const today = new Date();
+            const todayStr = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); // "Dec 15, 2025"
+
+            // Group by Service Title (Class Name)
+            const classes = {};
+
+            bookings.forEach(booking => {
+                // Booking object structure depends on google-sheets-service.
+                // It likely maps columns based on config.
+                // Let's assume keys: studentName, serviceTitle, classDate
+
+                // Date Check (Loose equality to handle format variations?)
+                // If classDate is missing, maybe include it?
+                // Let's show ALL from the list primarily, but maybe visually separate if date doesn't match?
+                // Actually, let's just group EVERYTHING returned for now, 
+                // but if we have date info, valid.
+
+                // Normalize keys (just in case)
+                const serviceTitle = booking.serviceTitle || 'Unknown Class';
+                const studentName = booking.studentName;
+
+                // If no student name, skip
+                if (!studentName) return;
+
+                if (!classes[serviceTitle]) {
+                    classes[serviceTitle] = [];
+                }
+
+                classes[serviceTitle].push(booking);
+            });
+
+            // No classes?
+            if (Object.keys(classes).length === 0) {
+                container.innerHTML = '<div class="loading">No classes found for today.</div>';
+                return;
+            }
+
+            const classContainer = document.createElement('div');
+            classContainer.className = 'class-container';
+
+            // Render each class section
+            Object.entries(classes).forEach(([className, students]) => {
+                const section = document.createElement('div');
+                section.className = 'class-section';
+
+                const title = document.createElement('div');
+                title.className = 'class-title';
+                title.textContent = className;
+                section.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'students-grid';
+
+                students.forEach(booking => {
+                    const name = booking.studentName;
+                    const studentObj = studentMap.get(name.toLowerCase().trim());
+
+                    // Headshot logic
+                    let headshotUrl = null;
+                    if (studentObj && studentObj.headshot) {
+                        headshotUrl = studentObj.headshot;
+                        if (headshotUrl.includes('Child Names_Images/')) {
+                            headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                            headshotUrl = 'headshots/' + headshotUrl;
+                        }
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'student-card';
+                    card.onclick = () => loginStudent(name);
+
+                    if (headshotUrl) {
+                        card.innerHTML = `
+                            <img src="${headshotUrl}" alt="${name}" class="student-headshot">
+                            <div class="student-name">${name}</div>
+                        `;
+                    } else {
+                        card.innerHTML = `
+                            <div class="student-initial">${name.charAt(0)}</div>
+                            <div class="student-name">${name}</div>
+                        `;
+                    }
+
+                    grid.appendChild(card);
+                });
+
+                section.appendChild(grid);
+                classContainer.appendChild(section);
+            });
+
+            container.appendChild(classContainer);
+        }
+
+        function loginStudent(name) {
+            // Set local storage
+            localStorage.setItem('currentStudent', name);
+
+            // Redirect to main app
+            window.location.href = '/index.html';
+        }
+
+        // Run
+        init();
+    </script>
+</body>
+
+</html>

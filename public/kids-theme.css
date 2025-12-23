@@ -1,0 +1,201 @@
+/* Kid-Friendly Theme for LearnToBot */
+
+/* Import rounded, friendly font */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+:root {
+    --kid-bg: #1a1c29;
+    /* Deep playful blue-black */
+    --kid-primary: #FF6B6B;
+    /* Playful Red/Pink */
+    --kid-secondary: #4ECDC4;
+    /* Teal */
+    --kid-accent: #FFE66D;
+    /* Yellow */
+    --kid-text: #F7FFF7;
+    --kid-card-bg: #2C3E50;
+    --kid-gradient: linear-gradient(135deg, #FF6B6B 0%, #556270 100%);
+    --kid-nav-gradient: linear-gradient(180deg, #292E49 0%, #536976 100%);
+}
+
+body {
+    font-family: 'Nunito', sans-serif !important;
+    background-color: var(--kid-bg) !important;
+    color: var(--kid-text) !important;
+    font-size: 16px;
+    /* Reduced from 18px */
+}
+
+/* Navbar - Big and Bubbly but Tamed */
+.navbar {
+    background: var(--kid-nav-gradient) !important;
+    border-bottom: 4px solid var(--kid-secondary) !important;
+    height: 70px !important;
+    /* Reduced from 90px */
+}
+
+.navbar-container {
+    height: 100% !important;
+}
+
+.navbar-brand {
+    font-size: 1.8em !important;
+    /* Reduced from 2.2em */
+    text-shadow: 2px 2px 0px #000;
+}
+
+.navbar-link {
+    font-size: 1em !important;
+    /* Reduced from 1.2em */
+    border-radius: 20px !important;
+    padding: 8px 16px !important;
+    /* Reduced padding */
+}
+
+.navbar-link:hover,
+.navbar-link.active {
+    background-color: var(--kid-secondary) !important;
+    color: #fff !important;
+    transform: scale(1.05) !important;
+    /* Reduced scale */
+}
+
+/* Sidebar - Friendly and Clear */
+#student-folder-sidebar {
+    background-color: #222831 !important;
+    border-left: 4px solid var(--kid-accent) !important;
+    top: 70px !important;
+    /* Match new navbar height */
+    height: calc(100vh - 70px) !important;
+}
+
+#student-folder-sidebar h3 {
+    font-size: 1.2em !important;
+    /* Reduced from 1.5em */
+    color: var(--kid-accent) !important;
+    text-align: center;
+    border-bottom: 2px dashed var(--kid-accent) !important;
+    margin-bottom: 10px !important;
+}
+
+.folder-list-item div {
+    font-size: 0.95em !important;
+    /* Reduced from 1.1em */
+    padding: 8px !important;
+    /* Reduced padding */
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px !important;
+    /* Slightly smaller radius */
+    margin-bottom: 6px !important;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.folder-list-item div:hover {
+    transform: scale(1.02) translateX(5px) !important;
+    /* Reduced scale */
+    background: var(--kid-secondary) !important;
+    color: white !important;
+}
+
+/* Project Cards - Cards you want to touch */
+.project-card {
+    border-radius: 15px !important;
+    /* Reduced radius */
+    border: 2px solid transparent !important;
+    background: #2D3436 !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3) !important;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+.project-card:hover {
+    transform: translateY(-5px) scale(1.01) !important;
+    /* Reduced movement */
+    border-color: var(--kid-accent) !important;
+    box-shadow: 0 10px 20px rgba(255, 230, 109, 0.2) !important;
+}
+
+.project-name {
+    font-size: 1.2em !important;
+    /* Reduced from 1.5em */
+    font-weight: 700 !important;
+    color: var(--kid-secondary) !important;
+}
+
+.project-icon {
+    border-radius: 12px 12px 0 0 !important;
+    background: #393E46 !important;
+}
+
+/* Buttons - Big, Pill-shaped, Colorful */
+button,
+.navbar-btn,
+.connection-monitor-btn,
+.login-button {
+    border-radius: 25px !important;
+    /* Reduced radius */
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: none !important;
+    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.1s !important;
+    font-size: 0.9em !important;
+    /* Added font size control */
+    padding: 8px 16px !important;
+    /* Normalized padding */
+}
+
+button:active,
+.navbar-btn:active {
+    transform: translateY(2px) !important;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Search Box */
+.search-box {
+    border-radius: 20px !important;
+    border: 2px solid var(--kid-secondary) !important;
+    background: #fff !important;
+    color: #333 !important;
+    font-size: 1em !important;
+    /* Reduced from 1.3em */
+    padding: 10px 15px !important;
+}
+
+.search-box:focus {
+    border-color: var(--kid-primary) !important;
+    box-shadow: 0 0 10px rgba(255, 107, 107, 0.4) !important;
+}
+
+/* Tabs */
+.tab {
+    border-radius: 20px !important;
+    font-size: 1em !important;
+    /* Reduced from 1.1em */
+    border: 2px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 8px 20px !important;
+}
+
+.tab.active {
+    background: var(--kid-primary) !important;
+    border-color: var(--kid-primary) !important;
+    transform: scale(1.05) !important;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1a1c29;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--kid-secondary);
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--kid-primary);
+}

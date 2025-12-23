@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ratings Dashboard - LearnToBot Class</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111827;
+            min-height: 100vh;
+            padding-top: 80px;
+            color: #E5E7EB;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border-bottom: 2px solid #3B82F6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.8em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3B82F6;
+        }
+
+        .navbar-auth {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .page-content {
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #9CA3AF;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #1F2937;
+            border: 1px solid #374151;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #3B82F6;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #9CA3AF;
+            font-size: 1.1em;
+        }
+
+        .rating-distribution {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 15px;
+            align-items: flex-end;
+            height: 80px;
+        }
+
+        .dist-bar-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 30px;
+        }
+
+        .dist-bar {
+            width: 100%;
+            background: #3B82F6;
+            border-radius: 4px;
+            transition: height 0.5s ease;
+            min-height: 4px;
+        }
+
+        .dist-label {
+            margin-top: 5px;
+            font-size: 0.8em;
+            color: #9CA3AF;
+        }
+
+        .panel {
+            background: #1F2937;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #374151;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .panel-title {
+            font-size: 1.5em;
+            color: #E5E7EB;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            background: transparent;
+            border: 1px solid #3B82F6;
+            color: #3B82F6;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .ratings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .ratings-table th {
+            background: #111827;
+            color: #3B82F6;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #3B82F6;
+        }
+
+        .ratings-table td {
+            padding: 15px;
+            border-bottom: 1px solid #374151;
+            color: #E5E7EB;
+        }
+
+        .ratings-table tr:hover {
+            background: #111827;
+        }
+
+        .star-display {
+            color: #F59E0B;
+            letter-spacing: 2px;
+        }
+
+        .comment-cell {
+            color: #9CA3AF;
+            font-style: italic;
+            max-width: 400px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .time-cell {
+            font-family: monospace;
+            color: #6B7280;
+            font-size: 0.9em;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #6B7280;
+            font-size: 1.2em;
+        }
+
+        .rating-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .rating-high {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10B981;
+        }
+
+        .rating-med {
+            background: rgba(245, 158, 11, 0.2);
+            color: #F59E0B;
+        }
+
+        .rating-low {
+            background: rgba(239, 68, 68, 0.2);
+            color: #EF4444;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
+                <li><a href="/ratings.html" class="navbar-link active">Ratings</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                <a href="/teacher.html" class="navbar-btn">Back to Panel</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="header">
+            <h1>⭐ Student Ratings Dashboard</h1>
+            <p>Analyze feedback and video engagement</p>
+        </div>
+
+        <div class="container">
+            <!-- Stats Overview -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRatings">0</div>
+                    <div class="stat-label">Total Ratings</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="averageRating">0.0</div>
+                    <div class="stat-label">Average Score</div>
+                </div>
+                <div class="stat-card">
+                    <div class="rating-distribution" id="ratingDist">
+                        <!-- Bars injected by JS -->
+                    </div>
+                    <div class="stat-label" style="margin-top: 10px;">Rating Distribution</div>
+                </div>
+            </div>
+
+            <!-- Main Table -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Recent Feedback</div>
+                    <button class="refresh-btn" onclick="fetchRatings()">
+                        🔄 Refresh
+                    </button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="ratings-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Student</th>
+                                <th>Project</th>
+                                <th>Video File</th>
+                                <th>Rating</th>
+                                <th>Comment</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ratingsTableBody">
+                            <tr>
+                                <td colspan="6" class="no-data">Loading ratings...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', fetchRatings);
+
+        // Auto-refresh every 30 seconds
+        setInterval(fetchRatings, 30000);
+
+        async function fetchRatings() {
+            try {
+                const response = await fetch('/api/ratings');
+                const data = await response.json();
+
+                if (data.ratings) {
+                    updateDashboard(data.ratings);
+                }
+            } catch (error) {
+                console.error('Error fetching ratings:', error);
+            }
+        }
+
+        function updateDashboard(ratings) {
+            // 1. Update Stats
+            const total = ratings.length;
+            const sum = ratings.reduce((acc, r) => acc + parseInt(r.rating), 0);
+            const avg = total > 0 ? (sum / total).toFixed(1) : '0.0';
+
+            document.getElementById('totalRatings').textContent = total;
+            document.getElementById('averageRating').textContent = avg;
+
+            // 2. Update Distribution Chart
+            const counts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+            ratings.forEach(r => {
+                const val = parseInt(r.rating);
+                if (counts[val] !== undefined) counts[val]++;
+            });
+
+            const maxCount = Math.max(...Object.values(counts), 1); // Avoid div by zero
+
+            const distHTML = [1, 2, 3, 4, 5].map(star => {
+                const count = counts[star];
+                const heightPercent = (count / maxCount) * 100;
+                // Min height 4px so it's visible even if 0
+                const height = Math.max(heightPercent, 5);
+
+                return `
+                    <div class="dist-bar-container">
+                        <div class="dist-bar" style="height: ${height}%; opacity: ${count > 0 ? 1 : 0.3}"></div>
+                        <div class="dist-label">${star}★</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('ratingDist').innerHTML = distHTML;
+
+            // 3. Update Table
+            const tbody = document.getElementById('ratingsTableBody');
+
+            if (ratings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="no-data">No ratings found yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = ratings.map(r => {
+                const date = new Date(r.timestamp);
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString();
+
+                const stars = '★'.repeat(r.rating) + '☆'.repeat(5 - r.rating);
+
+                let badgeClass = 'rating-med';
+                if (r.rating >= 4) badgeClass = 'rating-high';
+                if (r.rating <= 2) badgeClass = 'rating-low';
+
+                const displayComment = r.comment ? r.comment : '<span style="color:#4B5563">-</span>';
+
+                return `
+                    <tr>
+                        <td class="time-cell">
+                            <div>${dateStr}</div>
+                            <div>${timeStr}</div>
+                        </td>
+                        <td style="font-weight: 500; color: #E5E7EB;">${r.student || 'Guest'}</td>
+                        <td>${r.project}</td>
+                        <td style="font-size: 0.9em; color: #9CA3AF;">${r.file.split('/').pop()}</td>
+                        <td>
+                            <span class="rating-badge ${badgeClass}">${stars} ${r.rating}</span>
+                        </td>
+                        <td class="comment-cell" title="${r.comment || ''}">${displayComment}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    </script>
+</body>
+
+</html>

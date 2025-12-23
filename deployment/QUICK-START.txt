@@ -1,0 +1,91 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║  LEARNTOBOT - QUICK DEPLOYMENT TO 100+ LAPTOPS                      ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+WHAT THIS DOES:
+---------------
+Installs protocol handlers on all student laptops so files and folders
+open automatically when clicked (no copy-paste needed).
+
+
+PREREQUISITES:
+--------------
+✓ All laptops powered ON and on same network
+✓ You have admin credentials for the laptops
+✓ PowerShell remoting enabled (see guide if not)
+
+
+QUICK STEPS:
+------------
+
+1. CREATE COMPUTER LIST
+   - Rename: computers-SAMPLE.txt → computers.txt
+   - Add all laptop names/IPs (one per line)
+
+2. TEST ON A FEW COMPUTERS FIRST
+   - Edit computers.txt to include only 2-3 computers
+   - Run deployment (see step 3)
+   - Verify it works before doing all 100
+
+3. RUN DEPLOYMENT
+   - Open PowerShell as Administrator
+   - Navigate to this folder
+   - Run: .\Deploy-ProtocolHandlers.ps1
+   - Enter admin credentials when prompted
+   - Press Y to confirm
+   - Wait for completion (~30 seconds per computer)
+
+4. CHECK RESULTS
+   - Review the summary shown on screen
+   - Check the CSV file for detailed results
+   - Test on a few deployed computers
+
+
+TESTING:
+--------
+On deployed computer:
+→ Open: http://[SERVER-IP]:3000/student-files.html
+→ Click "Open in Explorer" on a folder
+→ Folder should open in Windows Explorer
+→ Click any file
+→ File should open with default program
+
+
+IF IT DOESN'T WORK:
+-------------------
+Most common issue: PowerShell remoting not enabled
+
+Solution: On each laptop, run PowerShell as Admin:
+  Enable-PSRemoting -Force
+
+See REMOTE-DEPLOYMENT-GUIDE.md for full troubleshooting.
+
+
+ALTERNATIVE (NO INSTALLATION NEEDED):
+--------------------------------------
+If PowerShell remoting is too complicated, you can skip installation:
+→ Students click "Open in Explorer"
+→ Path is automatically copied
+→ They paste (Ctrl+V) into Windows Explorer
+→ Works on all 100 laptops immediately, no setup required
+
+
+FILES IN THIS FOLDER:
+---------------------
+Deploy-ProtocolHandlers.ps1  → Main deployment script (run this)
+computers.txt                → Your list of computers (create this)
+computers-SAMPLE.txt         → Example computer list
+OpenStudentFolder.bat        → Opens folders (deployed to clients)
+OpenStudentFile.bat          → Opens files (deployed to clients)
+RegisterProtocols.reg        → Registry settings (deployed to clients)
+Install.bat                  → Manual installer (if needed)
+REMOTE-DEPLOYMENT-GUIDE.md   → Full documentation (read this!)
+SETUP_GUIDE.md              → Manual setup guide
+README.txt                  → Quick reference
+
+
+NEED HELP?
+----------
+Read: REMOTE-DEPLOYMENT-GUIDE.md (comprehensive troubleshooting)
+
+Test on 2-3 computers first before deploying to all 100!

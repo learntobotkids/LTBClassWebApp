@@ -1,0 +1,43 @@
+PS C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment> .\Deploy-ProtocolHandlers.ps1
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:224
+char:6
++   1. Create a computers.txt file with one computer name/IP per line
++      ~~~~~~
+Unexpected token 'Create' in expression or statement.
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:225
+char:6
++   2. Run with -ComputerNames parameter
++      ~~~
+Unexpected token 'Run' in expression or statement.
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:240
+char:24
++     Write-ColorOutput "`nPlease enter credentials for remote access:" ...
++                        ~~~~~~~~
+Unexpected token '`nPlease' in expression or statement.
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:164
+char:22
++         if ($psexec) {
++                      ~
+Missing closing '}' in statement block or type definition.
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:161
+char:9
++     try {
++         ~
+Missing closing '}' in statement block or type definition.
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:327
+char:17
++ "@ -Color Yellow
++                 ~
+The Try statement is missing its Catch or Finally block.
+At C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment\Deploy-ProtocolHandlers.ps1:156
+char:37
++ function Enable-PSRemoting-Remotely {
++                                     ~
+Missing closing '}' in statement block or type definition.
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+PS C:\Users\nilas\NEW ONEDRIVE\OneDrive\SHARED\SOFTWARE\LTB Class Web App\deployment>
+
+
+

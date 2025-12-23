@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Environment & Credentials (NEVER commit these!)
+.env
+.env.local
+.env.production
+google-credentials.json
+
+# Data & Cache (generated at runtime)
+data/
+public/headshots/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large generated files (optional - can regenerate)
+student_files_tree.md
+project_instructions_tree.md
+
+# Temporary files
+*_raw.txt
+errorpassing.txt
+
+# Claude/AI assistant folders
+.claude/

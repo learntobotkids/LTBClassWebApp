@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: ltb-class-webapp
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GOOGLE_CREDENTIALS
+        sync: false  # Set manually in Render dashboard - paste your google-credentials.json content
+      - key: DEPLOYMENT_MODE
+        value: cloud

@@ -1,0 +1,20 @@
+# List of computers to deploy protocol handlers to
+# One computer name or IP address per line
+# Lines starting with # are ignored
+
+# You can use computer names:
+CLASSROOM-PC-01
+CLASSROOM-PC-02
+CLASSROOM-PC-03
+
+# Or IP addresses:
+192.168.1.100
+192.168.1.101
+192.168.1.102
+
+# Mix of both works too:
+STUDENT-LAPTOP-01
+192.168.1.110
+
+# Add all your 100+ computers here, one per line
+# Then rename this file to: computers.txt

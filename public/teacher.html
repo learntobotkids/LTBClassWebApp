@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Control Panel - LearnToBot Class</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111827;
+            min-height: 100vh;
+            padding-top: 80px;
+            color: #E5E7EB;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border-bottom: 2px solid #3B82F6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.8em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3B82F6;
+        }
+
+        .navbar-auth {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-user {
+            color: #E5E7EB;
+            font-weight: 600;
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 20px;
+            font-size: 0.95em;
+        }
+
+        .navbar-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .page-content {
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #9CA3AF;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .control-panel {
+            background: #1F2937;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #374151;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #E5E7EB;
+            font-weight: 600;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .action-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid #3B82F6;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 1em;
+        }
+
+        .action-btn:hover {
+            background: #2563EB;
+            border-color: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .action-btn.danger {
+            background: #EF4444;
+            border-color: #EF4444;
+        }
+
+        .action-btn.danger:hover {
+            background: #DC2626;
+            border-color: #DC2626;
+        }
+
+        .clients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .client-card {
+            background: #111827;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #374151;
+            transition: all 0.3s ease;
+        }
+
+        .client-card:hover {
+            border-color: #3B82F6;
+            transform: translateY(-2px);
+        }
+
+        .client-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #3B82F6;
+        }
+
+        .client-info {
+            color: #9CA3AF;
+            margin-bottom: 5px;
+        }
+
+        .client-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #374151;
+        }
+
+        .mini-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-top: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .mini-btn:hover {
+            background: #2563EB;
+        }
+
+        .stats-bar {
+            background: #1F2937;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            border: 1px solid #374151;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: bold;
+            color: #3B82F6;
+        }
+
+        .stat-label {
+            color: #9CA3AF;
+        }
+
+        .no-clients {
+            text-align: center;
+            padding: 40px;
+            color: #6B7280;
+            font-size: 1.2em;
+        }
+
+        .project-select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #374151;
+            border-radius: 10px;
+            background: #111827;
+            color: #E5E7EB;
+            font-size: 1em;
+            margin-bottom: 15px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .project-select:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .project-select option {
+            background: #111827;
+            color: #E5E7EB;
+            padding: 10px;
+        }
+
+        .project-select optgroup {
+            color: #3B82F6;
+            font-weight: 600;
+            background: #1F2937;
+        }
+
+        .connections-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .connections-table th {
+            background: #111827;
+            color: #3B82F6;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #3B82F6;
+        }
+
+        .connections-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #374151;
+            color: #E5E7EB;
+        }
+
+        .connections-table tr:hover {
+            background: #111827;
+        }
+
+        .url-cell {
+            font-family: 'Courier New', monospace;
+            color: #3B82F6;
+            font-size: 0.9em;
+        }
+
+        .project-dropdown {
+            padding: 8px;
+            border: 2px solid #374151;
+            border-radius: 8px;
+            background: #111827;
+            color: #E5E7EB;
+            font-size: 0.9em;
+            cursor: pointer;
+            max-width: 200px;
+        }
+
+        .project-dropdown:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .send-btn {
+            background: #10B981;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: 2px solid #10B981;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-left: 8px;
+        }
+
+        .send-btn:hover {
+            background: #059669;
+            border-color: #059669;
+        }
+
+        .control-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/ratings.html" class="navbar-link">Ratings</a></li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/teacher.html" class="navbar-link active">Teacher Panel</a></li>
+                <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                <a href="/" class="navbar-btn">Back to Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="header">
+            <h1>👨‍🏫 Teacher Control Panel</h1>
+            <p>Control all student browsers in real-time</p>
+        </div>
+
+        <div class="container">
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-number" id="totalClients">0</div>
+                    <div class="stat-label">Connected Students</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number" id="loggedInClients">0</div>
+                    <div class="stat-label">Logged In</div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="section-title">Quick Actions - Send to All Students</div>
+                <div class="quick-actions">
+                    <button class="action-btn" onclick="sendToAll('/')">📚 Send to Home</button>
+                    <button class="action-btn" onclick="window.location.href='/ratings.html'">⭐ View Ratings DB</button>
+                    <button class="action-btn" onclick="sendToAll('/connections.html')">🌐 Show Connections</button>
+                    <button class="action-btn" onclick="refreshAll()">🔄 Refresh All Browsers</button>
+                </div>
+
+                <div class="section-title">Send Project to All Students</div>
+                <select class="project-select" id="projectSelect">
+                    <option value="">-- Select a Project --</option>
+                </select>
+                <button class="action-btn" onclick="sendSelectedProject()">📤 Send Project to All Students</button>
+
+
+
+                <div class="section-title" style="margin-top: 30px;">System Management</div>
+                <div class="quick-actions">
+                    <button class="action-btn" onclick="syncStudents()">🔄 Sync Students from Google Sheets</button>
+                    <button class="action-btn" onclick="rediscoverProjects()">📁 Rediscover Projects</button>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <div class="section-title">Connection URLs Table</div>
+                <table class="connections-table">
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>IP Address</th>
+                            <th>Current URL</th>
+                            <th>Connected For</th>
+                            <th>Send to Project</th>
+                        </tr>
+                    </thead>
+                    <tbody id="connectionsTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #6B7280;">No students connected yet...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="control-panel">
+                <div class="section-title">Connected Students</div>
+                <div id="clientsContainer" class="clients-grid">
+                    <div class="no-clients">No students connected yet...</div>
+                </div>
+            </div>
+        </div>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            const socket = io();
+            let connectedClients = [];
+            let allProjects = [];
+            let pauseRefresh = false; // Pause auto-refresh when dropdown is in use
+
+            // Update clients display
+            async function updateClients() {
+                // Skip update if user is interacting with dropdown
+                if (pauseRefresh) {
+                    return;
+                }
+
+                try {
+                    // Fetch both WebSocket clients and HTTP connection data
+                    const [clientsResponse, connectionsResponse] = await Promise.all([
+                        fetch('/api/teacher/clients'),
+                        fetch('/api/connections')
+                    ]);
+
+                    const clientsData = await clientsResponse.json();
+                    const connectionsData = await connectionsResponse.json();
+
+                    connectedClients = clientsData.clients;
+
+                    // Create a map of IP to URL from connections data
+                    const ipToUrl = new Map();
+                    connectionsData.connections.forEach(conn => {
+                        ipToUrl.set(conn.ip, conn.url);
+                    });
+
+                    // Update stats
+                    document.getElementById('totalClients').textContent = clientsData.totalClients;
+                    document.getElementById('loggedInClients').textContent =
+                        clientsData.clients.filter(c => c.studentName !== 'Guest').length;
+
+                    // Update table
+                    const tableBody = document.getElementById('connectionsTableBody');
+                    if (clientsData.clients.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #6B7280;">No students connected yet...</td></tr>';
+                    } else {
+                        tableBody.innerHTML = clientsData.clients.map((client, index) => {
+                            const url = ipToUrl.get(client.ip) || 'Unknown';
+                            const dropdownId = `project-select-${index}`;
+
+                            // Build project options grouped by category
+                            const groupedProjects = {};
+                            allProjects.forEach(project => {
+                                const topCategory = project.categoryArray.length > 0
+                                    ? project.categoryArray[0]
+                                    : 'Uncategorized';
+                                if (!groupedProjects[topCategory]) {
+                                    groupedProjects[topCategory] = [];
+                                }
+                                groupedProjects[topCategory].push(project);
+                            });
+
+                            let optionsHTML = '<option value="">-- Select Project --</option>';
+                            Object.keys(groupedProjects).sort().forEach(category => {
+                                optionsHTML += `<optgroup label="${category}">`;
+                                groupedProjects[category].sort((a, b) => a.name.localeCompare(b.name)).forEach(project => {
+                                    optionsHTML += `<option value="${project.id}">${project.name}</option>`;
+                                });
+                                optionsHTML += '</optgroup>';
+                            });
+
+                            return `
+                            <tr>
+                                <td>${client.studentName === 'Guest' ? '👤 Guest' : '👤 ' + client.studentName}</td>
+                                <td>${client.ip}</td>
+                                <td class="url-cell">${url}</td>
+                                <td>${formatDuration(client.connectedFor)}</td>
+                                <td>
+                                    <div class="control-cell">
+                                        <select class="project-dropdown" id="${dropdownId}"
+                                                onfocus="pauseRefresh = true"
+                                                onchange="pauseRefresh = true"
+                                                onblur="setTimeout(() => { if(document.getElementById('${dropdownId}') && document.getElementById('${dropdownId}').value === '') pauseRefresh = false; }, 300)">
+                                            ${optionsHTML}
+                                        </select>
+                                        <button class="send-btn" onclick="sendProjectToStudent('${client.socketId}', '${dropdownId}')">Send</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        }).join('');
+                    }
+
+                    // Display clients cards
+                    const container = document.getElementById('clientsContainer');
+
+                    if (clientsData.clients.length === 0) {
+                        container.innerHTML = '<div class="no-clients">No students connected yet...</div>';
+                        return;
+                    }
+
+                    container.innerHTML = clientsData.clients.map(client => `
+                    <div class="client-card">
+                        <div class="client-name">
+                            ${client.studentName === 'Guest' ? '👤 Guest' : '👤 ' + client.studentName}
+                        </div>
+                        <div class="client-info">📄 Page: ${client.currentPage}</div>
+                        <div class="client-info">🕐 Connected: ${formatDuration(client.connectedFor)}</div>
+                        <div class="client-info">🌐 IP: ${client.ip}</div>
+                        <div class="client-actions">
+                            <button class="mini-btn" onclick="sendToClient('${client.socketId}', '/')">Home</button>
+                            <button class="mini-btn" onclick="sendToClient('${client.socketId}', '/connections.html')">Connections</button>
+                        </div>
+                    </div>
+                `).join('');
+                } catch (error) {
+                    console.error('Failed to fetch clients:', error);
+                }
+            }
+
+            // Send to all students
+            function sendToAll(url) {
+                fetch('/api/teacher/navigate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, targetStudents: 'all' })
+                }).then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                    });
+            }
+
+            // Load projects for dropdown
+            async function loadProjects() {
+                try {
+                    const response = await fetch('/api/projects');
+                    const data = await response.json();
+
+                    if (data.error) {
+                        console.error('Failed to load projects:', data.error);
+                        return;
+                    }
+
+                    allProjects = data.projects;
+                    const select = document.getElementById('projectSelect');
+
+                    // Group projects by top-level category
+                    const groupedProjects = {};
+                    allProjects.forEach(project => {
+                        const topCategory = project.categoryArray.length > 0
+                            ? project.categoryArray[0]
+                            : 'Uncategorized';
+
+                        if (!groupedProjects[topCategory]) {
+                            groupedProjects[topCategory] = [];
+                        }
+                        groupedProjects[topCategory].push(project);
+                    });
+
+                    // Build dropdown with optgroups
+                    let optionsHTML = '<option value="">-- Select a Project --</option>';
+
+                    // Sort categories
+                    const sortedCategories = Object.keys(groupedProjects).sort();
+
+                    sortedCategories.forEach(category => {
+                        optionsHTML += `<optgroup label="${category}">`;
+
+                        // Sort projects within category
+                        groupedProjects[category].sort((a, b) => a.name.localeCompare(b.name));
+
+                        groupedProjects[category].forEach(project => {
+                            const displayName = project.category !== 'Uncategorized'
+                                ? `${project.name} (${project.videoCount} videos)`
+                                : project.name;
+                            optionsHTML += `<option value="${project.id}">${displayName}</option>`;
+                        });
+
+                        optionsHTML += '</optgroup>';
+                    });
+
+                    select.innerHTML = optionsHTML;
+                } catch (error) {
+                    console.error('Error loading projects:', error);
+                }
+            }
+
+            // Send selected project to all students
+            function sendSelectedProject() {
+                const select = document.getElementById('projectSelect');
+                const projectId = select.value;
+
+                if (!projectId) {
+                    alert('Please select a project');
+                    return;
+                }
+
+                const url = `/project.html?id=${encodeURIComponent(projectId)}`;
+                sendToAll(url);
+
+                // Find project name for confirmation
+                const project = allProjects.find(p => p.id === projectId);
+                if (project) {
+                    alert(`Sending all students to: ${project.name}`);
+                }
+            }
+
+            // Refresh all browsers
+            function refreshAll() {
+                if (confirm('This will refresh all student browsers. Continue?')) {
+                    sendToAll(window.location.pathname);
+                }
+            }
+
+            // Send to specific client
+            function sendToClient(socketId, url) {
+                fetch('/api/teacher/navigate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, targetStudents: [socketId] })
+                }).then(response => response.json())
+                    .then(data => {
+                        console.log(data.message);
+                    });
+            }
+
+            // Send selected project to specific student
+            function sendProjectToStudent(socketId, dropdownId) {
+                const dropdown = document.getElementById(dropdownId);
+                const projectId = dropdown.value;
+
+                if (!projectId) {
+                    alert('Please select a project first');
+                    pauseRefresh = false; // Resume refresh
+                    return;
+                }
+
+                const url = `/project.html?id=${encodeURIComponent(projectId)}`;
+
+                // Find project name for feedback
+                const project = allProjects.find(p => p.id === projectId);
+                const projectName = project ? project.name : projectId;
+
+                sendToClient(socketId, url);
+
+                // Visual feedback
+                console.log(`Sent ${projectName} to student`);
+
+                // Reset dropdown after sending
+                dropdown.value = '';
+
+                // Resume auto-refresh
+                pauseRefresh = false;
+            }
+
+            // Format duration
+            function formatDuration(ms) {
+                const seconds = Math.floor(ms / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+
+                if (hours > 0) {
+                    return `${hours}h ${minutes % 60}m`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ${seconds % 60}s`;
+                } else {
+                    return `${seconds}s`;
+                }
+            }
+
+            // Sync students from Google Sheets
+            async function syncStudents() {
+                if (!confirm('This will sync student names from Google Sheets and overwrite the local database.\n\nNote: This requires an internet connection.\n\nContinue?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/sync-students', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert(`✅ ${data.message}`);
+                    } else {
+                        if (data.offline) {
+                            alert(`❌ Cannot sync - No internet connection.\n\n${data.message}`);
+                        } else {
+                            alert(`❌ Sync failed: ${data.error}\n\n${data.message}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error syncing students:', error);
+                    alert('❌ Failed to sync students. Check console for details.');
+                }
+            }
+
+            // Rediscover projects
+            async function rediscoverProjects() {
+                if (!confirm('This will rescan the PROJECT_INSTRUCTIONS folder to discover any new or moved projects.\n\nContinue?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/api/rediscover-projects', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        alert(`✅ ${data.message}`);
+                        // Reload projects dropdown
+                        await loadProjects();
+                    } else {
+                        alert(`❌ Rediscovery failed: ${data.error}\n\n${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('Error rediscovering projects:', error);
+                    alert('❌ Rediscovery failed. Check console.');
+                }
+            }
+
+
+
+            // Initialize
+            loadProjects();
+            updateClients();
+            setInterval(updateClients, 2000);
+
+            // Notify server that this is the teacher panel
+            socket.on('connect', () => {
+                socket.emit('page-change', { page: 'Teacher Panel' });
+            });
+        </script>
+
+    </div> <!-- Close page-content -->
+    <footer>
+        <p>Last Updated: <span id="last-updated"></span></p>
+    </footer>
+    <style>
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const lastUpdatedElement = document.getElementById('last-updated');
+            if (lastUpdatedElement) {
+                const now = new Date();
+                lastUpdatedElement.textContent = now.toLocaleString();
+            }
+        });
+    </script>
+</body>
+
+</html>

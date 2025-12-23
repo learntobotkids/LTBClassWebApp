@@ -1,0 +1,2744 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnToBot Class - Projects</title>
+    <link rel="stylesheet" href="kids-theme.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111827;
+            min-height: 100vh;
+            padding-top: 90px;
+            /* 70px navbar + 20px spacing */
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border-bottom: 2px solid #3B82F6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 100%;
+            /* Match parent height */
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.8em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3B82F6;
+        }
+
+        .navbar-auth {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-user {
+            color: #E5E7EB;
+            font-weight: 600;
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 20px;
+            font-size: 0.95em;
+        }
+
+        .navbar-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .navbar-btn.logout {
+            background: #EF4444;
+        }
+
+        .navbar-btn.logout:hover {
+            background: #DC2626;
+        }
+
+        .page-content {
+            padding: 20px;
+            margin-right: 320px;
+            /* Space for the new sidebar */
+        }
+
+        #student-folder-sidebar {
+            position: fixed;
+            top: 90px;
+            /* Match navbar height */
+            /* Position below the navbar */
+            right: 0;
+            width: 300px;
+            height: calc(100vh - 90px);
+            background: #1F2937;
+            border-left: 1px solid #374151;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+            z-index: 998;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        #student-folder-sidebar h3 {
+            color: #E5E7EB;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #3B82F6;
+            padding-bottom: 10px;
+        }
+
+        #folder-search {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            background: #111827;
+            border: 2px solid #374151;
+            border-radius: 8px;
+            color: #E5E7EB;
+            margin-bottom: 15px;
+        }
+
+        #folder-search:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        #folder-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+
+        #folder-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .folder-list-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .folder-list-item a {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .folder-list-item:hover {
+            background-color: #374151;
+            border-color: #3B82F6;
+        }
+
+        .folder-list-item:hover a {
+            color: #E5E7EB;
+        }
+
+        .page-content {
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: #E5E7EB;
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            color: #E5E7EB;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            color: #9CA3AF;
+        }
+
+        .search-container {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            position: relative;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            outline: none;
+        }
+
+        .search-box:focus {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #1F2937;
+            border-radius: 15px;
+            margin-top: 10px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+            max-height: 500px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .search-dropdown.active {
+            display: block;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #374151;
+            transition: background 0.2s ease;
+        }
+
+        .search-result-item:hover {
+            background: #374151;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-icon {
+            width: 50px;
+            height: 50px;
+            flex-shrink: 0;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #111827;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+        }
+
+        .search-result-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .search-result-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .search-result-id {
+            font-size: 0.85em;
+            color: #3B82F6;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .search-result-name {
+            font-size: 1em;
+            color: #E5E7EB;
+            font-weight: 600;
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .search-result-meta {
+            display: flex;
+            gap: 15px;
+            flex-shrink: 0;
+            font-size: 0.9em;
+            color: #9CA3AF;
+        }
+
+        .search-result-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .search-no-results {
+            padding: 30px 20px;
+            text-align: center;
+            color: #6B7280;
+            font-size: 1em;
+        }
+
+        .tabs-container {
+            max-width: 1200px;
+            margin: 0 auto 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .tab {
+            background: #1F2937;
+            color: #E5E7EB;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: 2px solid #374151;
+            white-space: nowrap;
+        }
+
+        .tab:hover {
+            background: #374151;
+            border-color: #3B82F6;
+            transform: translateY(-2px);
+        }
+
+        .tab.active {
+            background: #3B82F6;
+            color: white;
+            border-color: #3B82F6;
+        }
+
+        .tab .category-parent {
+            opacity: 0.6;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+
+        .category-section {
+            display: none;
+        }
+
+        .category-section.active {
+            display: block;
+        }
+
+        .category-header {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            text-align: center;
+            color: #E5E7EB;
+        }
+
+        .category-header h2 {
+            font-size: 2em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            font-weight: 600;
+        }
+
+        .projects-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .project-card {
+            background: #1F2937;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+            border: 1px solid #374151;
+            position: relative;
+        }
+
+        .project-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.3);
+            border-color: #3B82F6;
+        }
+
+        .project-card.completed-project {
+            border: 2px solid #10B981;
+            opacity: 0.85;
+        }
+
+        .project-card.completed-project:hover {
+            opacity: 1;
+            border-color: #10B981;
+        }
+
+        .project-card.in-progress-project {
+            border: 2px solid #F59E0B;
+        }
+
+        .project-card.in-progress-project:hover {
+            border-color: #F59E0B;
+        }
+
+        .completion-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #10B981;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .in-progress-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #F59E0B;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+        }
+
+        .remaining-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #3B82F6;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75em;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+        }
+
+        .project-card.remaining-project {
+            border: 2px solid #3B82F6;
+        }
+
+        .project-card.remaining-project:hover {
+            border-color: #3B82F6;
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
+        }
+
+        .assigned-projects-section {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 25px;
+            background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%);
+            border-radius: 20px;
+            border: 3px solid #8B5CF6;
+            box-shadow: 0 10px 40px rgba(124, 58, 237, 0.4);
+        }
+
+        .assigned-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            color: white;
+        }
+
+        .assigned-header h2 {
+            font-size: 1.8em;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .assigned-icon {
+            font-size: 2.5em;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .assigned-projects-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .assigned-project-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 3px solid #A78BFA;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+
+        .assigned-project-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 15px 40px rgba(124, 58, 237, 0.5);
+            border-color: #DDD6FE;
+        }
+
+        .assigned-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #7C3AED;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+            z-index: 10;
+            box-shadow: 0 3px 10px rgba(124, 58, 237, 0.5);
+            animation: bounce 1s ease-in-out infinite;
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .section-header {
+            max-width: 1200px;
+            margin: 30px auto 15px;
+            padding: 0 20px;
+        }
+
+        .collapsible-section {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .collapsible-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            background: #1F2937;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #374151;
+        }
+
+        .collapsible-header:hover {
+            background: #374151;
+            border-color: #3B82F6;
+        }
+
+        .collapsible-header h3 {
+            color: #10B981;
+            font-size: 1.3em;
+            margin: 0;
+            flex: 1;
+        }
+
+        .collapsible-arrow {
+            font-size: 1.2em;
+            transition: transform 0.3s ease;
+            color: #9CA3AF;
+        }
+
+        .collapsible-header.collapsed .collapsible-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .collapsible-content {
+            max-height: 10000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .collapsible-content.collapsed {
+            max-height: 0;
+        }
+
+        .section-header h3 {
+            font-size: 1.5em;
+            font-weight: 600;
+        }
+
+        .section-header p {
+            margin: 0;
+        }
+
+        .project-icon {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #E5E7EB;
+            font-size: 3em;
+        }
+
+        .project-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .project-info {
+            padding: 20px;
+        }
+
+        .project-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #E5E7EB;
+            margin-bottom: 10px;
+        }
+
+        .project-category {
+            font-size: 0.9em;
+            color: #3B82F6;
+            margin-bottom: 10px;
+        }
+
+        .project-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #374151;
+        }
+
+        .video-count {
+            color: #9CA3AF;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            color: #E5E7EB;
+            font-size: 1.5em;
+            padding: 50px;
+        }
+
+        .error {
+            background: #DC2626;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+            margin: 50px auto;
+        }
+
+        .no-results {
+            text-align: center;
+            color: #9CA3AF;
+            font-size: 1.3em;
+            padding: 50px;
+        }
+
+        .pdf-badge {
+            background: #EF4444;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .search-active-notice {
+            max-width: 1200px;
+            margin: 0 auto 20px;
+            text-align: center;
+            color: #E5E7EB;
+            background: #1F2937;
+            padding: 10px;
+            border-radius: 10px;
+            border: 1px solid #374151;
+        }
+
+        .connection-monitor-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #3B82F6;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid #3B82F6;
+        }
+
+        .connection-monitor-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(59, 130, 246, 0.5);
+            background: #2563EB;
+            border-color: #2563EB;
+        }
+
+        .connection-count {
+            background: #10B981;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .login-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #3B82F6;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            border: 2px solid #3B82F6;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            background: #2563EB;
+        }
+
+        .login-button.logged-in {
+            background: #10B981;
+            border-color: #10B981;
+        }
+
+        .teacher-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #EF4444;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            border: 2px solid #EF4444;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 999;
+        }
+
+        .teacher-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+            background: #DC2626;
+            border-color: #DC2626;
+        }
+
+        .progress-button {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            background: #10B981;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 2px solid #10B981;
+        }
+
+        .progress-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            background: #059669;
+            border-color: #059669;
+        }
+
+        .login-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-modal.active {
+            display: flex;
+        }
+
+        .login-modal-content {
+            background: #1F2937;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid #374151;
+        }
+
+        .login-modal h2 {
+            color: #E5E7EB;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Styles for Login Modal */
+        .modal-overlay {
+            display: none;
+            /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            /* Show when active */
+        }
+
+        .modal {
+            background: #1F2937;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 800px;
+            border: 2px solid #374151;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Header */
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #60A5FA;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: #9CA3AF;
+            font-size: 2em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .close-modal:hover {
+            color: #F3F4F6;
+        }
+
+        .login-view-title {
+            color: #E5E7EB;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .student-search {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #374151;
+            border-radius: 10px;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            background: #111827;
+            color: #E5E7EB;
+        }
+
+        .student-search:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .student-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .student-item {
+            background: #111827;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #374151;
+            color: #E5E7EB;
+        }
+
+        .student-item:hover {
+            background: #3B82F6;
+            border-color: #3B82F6;
+            transform: translateX(5px);
+        }
+
+        .close-modal-btn {
+            background: #EF4444;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .close-modal-btn:hover {
+            background: #DC2626;
+        }
+
+        .logout-btn {
+            background: #EF4444;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .logout-btn:hover {
+            background: #DC2626;
+        }
+
+        /* New Layout Styles */
+        .main-container {
+            display: flex;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            margin-right: 380px;
+            /* Always leave space for the sidebar */
+        }
+
+        #studentSidebar {
+            position: fixed;
+            top: 70px;
+            /* Below navbar */
+            right: 0;
+            width: 360px;
+            height: calc(100vh - 70px);
+            background: #1F2937;
+            border-left: 2px solid #3B82F6;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+            transform: translateX(0);
+            /* Always visible */
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+        }
+
+
+        .sidebar-content {
+            padding: 25px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        #folderSearchInput {
+            width: 100%;
+            padding: 15px;
+            font-size: 1.1em;
+            background: #111827;
+            border: 2px solid #374151;
+            border-radius: 10px;
+            color: #E5E7EB;
+            margin-bottom: 20px;
+        }
+
+        #folderSearchInput:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .folder-item,
+        .file-item {
+            background: #111827;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #374151;
+            color: #E5E7EB;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            word-break: break-word;
+        }
+
+        .folder-item:hover,
+        .file-item:hover {
+            background: #374151;
+            border-color: #3B82F6;
+            transform: translateX(5px);
+        }
+
+        .file-item.selected {
+            background: #3B82F6;
+            border-color: #2563EB;
+            color: white;
+        }
+
+        .item-icon {
+            font-size: 1.5em;
+        }
+
+        #openFileBtn {
+            margin: 20px;
+            padding: 15px;
+            font-size: 1.2em;
+            background-color: #10B981;
+            width: calc(100% - 40px);
+            border-radius: 10px;
+        }
+
+        /* NEW SIDEBAR STYLES */
+        .sidebar-search-input {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            background: #111827;
+            border: 2px solid #374151;
+            border-radius: 8px;
+            color: #E5E7EB;
+            margin-bottom: 15px;
+            transition: border-color 0.3s ease;
+        }
+
+        .sidebar-search-input:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .sidebar-action-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3B82F6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar-action-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .file-metadata {
+            display: block;
+            font-size: 0.8em;
+            color: #6B7280;
+            margin-top: 4px;
+        }
+
+        .sidebar-list-item {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: rgba(31, 41, 55, 0.5);
+        }
+
+        .sidebar-list-item:hover {
+            background-color: #374151;
+            border-color: #3B82F6;
+        }
+
+        .sidebar-list-item-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #E5E7EB;
+            font-weight: 500;
+        }
+
+        .sidebar-item-icon {
+            font-size: 1.4em;
+            min-width: 25px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link active">Projects</a></li>
+                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
+                <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                <span class="navbar-user" id="navbarUser" style="display: none;"></span>
+                <button class="navbar-btn" id="navbarLoginBtn" onclick="toggleLoginModal()">Login</button>
+                <button class="navbar-btn logout" id="navbarLogoutBtn" onclick="logout()"
+                    style="display: none;">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div id="student-folder-sidebar">
+        <h3 id="sidebar-title">Student Folders</h3>
+
+        <!-- Search input for Logged Out state -->
+        <div id="sidebar-search-container" style="display: none;">
+            <input type="text" id="sidebar-folder-search" placeholder="🔍 Search student..."
+                class="sidebar-search-input">
+        </div>
+
+        <!-- Action buttons for Logged In state -->
+        <div id="sidebar-actions" style="display: none;">
+            <button id="open-my-folder-btn" class="sidebar-action-btn" onclick="openCurrentStudentFolder()">
+                📂 Open My Folder
+            </button>
+        </div>
+
+        <div id="folder-list-container">
+            <ul id="sidebar-list" style="list-style: none; padding: 0;">
+                <!-- Items will be dynamically inserted here -->
+            </ul>
+        </div>
+    </div>
+
+    <div class="page-content">
+
+        <!-- Login Modal -->
+        <div id="loginModal" class="modal-overlay" onclick="if(event.target === this) toggleLoginModal()">
+            <div class="modal">
+                <div class="modal-header">
+                    <h2>👋 Welcome!</h2>
+                    <button class="close-modal" onclick="toggleLoginModal()">×</button>
+                </div>
+
+                <!-- VIEW 1: CLASS VIEW (Default) -->
+                <div id="classLoginView">
+                    <div class="date-header" id="modalDateDisplay"></div>
+                    <div id="classGridContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
+                        <div class="loading">Loading today's classes...</div>
+                    </div>
+                    <div
+                        style="text-align: center; margin-top: 20px; border-top: 1px solid #374151; padding-top: 15px;">
+                        <p style="color: #9CA3AF; margin-bottom: 10px;">Don't see your name?</p>
+                        <button class="search-all-btn" onclick="toggleLoginView('search')">
+                            🔍 Search All Students
+                        </button>
+                    </div>
+                </div>
+
+                <!-- VIEW 2: SEARCH VIEW (Hidden) -->
+                <div id="allStudentsView" style="display: none;">
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <button class="back-btn" onclick="toggleLoginView('class')">
+                            ← Back to Classes
+                        </button>
+                    </div>
+                    <input type="text" id="studentSearch" class="search-box" placeholder="Search for your name..."
+                        autocomplete="off">
+                    <div id="studentList" class="student-list" style="max-height: 50vh;"></div>
+                </div>
+
+                <div class="login-footer"
+                    style="margin-top: 20px; border-top: 1px solid #374151; padding-top: 15px; text-align: center;">
+                    <button onclick="toggleLoginModal()"
+                        style="background: none; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer; font-size: 0.9em;">
+                        Continue without logging in
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="header">
+            <h1>🤖 LearnToBot Class</h1>
+            <p>Choose a project to get started</p>
+        </div>
+
+        <div class="search-container">
+            <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search projects..." />
+            <div class="search-dropdown" id="searchDropdown"></div>
+        </div>
+
+        <div id="searchNotice" class="search-active-notice" style="display: none;">
+            Showing search results
+        </div>
+
+        <div id="assignedProjectsContainer"></div>
+
+        <div id="tabsContainer" class="tabs-container"></div>
+        <div id="subTabsContainer" class="tabs-container" style="display: none;"></div>
+
+        <div id="content">
+            <div class="loading">Loading projects...</div>
+        </div>
+
+        <script>
+            // ========================================================================
+            // DEPLOYMENT MODE DETECTION
+            // ========================================================================
+            // Detects if user is accessing from classroom (offline) or home (online)
+            // Used to determine whether to load local videos or cloud/YouTube videos
+            
+            function isOfflineMode() {
+                const hostname = window.location.hostname;
+                // Local IP patterns indicate classroom/offline access
+                return (
+                    hostname === 'localhost' ||
+                    hostname === '127.0.0.1' ||
+                    /^192\.168\.\d+\.\d+$/.test(hostname) ||  // 192.168.x.x
+                    /^10\.\d+\.\d+\.\d+$/.test(hostname) ||   // 10.x.x.x
+                    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname) || // 172.16-31.x.x
+                    hostname.endsWith('.local')
+                );
+            }
+            
+            // Global deployment mode flag - use this to switch between local/cloud resources
+            const DEPLOYMENT_MODE = isOfflineMode() ? 'offline' : 'online';
+            console.log(`[LTB] Deployment mode: ${DEPLOYMENT_MODE} (hostname: ${window.location.hostname})`);
+            
+            // ========================================================================
+            // APPLICATION STATE VARIABLES
+            // ========================================================================
+            
+            let allProjects = [];
+            let categories = {};
+            let topLevelCategories = [];
+            let categoryHierarchy = {};
+            let activeTopLevel = null;
+            let activeCategory = 'All';
+            let searchActive = false;
+
+            // Student-related variables (must be declared before functions that use them)
+            let allStudents = [];
+            let currentStudent = localStorage.getItem('currentStudent');
+            let studentProgress = null;
+
+            // Student File Browser variables
+            let allStudentFolders = [];
+            let allSidebarItems = []; // Stores current list for filtering
+            let sidebarMode = 'logout'; // 'logout' or 'login'
+            let selectedFile = {
+                element: null,
+                protocolUrl: null
+            };
+
+            // Fetch projects from API
+            async function loadProjects() {
+                try {
+                    const response = await fetch('/api/projects');
+                    const data = await response.json();
+
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+
+                    allProjects = data.projects;
+                    categories = data.categories;
+                    topLevelCategories = data.topLevelCategories || [];
+                    categoryHierarchy = data.categoryHierarchy || {};
+
+                    // Check if we have the new data structure
+                    if (!data.topLevelCategories) {
+                        showError('Server is running old code. Please wait for OneDrive to sync the latest files, then restart the server.');
+                        return;
+                    }
+
+                    createTopLevelTabs();
+                    showTopLevel('All');
+                } catch (error) {
+                    showError('Failed to load projects: ' + error.message);
+                }
+            }
+            // Create top-level category tabs (PYTHON, SCRATCH)
+            function createTopLevelTabs() {
+                const tabsContainer = document.getElementById('tabsContainer');
+
+                let tabsHTML = '<div class="tab active" data-category="All" onclick="showTopLevel(\'All\')">All Projects</div>';
+
+                if (topLevelCategories && Array.isArray(topLevelCategories)) {
+                    topLevelCategories.forEach(topCategory => {
+                        tabsHTML += `<div class="tab" data-category="${topCategory}" onclick="showTopLevel('${topCategory}')">${topCategory}</div>`;
+                    });
+                }
+
+                tabsContainer.innerHTML = tabsHTML;
+            }
+
+            // Show top-level category and its subcategories
+            function showTopLevel(topCategory) {
+                if (searchActive) {
+                    document.getElementById('searchBox').value = '';
+                    searchActive = false;
+                    document.getElementById('searchNotice').style.display = 'none';
+                }
+
+                activeTopLevel = topCategory;
+                const subTabsContainer = document.getElementById('subTabsContainer');
+
+                // Update active tab
+                const tabs = document.querySelectorAll('#tabsContainer .tab');
+                tabs.forEach(tab => {
+                    if (tab.dataset.category === topCategory) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                if (topCategory === 'All') {
+                    // Hide subcategory tabs and show all projects
+                    subTabsContainer.style.display = 'none';
+                    displayProjects(allProjects, 'All Projects');
+                } else {
+                    // Show subcategory tabs for this top-level category
+                    const subcategories = (categoryHierarchy && categoryHierarchy[topCategory]) ? categoryHierarchy[topCategory] : [];
+
+                    if (subcategories && subcategories.length > 0) {
+                        subTabsContainer.style.display = 'flex';
+                        let subTabsHTML = '';
+                        subcategories.forEach(subCat => {
+                            const fullPath = `${topCategory} > ${subCat}`;
+                            subTabsHTML += `<div class="tab" data-category="${fullPath.replace(/"/g, '&quot;')}" onclick="showCategory('${fullPath.replace(/'/g, "\'")}')">${subCat}</div>`;
+                        });
+                        subTabsContainer.innerHTML = subTabsHTML;
+
+                        // Auto-select first subcategory
+                        if (subcategories.length > 0) {
+                            const firstPath = `${topCategory} > ${subcategories[0]}`;
+                            showCategory(firstPath);
+                        }
+                    } else {
+                        subTabsContainer.style.display = 'none';
+                        // Show all projects for this top-level category
+                        const projectsInCategory = allProjects.filter(p =>
+                            p.categoryArray && p.categoryArray.length > 0 && p.categoryArray[0] === topCategory
+                        );
+                        displayProjects(projectsInCategory, topCategory);
+                    }
+                }
+            }
+
+            // Show projects for a specific subcategory
+            function showCategory(category) {
+                activeCategory = category;
+
+                // Update active subcategory tab
+                const subTabs = document.querySelectorAll('#subTabsContainer .tab');
+                subTabs.forEach(tab => {
+                    if (tab.dataset.category === category) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+
+                // Display projects for this category
+                const projectsToShow = categories[category] || [];
+                const displayName = category.split(' > ')[1] || category;
+                displayProjects(projectsToShow, displayName);
+            }
+
+            // Helper function to check if project is completed
+            function isProjectCompleted(projectName) {
+                if (!studentProgress || !studentProgress.completedProjects) {
+                    return false;
+                }
+                // Normalize both names for comparison (case-insensitive, trim whitespace)
+                const normalizedProjectName = projectName.toLowerCase().trim();
+                return studentProgress.completedProjects.some(completed =>
+                    completed.name && completed.name.toLowerCase().trim().includes(normalizedProjectName)
+                );
+            }
+
+            // Helper function to check if project is in progress
+            function isProjectInProgress(projectName) {
+                if (!studentProgress || !studentProgress.inProgressProjects) {
+                    return false;
+                }
+                const normalizedProjectName = projectName.toLowerCase().trim();
+                return studentProgress.inProgressProjects.some(inProgress =>
+                    inProgress.name && inProgress.name.toLowerCase().trim().includes(normalizedProjectName)
+                );
+            }
+
+            // Display projects
+            function displayProjects(projects, categoryTitle = 'All Projects') {
+                const content = document.getElementById('content');
+
+                if (projects.length === 0) {
+                    content.innerHTML = '<div class="no-results">No projects found</div>';
+                    return;
+                }
+
+                // If student is logged in, separate completed and available projects
+                let completedProjects = [];
+                let availableProjects = [];
+
+                if (currentStudent && studentProgress) {
+                    projects.forEach(project => {
+                        if (isProjectCompleted(project.name)) {
+                            completedProjects.push(project);
+                        } else {
+                            availableProjects.push(project);
+                        }
+                    });
+                } else {
+                    availableProjects = projects;
+                }
+
+                const html = `
+                <div class="category-header">
+                    <h2>${searchActive ? 'Search Results' : categoryTitle}</h2>
+                    ${currentStudent && studentProgress ? `
+                        <div style="font-size: 0.9em; color: #9CA3AF; margin-top: 10px;">
+                            ✅ ${completedProjects.length} completed • 📝 ${availableProjects.length} remaining
+                        </div>
+                    ` : ''}
+                </div>
+
+                ${currentStudent && studentProgress && availableProjects.length > 0 ? `
+                    <div class="section-header">
+                        <h3 style="color: #F59E0B;">📝 Projects to Complete (${availableProjects.length})</h3>
+                        <p style="color: #9CA3AF; font-size: 0.9em; margin-top: 5px;">These are the projects you can work on next!</p>
+                    </div>
+                    <div class="projects-container">
+                        ${availableProjects.map(project => {
+                    const inProgress = currentStudent && studentProgress && isProjectInProgress(project.name);
+
+                    // Find demo video (case-insensitive check for 'demo' in filename)
+                    const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
+                    const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
+
+                    return `
+                                <div class="project-card ${inProgress ? 'in-progress-project' : 'remaining-project'}" 
+                                     onclick="openProject('${project.id}')"
+                                     data-demo-url="${demoUrl}"
+                                     onmouseenter="playDemoVideo(this)"
+                                     onmouseleave="stopDemoVideo(this)">
+                                    ${inProgress ? '<div class="in-progress-badge">⏳ IN PROGRESS</div>' : '<div class="remaining-badge">NEW</div>'}
+                                    <div class="project-icon">
+                                        ${project.icon
+                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                            : '🎮'
+                        }
+                                    </div>
+                                    <div class="project-info">
+                                        <div class="project-name">${project.name}</div>
+                                        ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
+                                        <div class="project-meta">
+                                            <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                            ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                }).join('')}
+                    </div>
+                ` : ''}
+
+                ${!currentStudent || !studentProgress ? `
+                    <div class="projects-container">
+                        ${availableProjects.map(project => {
+                    const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
+                    const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
+                    return `
+                            <div class="project-card" 
+                                 onclick="openProject('${project.id}')"
+                                 data-demo-url="${demoUrl}"
+                                 onmouseenter="playDemoVideo(this)"
+                                 onmouseleave="stopDemoVideo(this)">
+                                <div class="project-icon">
+                                    ${project.icon
+                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                            : '🎮'
+                        }
+                                </div>
+                                <div class="project-info">
+                                    <div class="project-name">${project.name}</div>
+                                    ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
+                                    <div class="project-meta">
+                                        <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                        ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
+                                    </div>
+                                    </div>
+                                </div>
+                            `;
+                }).join('')}
+                    </div>
+                ` : ''}
+
+                ${currentStudent && studentProgress && completedProjects.length > 0 ? `
+                    <div class="collapsible-section">
+                        <div class="collapsible-header collapsed" onclick="toggleCollapsible(this)">
+                            <h3>✅ Already Completed (${completedProjects.length})</h3>
+                            <span class="collapsible-arrow">▼</span>
+                        </div>
+                        <div class="collapsible-content collapsed">
+                            <div style="padding: 10px 0; color: #9CA3AF; font-size: 0.9em;">
+                                Great job! You've finished these projects.
+                            </div>
+                            <div class="projects-container">
+                                ${completedProjects.map(project => {
+                    const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
+                    const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
+                    return `
+                                    <div class="project-card completed-project" 
+                                         onclick="openProject('${project.id}')"
+                                         data-demo-url="${demoUrl}"
+                                         onmouseenter="playDemoVideo(this)"
+                                         onmouseleave="stopDemoVideo(this)">
+                                        <div class="completion-badge">✓ COMPLETED</div>
+                                        <div class="project-icon">
+                                            ${project.icon
+                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                            : '🎮'
+                        }
+                                        </div>
+                                        <div class="project-info">
+                                            <div class="project-name">${project.name}</div>
+                                            ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
+                                            <div class="project-meta">
+                                                <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                                ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    `;
+                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+
+                content.innerHTML = html;
+            }
+
+            // Show error message
+            function showError(message) {
+                const content = document.getElementById('content');
+                content.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            // Toggle collapsible section
+            function toggleCollapsible(header) {
+                header.classList.toggle('collapsed');
+                const content = header.nextElementSibling;
+                content.classList.toggle('collapsed');
+            }
+
+            // Render assigned projects section
+            function renderAssignedProjects(assignedProjects) {
+                const container = document.getElementById('assignedProjectsContainer');
+
+                console.log('renderAssignedProjects called with:', assignedProjects);
+                console.log('currentStudent:', currentStudent);
+                console.log('allProjects count:', allProjects.length);
+
+                if (!currentStudent || !assignedProjects || assignedProjects.length === 0) {
+                    console.log('Hiding assigned projects - no student or no assigned projects');
+                    container.innerHTML = '';
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.style.display = 'block';
+
+                // Try to match assigned project names to actual project data
+                const matchedProjects = assignedProjects.map(assigned => {
+                    // Find matching project in allProjects by name (case-insensitive, flexible matching)
+                    const match = allProjects.find(proj => {
+                        const projName = proj.name.toLowerCase().trim();
+                        const assignedName = assigned.name.toLowerCase().trim();
+                        return projName.includes(assignedName) ||
+                            assignedName.includes(projName) ||
+                            projName === assignedName;
+                    });
+
+                    if (match) {
+                        console.log(`Matched assigned project "${assigned.name}" to "${match.name}"`);
+                        return { ...match, assignedStatus: assigned.status };
+                    } else {
+                        console.log(`Could not match assigned project "${assigned.name}" to any folder`);
+                        // Return a placeholder project with just the name
+                        return {
+                            id: null,
+                            name: assigned.name,
+                            category: 'Assigned Project',
+                            categoryArray: [],
+                            videos: [],
+                            icon: null,
+                            pdf: null,
+                            videoCount: 0,
+                            assignedStatus: assigned.status,
+                            notFound: true
+                        };
+                    }
+                });
+
+                console.log('Matched projects:', matchedProjects.length);
+
+                const projectsHTML = matchedProjects.map(project => {
+                    const iconHTML = project.icon
+                        ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                        : '🎮';
+
+                    const clickHandler = project.notFound ? '' : `onclick="openProject('${project.id}')"`;
+                    const notFoundStyle = project.notFound ? 'style="opacity: 0.6; cursor: not-allowed;"' : '';
+
+                    return `
+                    <div class="assigned-project-card" ${clickHandler} ${notFoundStyle}>
+                        <div class="assigned-badge">🎯 ASSIGNED</div>
+                        <div class="project-icon">${iconHTML}</div>
+                        <div class="project-info">
+                            <div class="project-name">${project.name}</div>
+                            ${project.notFound ? '<div class="project-category" style="color: #F59E0B;">⚠️ Project folder not found</div>' :
+                            (project.category ? `<div class="project-category">${project.category}</div>` : '')}
+                            <div class="project-meta">
+                                <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+
+                container.innerHTML = `
+                <div class="assigned-projects-section">
+                    <div class="assigned-header">
+                        <span class="assigned-icon">🎯</span>
+                        <h2>Your Assigned Projects (${matchedProjects.length})</h2>
+                    </div>
+                    <p style="color: white; margin-bottom: 20px; font-size: 1.1em;">
+                        Click on a project to get started!
+                    </p>
+                    <div class="assigned-projects-container">
+                        ${projectsHTML}
+                    </div>
+                </div>
+            `;
+            }
+
+            // Render search results in dropdown
+            function renderSearchDropdown(projects) {
+                const dropdown = document.getElementById('searchDropdown');
+
+                if (projects.length === 0) {
+                    dropdown.innerHTML = '<div class="search-no-results">No projects found</div>';
+                    dropdown.classList.add('active');
+                    return;
+                }
+
+                const resultsHTML = projects.map(project => {
+                    const iconHTML = project.icon
+                        ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                        : '🎮';
+
+                    const pdfCount = project.pdf ? 1 : 0;
+
+                    return `
+                    <div class="search-result-item" data-project-id="${project.id}">
+                        <div class="search-result-icon">${iconHTML}</div>
+                        <div class="search-result-details">
+                            <div class="search-result-id">${project.id}</div>
+                            <div class="search-result-name">${project.name}</div>
+                        </div>
+                        <div class="search-result-meta">
+                            <span>🎬 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                            <span>📄 ${pdfCount} PDF${pdfCount !== 1 ? 's' : ''}</span>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+
+                dropdown.innerHTML = resultsHTML;
+                dropdown.classList.add('active');
+
+                // Add click handlers to each result
+                dropdown.querySelectorAll('.search-result-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const projectId = item.dataset.projectId;
+                        openProject(projectId);
+                    });
+                });
+            }
+
+            // Hide search dropdown
+            function hideSearchDropdown() {
+                const dropdown = document.getElementById('searchDropdown');
+                dropdown.classList.remove('active');
+                dropdown.innerHTML = '';
+            }
+
+            // Search functionality
+            document.getElementById('searchBox').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+
+                if (searchTerm === '') {
+                    hideSearchDropdown();
+                    searchActive = false;
+                    document.getElementById('searchNotice').style.display = 'none';
+                    document.getElementById('subTabsContainer').style.display = activeTopLevel && activeTopLevel !== 'All' ? 'flex' : 'none';
+                    if (activeCategory && activeCategory !== 'All') {
+                        showCategory(activeCategory);
+                    } else {
+                        showTopLevel(activeTopLevel || 'All');
+                    }
+                    return;
+                }
+
+                const filtered = allProjects.filter(project =>
+                    project.name.toLowerCase().includes(searchTerm) ||
+                    project.category.toLowerCase().includes(searchTerm) ||
+                    project.id.toLowerCase().includes(searchTerm)
+                );
+
+                renderSearchDropdown(filtered);
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                const searchContainer = document.querySelector('.search-container');
+                const searchBox = document.getElementById('searchBox');
+
+                if (!searchContainer.contains(e.target)) {
+                    hideSearchDropdown();
+                }
+            });
+
+            // Open project
+            function openProject(projectId) {
+                window.location.href = `/project.html?id=${encodeURIComponent(projectId)}`;
+            }
+
+            // Load projects on page load
+            loadProjects();
+
+            // Load student progress if already logged in
+            if (currentStudent) {
+                loadStudentProgress(currentStudent);
+            }
+
+            // Update connection count
+            async function updateConnectionCount() {
+                try {
+                    const response = await fetch('/api/connections');
+                    const data = await response.json();
+                    const btn = document.getElementById('connectionBtn');
+                    if (btn && data.stats) {
+                        const count = btn.querySelector('.connection-count');
+                        if (count) {
+                            count.textContent = data.stats.activeConnections;
+                        }
+                    }
+                } catch (error) {
+                    // Silently fail
+                }
+            }
+
+            // Update every 5 seconds
+            setInterval(updateConnectionCount, 5000);
+            updateConnectionCount();
+
+            // Login functionality
+            // Load student names on page load from local database
+            async function loadStudents() {
+                try {
+                    const response = await fetch('/api/students');
+                    const data = await response.json();
+
+                    if (data.error) {
+                        console.error('Error loading students:', data.error);
+                        return;
+                    }
+
+                    allStudents = data.students;
+                    renderStudentList(allStudents);
+                } catch (error) {
+                    console.error('Failed to load students:', error);
+                }
+            }
+
+            // Load student's progress (completed and in-progress projects)
+            async function loadStudentProgress(studentName) {
+                if (!studentName) {
+                    studentProgress = null;
+                    renderAssignedProjects([]);
+                    return;
+                }
+
+                try {
+                    // Try local cache first (works offline)
+                    console.log('Trying to load student progress from local cache...');
+                    let response = await fetch(`/api/student-assignments/${encodeURIComponent(studentName)}`);
+                    let data = await response.json();
+
+                    // If cache doesn't exist or needs sync, fall back to Google Sheets
+                    if (data.needsSync || (!data.success && response.status === 404)) {
+                        console.log('Local cache not found, falling back to Google Sheets...');
+                        response = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(studentName)}`);
+                        data = await response.json();
+
+                        if (!data.success) {
+                            console.warn('Google Sheets also failed. Student progress unavailable.');
+                            console.warn('Please sync students from the Teacher Panel when online.');
+                        }
+                    }
+
+                    if (data.success && data.data) {
+                        studentProgress = data.data;
+                        const source = data.fromCache ? 'local cache (offline)' : 'Google Sheets (online)';
+                        console.log(`Loaded progress for ${studentName} from ${source}:`, studentProgress);
+
+                        // Display assigned projects
+                        renderAssignedProjects(studentProgress.assignedProjects || []);
+
+                        // Refresh the current display to show completion status
+                        if (allProjects.length > 0) {
+                            // Re-render the current view
+                            const activeTab = document.querySelector('.tab.active');
+                            if (activeTab && activeTab.textContent === 'All') {
+                                displayProjects(allProjects, 'All Projects');
+                            } else {
+                                // Trigger a re-display of current category/search
+                                const currentCategory = activeTab ? activeTab.getAttribute('onclick') : null;
+                                if (currentCategory) {
+                                    eval(currentCategory);
+                                }
+                            }
+                        }
+                    } else {
+                        console.error('Failed to load student progress:', data.error || data.message);
+                        studentProgress = null;
+                        renderAssignedProjects([]);
+                    }
+                } catch (error) {
+                    console.error('Error fetching student progress:', error);
+                    studentProgress = null;
+                    renderAssignedProjects([]);
+                }
+            }
+
+            // Render student list
+            function renderStudentList(students) {
+                const studentList = document.getElementById('studentList');
+
+                if (students.length === 0) {
+                    studentList.innerHTML = '<div style="text-align: center; color: #9CA3AF; padding: 20px;">No students found</div>';
+                    return;
+                }
+
+                // Support both old array of strings and new array of objects
+                studentList.innerHTML = students.map(student => {
+                    const name = typeof student === 'object' ? student.name : student;
+                    const headshot = (typeof student === 'object' && student.headshot) ? student.headshot : null;
+
+                    let headshotUrl = headshot;
+                    if (headshotUrl) {
+                        if (headshotUrl.includes('Child Names_Images/')) {
+                            headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                            // If it's just a filename, assume it's in headshots/
+                            headshotUrl = 'headshots/' + headshotUrl;
+                        }
+                    }
+
+                    const headshotHtml = headshotUrl
+                        ? `<img src="${headshotUrl}" alt="${name}" class="student-headshot">`
+                        : `<div class="student-initial">${name.charAt(0)}</div>`;
+
+                    return `
+                    <div class="student-item" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
+                        ${headshotHtml}
+                        <span class="student-name">${name}</span>
+                    </div>
+                `}).join('');
+            }
+
+            // Search students
+            document.getElementById('studentSearch').addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                const filtered = allStudents.filter(student => {
+                    const name = typeof student === 'object' ? student.name : student;
+                    return name.toLowerCase().includes(searchTerm);
+                });
+                renderStudentList(filtered);
+            });
+
+            // Select a student
+            function selectStudent(studentName) {
+                currentStudent = studentName;
+                localStorage.setItem('currentStudent', studentName);
+                updateLoginButton();
+
+                // Hide modal
+                document.getElementById('loginModal').classList.remove('active');
+
+                // Load student's progress
+                loadStudentProgress(studentName);
+
+                // Fetch files for sidebar
+                fetchStudentFiles(studentName);
+            }
+
+            // Update Sidebar State (Login vs Logout)
+            function updateSidebarState() {
+                const title = document.getElementById('sidebar-title');
+                const searchContainer = document.getElementById('sidebar-search-container');
+                const actionsContainer = document.getElementById('sidebar-actions');
+                const list = document.getElementById('sidebar-list');
+
+                if (currentStudent) {
+                    // LOGGED IN STATE
+                    sidebarMode = 'login';
+                    title.textContent = 'My Files';
+                    searchContainer.style.display = 'none';
+                    actionsContainer.style.display = 'block';
+                    fetchStudentFiles(currentStudent);
+                } else {
+                    // LOGGED OUT STATE
+                    sidebarMode = 'logout';
+                    title.textContent = 'Student Folders';
+                    searchContainer.style.display = 'block';
+                    actionsContainer.style.display = 'none';
+                    loadAllFolders();
+                }
+            }
+
+            // Load all student folders (Logged Out)
+            async function loadAllFolders() {
+                const list = document.getElementById('sidebar-list');
+                list.innerHTML = '<li style="padding:10px; color:#9CA3AF;">Loading folders...</li>';
+
+                try {
+                    const response = await fetch('/api/student-folders');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        allStudentFolders = data.folders;
+                        renderSidebarList(allStudentFolders, 'folder');
+                    } else {
+                        list.innerHTML = `<li style="padding:10px; color:#EF4444;">${data.error || 'Failed to load folders'}</li>`;
+                    }
+                } catch (error) {
+                    console.error('Error loading folders:', error);
+                    list.innerHTML = `<li style="padding:10px; color:#EF4444;">Connection error</li>`;
+                }
+            }
+
+            // Fetch student files (Logged In)
+            async function fetchStudentFiles(studentName) {
+                const list = document.getElementById('sidebar-list');
+                list.innerHTML = '<li style="padding:10px; color:#9CA3AF;">Loading files...</li>';
+
+                try {
+                    const url = `/api/student-folders/${encodeURIComponent(studentName)}/files`;
+                    const response = await fetch(url);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Keep track of resolved folder name for the "Open My Folder" button
+                        window.currentStudentFolder = data.resolvedFolderName || studentName;
+                        renderSidebarList(data.files, 'file');
+                    } else {
+                        list.innerHTML = `<li style="padding:10px; color:#EF4444;">${data.error || 'Failed to load files'}</li>`;
+                    }
+                } catch (err) {
+                    console.error('Error fetching files:', err);
+                    list.innerHTML = `<li style="padding:10px; color:#EF4444;">${err.message}</li>`;
+                }
+            }
+
+            // Generic Render Function for Sidebar List
+            function renderSidebarList(items, type) {
+                const list = document.getElementById('sidebar-list');
+                list.innerHTML = '';
+                allSidebarItems = items; // Store for filtering
+
+                if (!items || items.length === 0) {
+                    list.innerHTML = '<li style="padding:10px; color:#9CA3AF;">No items found</li>';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'sidebar-list-item';
+
+                    const div = document.createElement('div');
+                    div.className = 'sidebar-list-item-content';
+
+                    if (type === 'folder') {
+                        // FOLDER ITEM
+                        div.innerHTML = `
+                            <span class="sidebar-item-icon">📁</span>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #E5E7EB;">${item.name}</div>
+                                <span class="file-metadata">${item.fileCount || 0} files</span>
+                            </div>
+                        `;
+                        li.onclick = () => openFolder(item.name);
+                    } else {
+                        // FILE ITEM
+                        let icon = '📄';
+                        if (item.type === 'image') icon = '🖼️';
+                        if (item.type === 'video') icon = '🎥';
+                        if (item.type === 'pdf') icon = '📑';
+                        if (item.type === 'scratch') icon = '🐱';
+                        if (item.type === 'python') icon = '🐍';
+
+                        const date = new Date(item.modified);
+                        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                        div.innerHTML = `
+                            <span class="sidebar-item-icon">${icon}</span>
+                            <div style="flex-grow: 1;">
+                                <div style="color: #E5E7EB;">${item.name}</div>
+                                <span class="file-metadata">Modified: ${dateStr}</span>
+                            </div>
+                        `;
+
+                        // Click to open file
+                        if (item.protocolUrl) {
+                            li.onclick = () => {
+                                // Inject current hostname into the URL so the client script knows which server to connect to
+                                // item.protocolUrl is like "studentfile://Student Name/File.ext"
+                                // We want "studentfile://HOSTNAME/Student Name/File.ext"
+
+                                const serverName = window.location.hostname;
+                                const path = item.protocolUrl.replace('studentfile://', '');
+                                const newUrl = `studentfile://${serverName}/${path}`;
+
+                                console.log('Opening file:', newUrl);
+                                window.open(newUrl, '_self');
+                            };
+                        }
+                    }
+
+                    li.appendChild(div);
+                    list.appendChild(li);
+                });
+            }
+
+            // Sidebar Search Filter
+            document.getElementById('sidebar-folder-search').addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const filtered = allSidebarItems.filter(item => item.name.toLowerCase().includes(term));
+
+                // Re-render using local data (simple client-side filter)
+                // We determine type based on sidebarMode
+                const type = sidebarMode === 'login' ? 'file' : 'folder';
+
+                // Manually re-render to avoid fetching again
+                const list = document.getElementById('sidebar-list');
+                list.innerHTML = '';
+
+                if (filtered.length === 0) {
+                    list.innerHTML = '<li style="padding:10px; color:#9CA3AF;">No matches found</li>';
+                    return;
+                }
+
+                // ... reusing render logic is redundant, let's just call renderSidebarList but NOT update allSidebarItems
+                // Actually, renderSidebarList updates allSidebarItems, so we need a separate internal render or just pass a flag
+                // For simplicity, let's just duplicate the loop here or refactor. 
+                // Better: Refactor renderSidebarList to accept a "updateCache" flag? 
+                // Or just manually loop here since it's small.
+
+                // Let's call renderSidebarList but save/restore allSidebarItems
+                const savedItems = allSidebarItems;
+                renderSidebarList(filtered, type);
+                allSidebarItems = savedItems; // Restore full list
+            });
+
+            // "Open My Folder" Button Action
+            function openCurrentStudentFolder() {
+                const folderName = window.currentStudentFolder || currentStudent;
+                if (folderName) {
+                    openFolder(folderName);
+                } else {
+                    alert('No student folder identified.');
+                }
+            }
+
+            // Open folder on client (Protocol Handler)
+            function openFolder(folderName) {
+                const serverName = window.location.hostname;
+                const protocolUrl = `studentfolder://${serverName}/${encodeURIComponent(folderName)}`;
+                console.log(`Launching Folder: ${protocolUrl}`);
+
+                // Visual Feedback
+                const statusDiv = document.createElement('div');
+                Object.assign(statusDiv.style, {
+                    position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)',
+                    background: '#3B82F6', color: 'white', padding: '10px 20px', borderRadius: '20px',
+                    zIndex: '10000', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                });
+                statusDiv.textContent = `📂 Opening ${folderName}...`;
+                document.body.appendChild(statusDiv);
+                setTimeout(() => document.body.removeChild(statusDiv), 2000);
+
+                try {
+                    window.open(protocolUrl, '_self');
+                } catch (e) {
+                    console.error('Failed to open protocol URL:', e);
+                }
+            }
+
+            // Logout
+            function logout() {
+                currentStudent = null;
+                studentProgress = null;
+                localStorage.removeItem('currentStudent');
+                updateLoginButton();
+                renderAssignedProjects([]);
+
+                // Refresh display to remove completion indicators
+                if (allProjects.length > 0) {
+                    displayProjects(allProjects, 'All Projects');
+                }
+            }
+
+            // Open teacher panel with password
+            function openTeacherPanel() {
+                const password = prompt('Enter teacher password:');
+                if (password === 'learntobot') {
+                    window.location.href = '/teacher.html';
+                } else if (password !== null) {
+                    alert('Incorrect password');
+                }
+            }
+
+            // Toggle login modal
+            function toggleLoginModal() {
+                const modal = document.getElementById('loginModal');
+                const isOpen = modal.classList.contains('active');
+
+                if (isOpen) {
+                    modal.classList.remove('active');
+                    // Reset to default view when closing
+                    setTimeout(() => {
+                        toggleLoginView('class');
+                        document.getElementById('studentSearch').value = '';
+                    }, 300);
+                } else {
+                    modal.classList.add('active');
+
+                    // Initial Load
+                    loadClassView();
+                    loadStudents(); // Background load full list
+                }
+            }
+
+            // Switch between Class View and All Students View
+            function toggleLoginView(view) {
+                const classView = document.getElementById('classLoginView');
+                const searchView = document.getElementById('allStudentsView');
+                const searchInput = document.getElementById('studentSearch');
+
+                if (view === 'class') {
+                    classView.style.display = 'block';
+                    searchView.style.display = 'none';
+                } else {
+                    classView.style.display = 'none';
+                    searchView.style.display = 'block';
+                    renderStudentList(allStudents); // Ensure list is rendered
+                    setTimeout(() => searchInput.focus(), 100);
+                }
+            }
+
+            // Load Today's Classes into Modal
+            async function loadClassView() {
+                const container = document.getElementById('classGridContainer');
+                const dateDisplay = document.getElementById('modalDateDisplay');
+
+                // Set Date
+                const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
+                dateDisplay.textContent = new Date().toLocaleDateString('en-US', dateOptions);
+
+                // Check if we already loaded? (Optional caching)
+                // For now, reload to be fresh
+
+                try {
+                    const resp = await fetch('/api/today-classes');
+                    const data = await resp.json();
+
+                    if (data.success) {
+                        renderModalClassGrid(data.bookings);
+                    } else {
+                        container.innerHTML = '<div style="text-align:center; padding:20px;">Failed to load classes</div>';
+                    }
+                } catch (e) {
+                    console.error("Error loading classes", e);
+                    container.innerHTML = '<div style="text-align:center; padding:20px;">Could not load classes</div>';
+                }
+            }
+
+            // Render the Grid in Modal
+            function renderModalClassGrid(bookings) {
+                constcontainer = document.getElementById('classGridContainer');
+
+                // Group by Class
+                const classes = {};
+                bookings.forEach(b => {
+                    const title = b.serviceTitle || 'General Class';
+                    if (!b.studentName) return;
+                    if (!classes[title]) classes[title] = [];
+                    classes[title].push(b);
+                });
+
+                // Empty check
+                if (Object.keys(classes).length === 0) {
+                    document.getElementById('classGridContainer').innerHTML = `
+                        <div style="text-align:center; padding: 40px; color: #9CA3AF;">
+                            <div style="font-size: 3em; margin-bottom: 10px;">📅</div>
+                            <div>No classes scheduled for today.</div>
+                            <div style="font-size: 0.9em; margin-top: 5px;">Click "Search All Students" below.</div>
+                        </div>
+                     `;
+                    return;
+                }
+
+                let html = '';
+
+                // Lookup map for headshots (allStudents populated by loadStudents)
+                // We might need to wait for allStudents? loadStudents() is async but not awaited here.
+                // Assuming allStudents might optionally have data, or we use what's in booking if available?
+                // booking info usually just has name. 
+                // We need to match with full student list for headshots.
+                // Let's do a best effort lookup from global allStudents if available.
+
+                Object.entries(classes).forEach(([className, students]) => {
+                    html += `
+                        <div class="modal-class-section">
+                            <div class="modal-class-title">${className}</div>
+                            <div class="modal-students-grid">
+                    `;
+
+                    students.forEach(s => {
+                        const name = s.studentName;
+                        // Find headshot
+                        let headshotUrl = null;
+
+                        // Try to find in allStudents
+                        const studentObj = allStudents.find(as => {
+                            const asName = typeof as === 'object' ? as.name : as;
+                            return asName.toLowerCase() === name.toLowerCase();
+                        });
+
+                        if (studentObj && studentObj.headshot) {
+                            headshotUrl = studentObj.headshot;
+                            if (headshotUrl.includes('Child Names_Images/')) {
+                                headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                            } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                headshotUrl = 'headshots/' + headshotUrl;
+                            }
+                        }
+
+                        if (headshotUrl) {
+                            html += `
+                                <div class="modal-student-card" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
+                                    <img src="${headshotUrl}" class="modal-student-headshot">
+                                    <div class="modal-student-name">${name}</div>
+                                </div>
+                            `;
+                        } else {
+                            html += `
+                                <div class="modal-student-card" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
+                                    <div class="modal-student-initial">${name.charAt(0)}</div>
+                                    <div class="modal-student-name">${name}</div>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+
+                document.getElementById('classGridContainer').innerHTML = html;
+            }
+
+            // Update login button
+            function updateLoginButton() {
+                // Update navbar
+                const navbarUser = document.getElementById('navbarUser');
+                const navbarLoginBtn = document.getElementById('navbarLoginBtn');
+                const navbarLogoutBtn = document.getElementById('navbarLogoutBtn');
+
+                if (currentStudent) {
+                    navbarUser.textContent = `👤 ${currentStudent}`;
+                    navbarUser.style.display = 'block';
+                    navbarLoginBtn.style.display = 'none';
+                    navbarLogoutBtn.style.display = 'inline-block';
+                } else {
+                    navbarUser.style.display = 'none';
+                    navbarLoginBtn.style.display = 'inline-block';
+                    navbarLogoutBtn.style.display = 'none';
+                }
+
+                // Update Sidebar
+                updateSidebarState();
+
+                // Update Page Title
+                updatePageTitle();
+            }
+
+            // Update Page Title based on login state
+            function updatePageTitle() {
+                const title = document.querySelector('.header h1');
+                if (title) {
+                    if (currentStudent) {
+                        title.textContent = `👋 Welcome ${currentStudent}`;
+                    } else {
+                        title.textContent = '🤖 LearnToBot Class';
+                    }
+                }
+            }
+
+
+
+            // Initialize login state on page load
+            updateLoginButton();
+        </script>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            // WebSocket connection for remote control
+            const socket = io();
+
+            socket.on('connect', () => {
+                console.log('Connected to server via WebSocket');
+
+                // Send student name if logged in
+                if (currentStudent) {
+                    socket.emit('student-login', { studentName: currentStudent });
+                }
+
+                // Notify server of current page
+                socket.emit('page-change', { page: 'Projects Home' });
+            });
+
+            // Demo Video Hover Logic
+            function playDemoVideo(card) {
+                const demoUrl = card.getAttribute('data-demo-url');
+                if (!demoUrl) return;
+
+                const iconContainer = card.querySelector('.project-icon');
+                if (!iconContainer) return;
+
+                // Check if video already exists
+                if (iconContainer.querySelector('video')) return;
+
+                const video = document.createElement('video');
+                video.src = demoUrl;
+                video.muted = true;
+                video.autoplay = true;
+                video.loop = true;
+                video.style.width = '100%';
+                video.style.height = '100%';
+                video.style.objectFit = 'cover';
+                video.style.position = 'absolute';
+                video.style.top = '0';
+                video.style.left = '0';
+                video.style.borderRadius = '15px 15px 0 0'; // Match card top radius
+
+                // Keep original image visible until video plays to avoid black flash
+                video.oncanplay = () => {
+                    video.style.zIndex = '5';
+                };
+
+                iconContainer.appendChild(video);
+            }
+
+            function stopDemoVideo(card) {
+                const iconContainer = card.querySelector('.project-icon');
+                if (!iconContainer) return;
+
+                const video = iconContainer.querySelector('video');
+                if (video) {
+                    video.remove();
+                }
+            }
+
+            // Listen for navigation commands from teacher
+            socket.on('navigate', (data) => {
+                console.log('Navigation command received:', data.url);
+                window.location.href = data.url;
+            });
+
+            // Update server when student logs in
+            const originalSelectStudent = selectStudent;
+            selectStudent = function (studentName) {
+                originalSelectStudent(studentName);
+                socket.emit('student-login', { studentName: studentName });
+            };
+        </script>
+
+        <a href="/connections.html" target="_blank" class="connection-monitor-btn" id="connectionBtn">
+            <span>🌐 Connections</span>
+            <span class="connection-count">0</span>
+        </a>
+
+    </div> <!-- Close page-content -->
+    <footer>
+        <p>Last Updated: <span id="last-updated"></span></p>
+    </footer>
+    <style>
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+
+        .modal-students-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 15px;
+            padding: 10px 0;
+        }
+
+        .modal-student-card {
+            background: #374151;
+            border-radius: 10px;
+            padding: 10px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .modal-student-card:hover {
+            background: #4B5563;
+            border-color: #60A5FA;
+            transform: translateY(-2px);
+        }
+
+        .modal-student-headshot {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #60A5FA;
+            margin-bottom: 8px;
+            background-color: #1F2937;
+        }
+
+        .modal-student-initial {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #3B82F6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            border: 2px solid #60A5FA;
+            margin-bottom: 8px;
+        }
+
+        .modal-student-name {
+            font-size: 0.85em;
+            text-align: center;
+            color: #E5E7EB;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        /* Updated Student Item Styling for Headshots */
+        .student-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #374151;
+            transition: background 0.2s ease;
+        }
+
+        .student-item:hover {
+            background-color: #374151;
+        }
+
+        .student-headshot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+        }
+
+        .student-initial {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #374151;
+            color: #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2em;
+            border: 2px solid #4B5563;
+        }
+
+        .student-name {
+            font-size: 1.1em;
+            color: #E5E7EB;
+            font-weight: 500;
+        }
+
+        /* Adjust login modal to match theme */
+        .login-modal-content {
+            background: #1F2937;
+            color: #E5E7EB;
+            border-radius: 15px;
+            border: 1px solid #374151;
+        }
+
+        #studentSearch {
+            background: #111827;
+            border: 1px solid #374151;
+            color: #E5E7EB;
+        }
+
+        #studentSearch:focus {
+            border-color: #3B82F6;
+        }
+
+        #studentList {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            margin-top: 15px;
+            background: #111827;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const lastUpdatedElement = document.getElementById('last-updated');
+            if (lastUpdatedElement) {
+                const now = new Date();
+                lastUpdatedElement.textContent = now.toLocaleString();
+            }
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Staging Environment
+            console.log('Staging environment initialized');
+
+            // Ensure login modal is active
+            // Ensure login modal is active ONLY if not logged in
+            const modal = document.getElementById('loginModal');
+            if (modal && !currentStudent) {
+                modal.classList.add('active');
+                loadStudents(); // Load student list
+
+                // Focus search box
+                setTimeout(() => {
+                    const search = document.getElementById('studentSearch');
+                    if (search) search.focus();
+                }, 500);
+            } else if (currentStudent) {
+                // If already logged in, just load students in background
+                loadStudents();
+            }
+
+            // Load projects
+            loadProjects();
+
+            // Start connection monitor
+            updateConnectionCount();
+            setInterval(updateConnectionCount, 5000);
+
+            // Initial sidebar state
+            updateSidebarState();
+        });
+    </script>
+</body>
+
+</html>

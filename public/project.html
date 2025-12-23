@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LearnToBot Class - Project</title>
+    <link rel="stylesheet" href="kids-theme.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111827;
+            min-height: 100vh;
+            padding-top: 60px;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border-bottom: 2px solid #3B82F6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 50px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.2em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.5em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-auth {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .page-content {
+            padding: 10px 20px;
+        }
+
+        .brand-header {
+            text-align: center;
+            color: #E5E7EB;
+            margin-bottom: 20px;
+        }
+
+        .brand-header h1 {
+            font-size: 2em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .header {
+            max-width: 1400px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .back-btn {
+            background: #1F2937;
+            color: #E5E7EB;
+            padding: 12px 25px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s ease;
+            border: 2px solid #374151;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            background: #374151;
+            border-color: #3B82F6;
+        }
+
+        .project-title {
+            color: #E5E7EB;
+            font-size: 1.2em;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+            flex: 1;
+            font-weight: 600;
+        }
+
+        .pdf-btn {
+            background: #EF4444;
+            color: white;
+            padding: 12px 25px;
+            border-radius: 25px;
+            border: 2px solid #EF4444;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .pdf-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.3);
+            background: #DC2626;
+            border-color: #DC2626;
+        }
+
+        .pdf-btn.active {
+            background: #3B82F6;
+            border-color: #3B82F6;
+        }
+
+        /* Updated Immersive Player Styles */
+        .container {
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            /* Remove grid, use flex for centering */
+        }
+
+        .video-player-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            /* Maximize but keep reasonable on ultra-wide */
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            margin-bottom: 30px;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        /* Centered Overlay Controls */
+        .controls-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.4);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            /* Let clicks pass through to video unless on buttons */
+        }
+
+        /* Show controls when user is active */
+        .video-player-container.user-active .controls-overlay {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Timeline Container */
+        .timeline-container {
+            position: absolute;
+            bottom: 150px;
+            /* Above filmstrip */
+            left: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 30px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+
+        .video-player-container.user-active .timeline-container {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type=range]:focus {
+            outline: none;
+        }
+
+        /* Range Track */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* Range Thumb */
+        input[type=range]::-webkit-slider-thumb {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #3B82F6;
+            margin-top: -6px;
+            -webkit-appearance: none;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #60A5FA;
+        }
+
+        /* Time Text */
+        .time-display {
+            color: white;
+            font-family: monospace;
+            font-size: 1.1em;
+            font-weight: bold;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .kid-controls-centered {
+            display: flex;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .big-btn {
+            background: transparent;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            /* Bouncy */
+            backdrop-filter: blur(5px);
+            box-shadow: none;
+        }
+
+        .big-btn:hover {
+            transform: scale(1.15);
+            background: rgba(59, 130, 246, 0.9);
+            border-color: #60A5FA;
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .big-btn.play-btn {
+            width: 150px;
+            height: 150px;
+            font-size: 6em;
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .big-btn.play-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #34D399;
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.4);
+        }
+
+        .big-btn.play-btn.paused-state {
+            background: transparent;
+            /* Red for pause */
+        }
+
+        /* Bottom Filmstrip Overlay */
+        .filmstrip-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 140px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 20px;
+            transform: translateY(100%);
+            /* Hidden by default */
+            transition: transform 0.3s ease;
+            pointer-events: none;
+        }
+
+        .video-player-container.user-active .filmstrip-overlay {
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .filmstrip-track {
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            scrollbar-width: thin;
+            scrollbar-color: #3B82F6 transparent;
+        }
+
+        .filmstrip-track::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .filmstrip-track::-webkit-scrollbar-thumb {
+            background-color: #3B82F6;
+            border-radius: 10px;
+        }
+
+        .filmstrip-item {
+            flex: 0 0 160px;
+            height: 90px;
+            background: #111827;
+            border-radius: 10px;
+            border: 2px solid #374151;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .filmstrip-item:hover {
+            transform: scale(1.05);
+            border-color: #3B82F6;
+            z-index: 10;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .filmstrip-item.active {
+            border-color: #10B981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+
+        .filmstrip-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .filmstrip-item:hover .filmstrip-thumb,
+        .filmstrip-item.active .filmstrip-thumb {
+            opacity: 1;
+        }
+
+        .filmstrip-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 0.8em;
+            padding: 5px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .filmstrip-number {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: #3B82F6;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            font-size: 0.7em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Navigation Buttons (Global) */
+        .global-nav {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 20px;
+        }
+
+        .pdf-viewer {
+            background: #1F2937;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            /* Ensure it handles large heights gracefully */
+        }
+
+        .pdf-viewer-header {
+            background: #111827;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #374151;
+        }
+
+        .pdf-viewer-title {
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .close-pdf-btn {
+            background: transparent;
+            border: 1px solid #EF4444;
+            color: #EF4444;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .close-pdf-btn:hover {
+            background: #EF4444;
+            color: white;
+        }
+
+        .pdf-embed {
+            width: 100%;
+            height: 85vh;
+            /* Very tall to ensure visibility */
+            border: none;
+            background: white;
+            display: block;
+            /* Removes bottom space */
+        }
+
+        /* Rating Modal Styles */
+        .rating-modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        .rating-content {
+            background: #1F2937;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid #3B82F6;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            max-width: 400px;
+            width: 90%;
+            animation: scaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .rating-title {
+            color: #E5E7EB;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .star-rating {
+            font-size: 3em;
+            color: #4B5563;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .star-rating span {
+            transition: all 0.2s;
+        }
+
+        .star-rating span:hover,
+        .star-rating span.active {
+            color: #F59E0B;
+            transform: scale(1.2);
+        }
+
+        .rating-comment {
+            width: 100%;
+            background: #111827;
+            border: 1px solid #374151;
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            resize: none;
+            font-family: inherit;
+        }
+
+        .rating-comment:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+
+        .submit-rating-btn {
+            background: #3B82F6;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .submit-rating-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link active">Projects</a></li>
+                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
+                <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                <a href="/" class="navbar-btn">Back to Projects</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="header">
+            <h1 class="project-title" id="projectTitle">Loading...</h1>
+            <button class="pdf-btn" id="pdfBtn" onclick="togglePDF()" style="display: none;">📄 View
+                Instructions</button>
+        </div>
+
+        <div id="content">
+            <!-- Dynamic Content will be loaded here -->
+            <div class="loading">Loading project...</div>
+        </div>
+
+        <script>
+            // ... (keeping existing variables) ...
+            let currentProject = null;
+            let currentVideoIndex = 0;
+            let inactivityTimeout;
+
+            // Get project ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const projectId = urlParams.get('id');
+
+            if (!projectId) {
+                showError('No project ID specified');
+            } else {
+                loadProject();
+            }
+
+            async function loadProject() {
+                try {
+                    const response = await fetch('/api/projects');
+                    const data = await response.json();
+
+                    if (data.error) { showError(data.error); return; }
+
+                    currentProject = data.projects.find(p => p.id === projectId);
+
+                    if (!currentProject) { showError('Project not found: ' + projectId); return; }
+
+                    displayProject();
+                } catch (error) {
+                    showError('Failed to load project: ' + error.message);
+                }
+            }
+
+            function displayProject() {
+                document.getElementById('projectTitle').textContent = currentProject.name;
+
+                if (currentProject.pdf) {
+                    document.getElementById('pdfBtn').style.display = 'block';
+                }
+
+                // Create the Immersive Player Layout
+                const content = document.getElementById('content');
+                content.innerHTML = `
+                    <div class="container">
+                        
+                        <!-- Main Player Container -->
+                        <div class="video-player-container" id="playerContainer" onmousemove="resetInactivityTimer()" onmouseleave="hideControls()">
+                            <video id="videoPlayer" onclick="togglePlay()" ontimeupdate="updateTimeline()" onloadedmetadata="initTimeline()" onended="onVideoEnded()">
+                                Your browser does not support the video tag.
+                            </video>
+                            
+                            <!-- Centered Overlay Controls -->
+                            <div class="controls-overlay" onclick="togglePlay()">
+                                <div class="kid-controls-centered" onclick="event.stopPropagation()">
+                                    <button class="big-btn" onclick="seek(-10)" title="Rewind 10s">
+                                        ⏪ 10
+                                    </button>
+                                    
+                                    <button class="big-btn play-btn" id="overlayPlayBtn" onclick="togglePlay()" title="Play/Pause">
+                                        ▶️
+                                    </button>
+                                    
+                                    <button class="big-btn" onclick="seek(10)" title="Forward 10s">
+                                        10 ⏩
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Timeline Bar -->
+                            <div class="timeline-container" onclick="event.stopPropagation()">
+                                <span id="currentTime" class="time-display">0:00</span>
+                                <input type="range" id="videoTimeline" min="0" value="0" step="0.1" oninput="seekTo(this.value)">
+                                <span id="duration" class="time-display">0:00</span>
+                                
+                                <select onchange="setPlaybackSpeed(this.value)" style="background:transparent; color:white; border:1px solid rgba(255,255,255,0.3); border-radius:5px; padding:5px; margin-left:10px; cursor:pointer;">
+                                    <option value="1" style="color:black;">1x</option>
+                                    <option value="1.5" style="color:black;">1.5x</option>
+                                    <option value="2" style="color:black;">2x</option>
+                                </select>
+                                
+                                <button onclick="toggleFullscreen()" style="background:transparent; border:none; color:white; font-size:1.5em; cursor:pointer; margin-left:10px;" title="Fullscreen">
+                                    ⛶
+                                </button>
+                            </div>
+
+                            <!-- Bottom Filmstrip Overlay -->
+                            <div class="filmstrip-overlay">
+                                <div class="filmstrip-track" id="filmstripTrack">
+                                    <!-- Filmstrip items will be injected here -->
+                                </div>
+                            </div>
+
+                            <!-- Rating Modal (Overlay) -->
+                            <div class="rating-modal" id="ratingModal" style="display: none;">
+                                <div class="rating-content">
+                                    <div class="rating-title">How did it go?</div>
+                                    <div class="star-rating" id="starRating">
+                                        <span onclick="setRating(1)">★</span>
+                                        <span onclick="setRating(2)">★</span>
+                                        <span onclick="setRating(3)">★</span>
+                                        <span onclick="setRating(4)">★</span>
+                                        <span onclick="setRating(5)">★</span>
+                                    </div>
+                                    <textarea class="rating-comment" id="ratingComment" rows="3" placeholder="Any comments? (Optional)"></textarea>
+                                    <button class="submit-rating-btn" onclick="submitRating()">Submit & Continue</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Global Navigation (Outside player) -->
+                        <div class="global-nav">
+                            <button class="control-btn" id="prevBtn" onclick="previousVideo()">⏮ Previous Video</button>
+                            <div style="color: #9CA3AF; font-weight: bold; align-self: center;" id="videoCounter">1 / ${currentProject.videos.length}</div>
+                            <button class="control-btn" id="nextBtn" onclick="nextVideo()">Next Video ⏭</button>
+                        </div>
+                        
+                        <!-- PDF Viewer Container (Initially Hidden) -->
+                        ${currentProject.pdf ? `
+                        <div class="pdf-viewer" id="pdfViewer" style="display: none; width: 100%; max-width: 1200px; margin-top: 30px;">
+                            <div class="pdf-viewer-header">
+                                <div class="pdf-viewer-title">📄 Project Instructions</div>
+                                <button class="close-pdf-btn" onclick="togglePDF()">✕ Close</button>
+                            </div>
+                            <iframe class="pdf-embed" src="/projects/${encodeURIComponent(currentProject.id)}/${encodeURIComponent(currentProject.pdf)}"></iframe>
+                        </div>` : ''}
+
+                    </div>
+                `;
+
+                renderFilmstrip();
+                playVideo(0);
+
+                // Add Event Listeners for Play/Pause Button Toggle
+                const videoElement = document.getElementById('videoPlayer');
+                videoElement.addEventListener('play', updatePlayButton);
+                videoElement.addEventListener('pause', updatePlayButton);
+                updatePlayButton(); // Initial state
+            }
+
+            function renderFilmstrip() {
+                const track = document.getElementById('filmstripTrack');
+                track.innerHTML = currentProject.videos.map((video, index) => {
+                    const videoFileName = video.split('/').pop();
+                    // Just use a generic video icon as thumb since we don't have real thumbnails yet
+                    // In a real app we'd generate thumbs, but for now a styled div is fine
+                    return `
+                    <div class="filmstrip-item ${index === currentVideoIndex ? 'active' : ''}" onclick="playVideo(${index})">
+                        <div class="filmstrip-number">${index + 1}</div>
+                        <!-- Placeholder Thumb -->
+                        <div style="width:100%; height:100%; background: linear-gradient(45deg, #1F2937, #374151); display:flex; align-items:center; justify-content:center; font-size:2em;">
+                            🎥
+                        </div>
+                        <div class="filmstrip-title">${videoFileName}</div>
+                    </div>
+                    `;
+                }).join('');
+            }
+
+
+            function playVideo(index) {
+                if (index < 0 || index >= currentProject.videos.length) return;
+
+                currentVideoIndex = index;
+                const video = currentProject.videos[index];
+
+                // Encode each path segment separately
+                const projectIdSegments = currentProject.id.split('/').map(seg => encodeURIComponent(seg)).join('/');
+                const videoSegments = video.split('/').map(seg => encodeURIComponent(seg)).join('/');
+                const videoPath = `/projects/${projectIdSegments}/${videoSegments}`;
+
+                // Use the video player
+                const player = document.getElementById('videoPlayer');
+                player.src = videoPath;
+
+                // Update active state in filmstrip
+                renderFilmstrip();
+
+                // Update global nav button states
+                document.getElementById('prevBtn').disabled = index === 0;
+                document.getElementById('nextBtn').disabled = index === currentProject.videos.length - 1;
+
+                // Update counter
+                const counter = document.getElementById('videoCounter');
+                if (counter) counter.textContent = `${index + 1} / ${currentProject.videos.length}`;
+
+                // Update play button state (reset to pause icon on new video load)
+                updatePlayButton();
+            }
+
+            function previousVideo() {
+                playVideo(currentVideoIndex - 1);
+            }
+
+            function nextVideo() {
+                playVideo(currentVideoIndex + 1);
+            }
+
+            // ... (keep PDF toggle) ...
+
+            // ... (keep showError) ...
+
+            // ... (keep DOMContentLoaded / shortcuts) ...
+
+            function togglePlay() {
+                const video = document.getElementById('videoPlayer');
+                if (video.paused) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+                updatePlayButton();
+            }
+
+            function updatePlayButton() {
+                const video = document.getElementById('videoPlayer');
+                const btn = document.getElementById('overlayPlayBtn');
+
+                if (!video || !btn) return;
+
+                if (video.paused) {
+                    btn.textContent = '▶️';
+                    btn.classList.remove('paused-state');
+                } else {
+                    btn.textContent = '⏸️';
+                    btn.classList.add('paused-state');
+                }
+            }
+
+            function seek(seconds) {
+                const video = document.getElementById('videoPlayer');
+                video.currentTime += seconds;
+            }
+
+            function togglePDF() {
+                const pdfViewer = document.getElementById('pdfViewer');
+                if (!pdfViewer) return;
+
+                if (pdfViewer.style.display === 'none') {
+                    pdfViewer.style.display = 'block';
+                    // Scroll to the viewer
+                    setTimeout(() => {
+                        pdfViewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 100);
+                } else {
+                    pdfViewer.style.display = 'none';
+                }
+            }
+
+            // Update connection count
+            async function updateConnectionCount() {
+                try {
+                    const response = await fetch('/api/connections');
+                    const data = await response.json();
+                    const btn = document.getElementById('connectionBtn');
+                    if (btn && data.stats) {
+                        const count = btn.querySelector('.connection-count');
+                        if (count) count.textContent = data.stats.total || 0;
+                    }
+                } catch (e) { console.error('Error updating connection count:', e); }
+            }
+
+            // Update every 5 seconds
+            setInterval(updateConnectionCount, 5000);
+            updateConnectionCount();
+
+            // --- Timeline & Inactivity Logic ---
+
+            function resetInactivityTimer() {
+                const container = document.getElementById('playerContainer');
+                if (!container) return;
+
+                container.classList.add('user-active');
+                clearTimeout(inactivityTimeout);
+
+                inactivityTimeout = setTimeout(() => {
+                    hideControls();
+                }, 2000);
+            }
+
+            function hideControls() {
+                const container = document.getElementById('playerContainer');
+                if (container) {
+                    container.classList.remove('user-active');
+                    clearTimeout(inactivityTimeout);
+                }
+            }
+
+            function formatTime(seconds) {
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return `${m}:${s.toString().padStart(2, '0')}`;
+            }
+
+            function initTimeline() {
+                const video = document.getElementById('videoPlayer');
+                const range = document.getElementById('videoTimeline');
+                const durationDisplay = document.getElementById('duration');
+
+                if (video && range) {
+                    range.max = video.duration;
+                    durationDisplay.textContent = formatTime(video.duration);
+                }
+            }
+
+            function updateTimeline() {
+                const video = document.getElementById('videoPlayer');
+                const range = document.getElementById('videoTimeline');
+                const currentDisplay = document.getElementById('currentTime');
+
+                if (video && range) {
+                    range.value = video.currentTime;
+                    currentDisplay.textContent = formatTime(video.currentTime);
+                }
+            }
+
+            function seekTo(value) {
+                const video = document.getElementById('videoPlayer');
+                if (video) {
+                    video.currentTime = value;
+                    resetInactivityTimer();
+                }
+            }
+
+            // --- Rating System Logic ---
+            let currentRating = 0;
+
+            function onVideoEnded() {
+                // Video finished! Show "How did it go?" modal
+                const modal = document.getElementById('ratingModal');
+                if (modal) {
+                    modal.style.display = 'flex';
+
+                    // Reset fields
+                    currentRating = 0;
+                    document.getElementById('ratingComment').value = '';
+                    updateStars(0);
+
+                    // Exit fullscreen if active
+                    if (document.fullscreenElement) {
+                        document.exitFullscreen().catch(err => console.log(err));
+                    }
+                }
+            }
+
+            function setRating(rating) {
+                currentRating = rating;
+                updateStars(rating);
+            }
+
+            function updateStars(rating) {
+                const stars = document.querySelectorAll('.star-rating span');
+                stars.forEach((star, index) => {
+                    if (index < rating) {
+                        star.classList.add('active');
+                        star.textContent = '★'; // Filled star
+                    } else {
+                        star.classList.remove('active');
+                        star.textContent = '☆'; // Empty star outline (optional, or just color change)
+                    }
+                });
+            }
+
+            async function submitRating() {
+                if (currentRating === 0) {
+                    alert('Please select a star rating properly.');
+                    return;
+                }
+
+                const comment = document.getElementById('ratingComment').value;
+                const studentName = localStorage.getItem('currentStudent') || 'Guest';
+
+                // Get current video file name
+                const currentVideo = currentProject.videos[currentVideoIndex];
+
+                const payload = {
+                    student: studentName,
+                    project: currentProject.name,
+                    file: currentVideo,
+                    rating: currentRating,
+                    comment: comment
+                };
+
+                try {
+                    const btn = document.querySelector('.submit-rating-btn');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Saving...';
+                    btn.disabled = true;
+
+                    const response = await fetch('/api/ratings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) throw new Error('Failed to save rating');
+
+                    // Success!
+                    btn.textContent = 'Saved!';
+
+                    setTimeout(() => {
+                        // Hide modal
+                        document.getElementById('ratingModal').style.display = 'none';
+                        btn.textContent = originalText;
+                        btn.disabled = false;
+
+                        // Auto-advance to next video if available
+                        if (currentVideoIndex < currentProject.videos.length - 1) {
+                            nextVideo();
+                        }
+                    }, 500);
+
+                } catch (error) {
+                    console.error('Error submitting rating:', error);
+                    alert('Failed to save rating locally. Proceeding anyway.');
+                    document.getElementById('ratingModal').style.display = 'none';
+                }
+            }
+
+            // --- New Player Controls ---
+            function setPlaybackSpeed(speed) {
+                const video = document.getElementById('videoPlayer');
+                if (video) {
+                    video.playbackRate = parseFloat(speed);
+                }
+            }
+
+            function toggleFullscreen() {
+                const container = document.getElementById('playerContainer');
+                if (!document.fullscreenElement) {
+                    if (container.requestFullscreen) {
+                        container.requestFullscreen();
+                    } else if (container.mozRequestFullScreen) { /* Firefox */
+                        container.mozRequestFullScreen();
+                    } else if (container.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                        container.webkitRequestFullscreen();
+                    } else if (container.msRequestFullscreen) { /* IE/Edge */
+                        container.msRequestFullscreen();
+                    }
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+        </script>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            // WebSocket connection for remote control
+            const socket = io();
+
+            socket.on('connect', () => {
+                console.log('Connected to server via WebSocket');
+
+                // Send student name if logged in
+                const currentStudent = localStorage.getItem('currentStudent');
+                if (currentStudent) {
+                    socket.emit('student-login', { studentName: currentStudent });
+                }
+
+                // Notify server of current page
+                const projectName = currentProject ? currentProject.name : 'Unknown Project';
+                socket.emit('page-change', { page: `Project: ${projectName}` });
+            });
+
+            // Listen for navigation commands from teacher
+            socket.on('navigate', (data) => {
+                console.log('Navigation command received:', data.url);
+                window.location.href = data.url;
+            });
+        </script>
+
+        <a href="/connections.html" target="_blank" class="connection-monitor-btn" id="connectionBtn">
+            <span>🌐 Connections</span>
+            <span class="connection-count">0</span>
+        </a>
+
+    </div> <!-- Close page-content -->
+    <footer>
+        <p>Last Updated: <span id="last-updated"></span></p>
+    </footer>
+    <style>
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const lastUpdatedElement = document.getElementById('last-updated');
+            if (lastUpdatedElement) {
+                const now = new Date();
+                lastUpdatedElement.textContent = now.toLocaleString();
+            }
+        });
+    </script>
+</body>
+
+</html>

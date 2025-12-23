@@ -1,0 +1,31 @@
+Windows Registry Editor Version 5.00
+
+; Register studentfolder:// protocol for opening folders in Explorer
+[HKEY_CLASSES_ROOT\studentfolder]
+@="URL:Student Folder Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\studentfolder\DefaultIcon]
+@="explorer.exe,1"
+
+[HKEY_CLASSES_ROOT\studentfolder\shell]
+
+[HKEY_CLASSES_ROOT\studentfolder\shell\open]
+
+[HKEY_CLASSES_ROOT\studentfolder\shell\open\command]
+@="\"C:\\LearnToBot\\OpenStudentFolder.bat\" \"%1\""
+
+; Register studentfile:// protocol for opening files with default program
+[HKEY_CLASSES_ROOT\studentfile]
+@="URL:Student File Protocol"
+"URL Protocol"=""
+
+[HKEY_CLASSES_ROOT\studentfile\DefaultIcon]
+@="shell32.dll,0"
+
+[HKEY_CLASSES_ROOT\studentfile\shell]
+
+[HKEY_CLASSES_ROOT\studentfile\shell\open]
+
+[HKEY_CLASSES_ROOT\studentfile\shell\open\command]
+@="\"C:\\LearnToBot\\OpenStudentFile.bat\" \"%1\""
