@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page - LearnToBot Class</title>
+    <link rel="stylesheet" href="kids-theme.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #111827;
+            min-height: 100vh;
+            padding-top: 90px;
+            color: #E5E7EB;
+        }
+
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            border-bottom: 2px solid #3B82F6;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px; /* Consistently using 70px as seen in other files, though index.css had flex height */
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.8em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-auth {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .navbar-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
+                <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
+                <li><a href="/test-page.html" class="navbar-link active">Test Page</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                 <a href="/" class="navbar-btn">Back to Home</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>This page is working</h1>
+    </div>
+</body>
+</html>

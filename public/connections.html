@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -259,6 +260,7 @@
                 opacity: 0;
                 transform: translateX(-20px);
             }
+
             to {
                 opacity: 1;
                 transform: translateX(0);
@@ -270,9 +272,12 @@
         }
 
         @keyframes pulse {
-            0%, 100% {
+
+            0%,
+            100% {
                 transform: scale(1);
             }
+
             50% {
                 transform: scale(1.05);
                 box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
@@ -332,8 +337,15 @@
         }
 
         @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
         }
 
         .activity-indicator.idle {
@@ -395,6 +407,7 @@
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar">
         <div class="navbar-container">
@@ -408,6 +421,7 @@
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
                 <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
+                <li><a href="/test-page.html" class="navbar-link">Test Page</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -417,55 +431,55 @@
     </nav>
 
     <div class="page-content">
-    <div class="header">
-        <h1>🌐 Connection Monitor</h1>
-        <p>Live view of connected clients</p>
-    </div>
+        <div class="header">
+            <h1>🌐 Connection Monitor</h1>
+            <p>Live view of connected clients</p>
+        </div>
 
-    <div class="container" id="container">
-        <div class="loading">Loading connection data...</div>
-    </div>
+        <div class="container" id="container">
+            <div class="loading">Loading connection data...</div>
+        </div>
 
-    <div class="refresh-info">
-        Auto-refreshing every 3 seconds
-    </div>
+        <div class="refresh-info">
+            Auto-refreshing every 3 seconds
+        </div>
 
-    <script>
-        let previousConnections = new Map();
+        <script>
+            let previousConnections = new Map();
 
-        async function loadConnections() {
-            try {
-                const response = await fetch('/api/connections');
-                const data = await response.json();
+            async function loadConnections() {
+                try {
+                    const response = await fetch('/api/connections');
+                    const data = await response.json();
 
-                if (data.error) {
-                    showError(data.error);
-                    return;
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+
+                    displayConnections(data);
+                } catch (error) {
+                    showError('Failed to load connection data: ' + error.message);
                 }
-
-                displayConnections(data);
-            } catch (error) {
-                showError('Failed to load connection data: ' + error.message);
             }
-        }
 
-        function displayConnections(data) {
-            const container = document.getElementById('container');
+            function displayConnections(data) {
+                const container = document.getElementById('container');
 
-            // Detect new connections
-            const currentIPs = new Set(data.connections.map(c => c.ip));
-            const newConnections = new Set();
+                // Detect new connections
+                const currentIPs = new Set(data.connections.map(c => c.ip));
+                const newConnections = new Set();
 
-            currentIPs.forEach(ip => {
-                if (!previousConnections.has(ip)) {
-                    newConnections.add(ip);
-                }
-            });
+                currentIPs.forEach(ip => {
+                    if (!previousConnections.has(ip)) {
+                        newConnections.add(ip);
+                    }
+                });
 
-            // Update previous connections
-            previousConnections = new Map(data.connections.map(c => [c.ip, c]));
+                // Update previous connections
+                previousConnections = new Map(data.connections.map(c => [c.ip, c]));
 
-            const html = `
+                const html = `
                 <div class="server-card">
                     <div class="server-header">
                         <div class="server-info">
@@ -507,7 +521,7 @@
                                         </div>
                                         <div style="color: #999; font-size: 0.9em;">
                                             ${conn.activityStatus === 'active' ? '✅ Active' :
-                                              conn.activityStatus === 'idle' ? '⏸️ Idle' : '💤 Inactive'}
+                        conn.activityStatus === 'idle' ? '⏸️ Idle' : '💤 Inactive'}
                                         </div>
                                     </div>
                                     <div class="node-details">
@@ -535,67 +549,68 @@
                 </div>
             `;
 
-            container.innerHTML = html;
-        }
-
-        function showError(message) {
-            const container = document.getElementById('container');
-            container.innerHTML = `<div class="error">${message}</div>`;
-        }
-
-        // Load immediately
-        loadConnections();
-
-        // Auto-refresh every 3 seconds
-        setInterval(loadConnections, 3000);
-    </script>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        // WebSocket connection for remote control
-        const socket = io();
-
-        socket.on('connect', () => {
-            console.log('Connected to server via WebSocket');
-
-            // Send student name if logged in
-            const currentStudent = localStorage.getItem('currentStudent');
-            if (currentStudent) {
-                socket.emit('student-login', { studentName: currentStudent });
+                container.innerHTML = html;
             }
 
-            // Notify server of current page
-            socket.emit('page-change', { page: 'Connection Monitor' });
-        });
+            function showError(message) {
+                const container = document.getElementById('container');
+                container.innerHTML = `<div class="error">${message}</div>`;
+            }
 
-        // Listen for navigation commands from teacher
-        socket.on('navigate', (data) => {
-            console.log('Navigation command received:', data.url);
-            window.location.href = data.url;
-        });
-    </script>
+            // Load immediately
+            loadConnections();
+
+            // Auto-refresh every 3 seconds
+            setInterval(loadConnections, 3000);
+        </script>
+
+        <script src="/socket.io/socket.io.js"></script>
+        <script>
+            // WebSocket connection for remote control
+            const socket = io();
+
+            socket.on('connect', () => {
+                console.log('Connected to server via WebSocket');
+
+                // Send student name if logged in
+                const currentStudent = localStorage.getItem('currentStudent');
+                if (currentStudent) {
+                    socket.emit('student-login', { studentName: currentStudent });
+                }
+
+                // Notify server of current page
+                socket.emit('page-change', { page: 'Connection Monitor' });
+            });
+
+            // Listen for navigation commands from teacher
+            socket.on('navigate', (data) => {
+                console.log('Navigation command received:', data.url);
+                window.location.href = data.url;
+            });
+        </script>
 
     </div> <!-- Close page-content -->
-<footer>
-  <p>Last Updated: <span id="last-updated"></span></p>
-</footer>
-<style>
-  footer {
-    text-align: center;
-    padding: 1rem;
-    margin-top: 2rem;
-    font-size: 0.9em;
-    color: #6c757d;
-  }
-</style>
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const lastUpdatedElement = document.getElementById('last-updated');
-    if (lastUpdatedElement) {
-      const now = new Date();
-      lastUpdatedElement.textContent = now.toLocaleString();
-    }
-  });
-</script>
+    <footer>
+        <p>Last Updated: <span id="last-updated"></span></p>
+    </footer>
+    <style>
+        footer {
+            text-align: center;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const lastUpdatedElement = document.getElementById('last-updated');
+            if (lastUpdatedElement) {
+                const now = new Date();
+                lastUpdatedElement.textContent = now.toLocaleString();
+            }
+        });
+    </script>
 </body>
+
 </html>

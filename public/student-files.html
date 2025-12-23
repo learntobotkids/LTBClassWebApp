@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -291,6 +292,7 @@
                 transform: translateX(400px);
                 opacity: 0;
             }
+
             to {
                 transform: translateX(0);
                 opacity: 1;
@@ -414,6 +416,7 @@
         }
     </style>
 </head>
+
 <body>
     <nav class="navbar">
         <div class="navbar-container">
@@ -427,6 +430,7 @@
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
                 <li><a href="/student-files.html" class="navbar-link active">Student Files</a></li>
+                <li><a href="/test-page.html" class="navbar-link">Test Page</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -682,7 +686,7 @@
         loadFolders();
     </script>
 
-    
+
 
     <script src="/socket.io/socket.io.js"></script>
 
@@ -732,46 +736,46 @@
 
     </script>
 
-<footer>
+    <footer>
 
-  <p>Last Updated: <span id="last-updated"></span></p>
+        <p>Last Updated: <span id="last-updated"></span></p>
 
-</footer>
+    </footer>
 
-<style>
+    <style>
+        footer {
 
-  footer {
+            text-align: center;
 
-    text-align: center;
+            padding: 1rem;
 
-    padding: 1rem;
+            margin-top: 2rem;
 
-    margin-top: 2rem;
+            font-size: 0.9em;
 
-    font-size: 0.9em;
+            color: #6c757d;
 
-    color: #6c757d;
+        }
+    </style>
 
-  }
+    <script>
 
-</style>
+        document.addEventListener('DOMContentLoaded', function () {
 
-<script>
+            const lastUpdatedElement = document.getElementById('last-updated');
 
-  document.addEventListener('DOMContentLoaded', function() {
+            if (lastUpdatedElement) {
 
-    const lastUpdatedElement = document.getElementById('last-updated');
+                const now = new Date();
 
-    if (lastUpdatedElement) {
+                lastUpdatedElement.textContent = now.toLocaleString();
 
-      const now = new Date();
+            }
 
-      lastUpdatedElement.textContent = now.toLocaleString();
+        });
 
-    }
+    </script>
 
-  });
+</body>
 
-</script>
-
-</body></html>
+</html>
