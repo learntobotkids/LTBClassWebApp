@@ -55,8 +55,13 @@ let loginNamesCache = null;        // Stores: ["Alice", "Bob", "Charlie", ...]
 let lastLoginNamesFetch = 0;       // Timestamp of last fetch
 
 // Cache for booking info
+// Cache for booking info
 let bookingCache = null;           // Stores filtered bookings for today
 let lastBookingFetch = 0;          // Timestamp of last fetch
+
+// Cache for instructor data
+let instructorsCache = null;       // Stores: [{name: "Prof. Oak", passcode: "1234"}, ...]
+let lastInstructorsFetch = 0;      // Timestamp of last fetch
 
 // ============================================================================
 // FUNCTION: Initialize Google Sheets API Client
@@ -317,11 +322,11 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         // Get authenticated Sheets API client
         const sheets = await getGoogleSheetsClient();
 
-        // Fetch columns C (Name) through I (Headshot)
-        // Range: "Child Names!C:I"
+        // Fetch columns D (Name) through I (Headshot)
+        // Range: "Child Names!D:I"
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!C:I`,
+            range: `${config.STUDENT_NAMES_SHEET}!D:I`,
         });
 
         // Extract rows from response
@@ -329,14 +334,14 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
 
         // Process rows into array of student objects
         // Skip header row, filter out empty cells
-        // Column mapping relative to fetch range (C=0, D=1, ..., I=6)
-        // Name is at index 0 (Column C)
-        // Headshot is at index 6 (Column I)
+        // Column mapping relative to fetch range (D=0, E=1, ..., I=5)
+        // Name is at index 0 (Column D)
+        // Headshot is at index 5 (Column I)
         const students = rows.slice(1)
             .filter(row => row[0] && row[0].trim())
             .map(row => ({
                 name: row[0].trim(),
-                headshot: row[6] ? row[6].trim() : '' // Column I is index 6 relative to C
+                headshot: row[5] ? row[5].trim() : '' // Column I is index 5 relative to D
             }));
 
         // Remove duplicates (based on name) and sort alphabetically
@@ -619,6 +624,140 @@ async function fetchBookingInfo(forceRefresh = false) {
         throw error;
     }
 }
+// ============================================================================
+// FUNCTION: Local Master Database (Offline Cache)
+// ============================================================================
+const MASTER_DB_PATH = path.join(__dirname, 'data', 'master_sheet_db.json');
+const DATA_DIR = path.join(__dirname, 'data');
+
+/**
+ * Reads the local master database file
+ * @returns {Object|null} The whole database object or null if not found
+ */
+function getLocalMasterDB() {
+    try {
+        if (fs.existsSync(MASTER_DB_PATH)) {
+            const raw = fs.readFileSync(MASTER_DB_PATH, 'utf8');
+            return JSON.parse(raw);
+        }
+    } catch (err) {
+        console.error('Error reading local master DB:', err.message);
+    }
+    return null;
+}
+
+/**
+ * Downloads ALL tabs from the Google Sheet and saves to local JSON
+ * Run this on server start and optionally via admin trigger
+ */
+async function syncMasterDatabase() {
+    console.log('🔄 Starting Master Database Sync...');
+    try {
+        const sheets = await getGoogleSheetsClient();
+
+        // 1. Get Spreadsheet Metadata to find all tabs
+        const sections = await sheets.spreadsheets.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+        });
+
+        const sheetsList = sections.data.sheets;
+        console.log(`Found ${sheetsList.length} tabs to sync.`);
+
+        const fullDatabase = {
+            lastUpdated: new Date().toISOString(),
+            sheets: {}
+        };
+
+        // 2. Download each tab
+        for (const sheet of sheetsList) {
+            const title = sheet.properties.title;
+            // console.log(`Downloading tab: ${title}...`);
+
+            try {
+                const response = await sheets.spreadsheets.values.get({
+                    spreadsheetId: config.SPREADSHEET_ID,
+                    range: `'${title}'!A:ZZ`, // Fetch everything
+                });
+
+                fullDatabase.sheets[title] = response.data.values || [];
+            } catch (err) {
+                console.error(`Failed to download tab "${title}":`, err.message);
+            }
+        }
+
+        // 3. Save to file
+        if (!fs.existsSync(DATA_DIR)) {
+            fs.mkdirSync(DATA_DIR, { recursive: true });
+        }
+
+        fs.writeFileSync(MASTER_DB_PATH, JSON.stringify(fullDatabase, null, 2));
+        console.log('✅ Master Database Sync Complete. Saved to:', MASTER_DB_PATH);
+        return { success: true, count: Object.keys(fullDatabase.sheets).length };
+
+    } catch (error) {
+        console.error('❌ Master Database Sync Failed:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================================
+// FUNCTION: Fetch All Kids Data for All Kids Page
+// ============================================================================
+
+/**
+ * Fetches detailed student data for the "All Kids" page
+ * Includes Name, Parent Name, Email, and Headshot
+ * Strategies:
+ * 1. Try Google API (Online)
+ * 2. If fail, Try Local Master DB (Offline)
+ * 
+ * @param {boolean} forceRefresh - If true, ignore cache
+ * @returns {Promise<Array>} - Array of detailed student objects
+ */
+async function fetchAllKids(forceRefresh = false) {
+    let rows = [];
+    let source = 'ONLINE';
+
+    try {
+        console.log('Fetching All Kids data from Google Sheets...');
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch Columns A through I (Headshot is I)
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.STUDENT_NAMES_SHEET}!A:I`,
+        });
+
+        rows = response.data.values || [];
+    } catch (error) {
+        console.warn('⚠️ Google API failed (Offline Mode?). Trying local Master DB...');
+
+        const localDB = getLocalMasterDB();
+        if (localDB && localDB.sheets && localDB.sheets[config.STUDENT_NAMES_SHEET]) {
+            rows = localDB.sheets[config.STUDENT_NAMES_SHEET];
+            console.log('✅ Loaded "Child Names" from Local Master DB.');
+            source = 'OFFLINE';
+        } else {
+            console.error('❌ No local data available for fallback.');
+            throw error; // Propagate original error if no fallback
+        }
+    }
+
+    // Process rows (Logic is same for both sources)
+    // Ensure we handle potential missing columns safely
+    const kids = rows.slice(1)
+        .filter(row => row[config.ALL_KIDS_COLUMNS.NAME]) // Must have name
+        .map(row => ({
+            name: row[config.ALL_KIDS_COLUMNS.NAME] || '',
+            parentName: row[config.ALL_KIDS_COLUMNS.PARENT_NAME] || '',
+            email: row[config.ALL_KIDS_COLUMNS.EMAIL] || '',
+            headshot: row[config.ALL_KIDS_COLUMNS.HEADSHOT] || ''
+        }));
+
+    console.log(`Fetched ${kids.length} kids for All Kids page (${source})`);
+    return kids;
+}
+
 
 // ============================================================================
 // FUNCTION: Clear Cache
@@ -640,7 +779,80 @@ function clearCache() {
     lastStudentsFetch = 0;
     lastProgressFetch = 0;
     lastLoginNamesFetch = 0;
+    instructorsCache = null;
+    lastInstructorsFetch = 0;
     console.log('Cache cleared');
+}
+
+
+// ============================================================================
+// FUNCTION: Fetch Instructors
+// ============================================================================
+
+/**
+ * Fetches instructor credentials from "instructors" sheet
+ *
+ * @param {boolean} forceRefresh - If true, ignore cache
+ * @returns {Promise<Array>} - Array of instructor objects {name, passcode}
+ */
+async function fetchInstructors(forceRefresh = false) {
+    const now = Date.now();
+
+    // Check cache
+    const cacheAge = now - lastInstructorsFetch;
+    if (!forceRefresh && instructorsCache && cacheAge < config.CACHE_DURATION) {
+        console.log('Returning cached instructor data');
+        return instructorsCache;
+    }
+
+    try {
+        console.log('Fetching instructor data from Google Sheets...');
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch Columns A through I (Passcode is I)
+        // Range: "instructors!A:I"
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.INSTRUCTORS_SHEET}!A:I`,
+        });
+
+        const rows = response.data.values || [];
+
+        // Process rows
+        const instructors = rows.slice(1) // Skip header
+            .filter(row => row[config.INSTRUCTOR_COLUMNS.NAME]) // Must have name
+            .map(row => ({
+                name: row[config.INSTRUCTOR_COLUMNS.NAME].trim(),
+                passcode: row[config.INSTRUCTOR_COLUMNS.PASSCODE] ? row[config.INSTRUCTOR_COLUMNS.PASSCODE].trim() : ''
+            }));
+
+        // Update cache
+        instructorsCache = instructors;
+        lastInstructorsFetch = now;
+
+        console.log(`Fetched ${instructors.length} instructors`);
+        return instructors;
+    } catch (error) {
+        console.error('Error fetching instructors:', error.message);
+        // Try fallback to local master DB if available
+        if (instructorsCache) return instructorsCache;
+
+        // Try offline master DB as last resort
+        const localDB = getLocalMasterDB();
+        if (localDB && localDB.sheets && localDB.sheets[config.INSTRUCTORS_SHEET]) {
+            const rows = localDB.sheets[config.INSTRUCTORS_SHEET];
+            const instructors = rows.slice(1)
+                .filter(row => row[config.INSTRUCTOR_COLUMNS.NAME])
+                .map(row => ({
+                    name: row[config.INSTRUCTOR_COLUMNS.NAME].trim(),
+                    passcode: row[config.INSTRUCTOR_COLUMNS.PASSCODE] ? row[config.INSTRUCTOR_COLUMNS.PASSCODE].trim() : ''
+                }));
+            console.log('Returning instructors from local Master DB');
+            return instructors;
+        }
+
+        throw error;
+    }
 }
 
 // ============================================================================
@@ -655,8 +867,11 @@ module.exports = {
     getStudentProgress,             // Get progress summary for all students
     getStudentProjectsByName,       // Get projects for one specific student
     fetchBookingInfo,               // Get today's classes
+    fetchAllKids,                   // Get all kids detailed data
+    syncMasterDatabase,             // Download full sheet to local JSON
     clearCache,                     // Clear all cached data
-    syncHeadshots                   // Download headshots from Drive
+    syncHeadshots,                  // Download headshots from Drive
+    fetchInstructors                // Get instructor list with credentials
 };
 
 // ============================================================================

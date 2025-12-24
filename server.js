@@ -972,9 +972,22 @@ app.get('/api/google-sheets/student-progress', async (req, res) => {
 });
 
 /**
+ * GET /api/all-kids
+ * API Endpoint: Get All Kids (Detailed)
+ */
+app.get('/api/all-kids', async (req, res) => {
+    try {
+        const kids = await googleSheetsService.fetchAllKids();
+        res.json({ success: true, kids });
+    } catch (error) {
+        console.error('Error fetching all kids:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch kids data' });
+    }
+});
+
+/**
  * GET /api/google-sheets/student-names
- *
- * Fetches student names for login dropdown from Google Sheets
+ * API Endpoint: Get list of students (for login dropdown) from Google Sheets
  */
 app.get('/api/google-sheets/student-names', async (req, res) => {
     try {
@@ -1072,7 +1085,11 @@ app.post('/api/sync-students', async (req, res) => {
 
         // Step 3: Download headshots
         console.log('Syncing headshots...');
+        // Sync Headshots from Drive (Non-blocking)
         const headshotResult = await googleSheetsService.syncHeadshots();
+
+        // Sync Master Database (Non-blocking)
+        googleSheetsService.syncMasterDatabase();
 
         // Step 4: Fetch all project log data from Google Sheets
         console.log('Fetching and caching student assignments...');
@@ -1310,9 +1327,6 @@ app.post('/api/rediscover-projects', (req, res) => {
         console.log(`Rediscovered ${projects.length} projects`);
 
         res.json({
-            success: true,
-            message: `Successfully rediscovered ${projects.length} projects`,
-            count: projects.length
         });
     } catch (error) {
         console.error('Error rediscovering projects:', error);
@@ -1321,6 +1335,65 @@ app.post('/api/rediscover-projects', (req, res) => {
             error: 'Failed to rediscover projects',
             message: error.message
         });
+    }
+});
+
+// ============================================================================
+// API ENDPOINTS FOR INSTRUCTORS
+// ============================================================================
+
+/**
+ * GET /api/instructors-list
+ * Returns list of instructor names for login dropdown
+ */
+app.get('/api/instructors-list', async (req, res) => {
+    try {
+        const instructors = await googleSheetsService.fetchInstructors();
+        const names = instructors.map(i => i.name).sort();
+        res.json({ success: true, instructors: names });
+    } catch (error) {
+        console.error('Error fetching instructor list:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch instructors' });
+    }
+});
+
+/**
+ * POST /api/instructor-login
+ * Validates instructor credentials
+ */
+app.post('/api/instructor-login', express.json(), async (req, res) => {
+    try {
+        const { name, passcode } = req.body;
+
+        if (!name || !passcode) {
+            return res.status(400).json({ success: false, error: 'Name and passcode required' });
+        }
+
+        const instructors = await googleSheetsService.fetchInstructors();
+        const instructor = instructors.find(i => i.name === name);
+
+        if (instructor && instructor.passcode === passcode) {
+            res.json({ success: true });
+        } else {
+            res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
+    } catch (error) {
+        console.error('Error logging in instructor:', error);
+        res.status(500).json({ success: false, error: 'Login failed' });
+    }
+});
+
+/**
+ * GET /api/todays-students
+ * Returns list of students booked for today
+ */
+app.get('/api/todays-students', async (req, res) => {
+    try {
+        const students = await googleSheetsService.fetchBookingInfo();
+        res.json({ success: true, students });
+    } catch (error) {
+        console.error('Error fetching todays students:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch bookings' });
     }
 });
 

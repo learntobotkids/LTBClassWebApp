@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Today's Classes | Instructor Dashboard</title>
+    <!-- Use same theme as All Kids page for consistency -->
+    <link rel="stylesheet" href="kids-theme.css">
+    <link rel="stylesheet" href="mobile.css">
+    <style>
+        /* Navbar consistency overrides */
+        .navbar {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            background: linear-gradient(135deg, #1F2937 0%, #111827 100%) !important;
+            border-bottom: 2px solid #3B82F6 !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+            z-index: 1000 !important;
+            padding: 0 20px !important;
+            height: 70px !important;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px !important;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB !important;
+            text-decoration: none;
+            font-size: 1.5em !important;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            text-shadow: none !important;
+        }
+
+        /* Adjust page content for fixed navbar */
+        body {
+            padding-top: 80px;
+        }
+
+        .kids-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
+        }
+
+        .kid-card {
+            background: #1F2937;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 1px solid #374151;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .kid-header {
+            background: #374151;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid #4B5563;
+        }
+
+        .kid-initial {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #4F46E5;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8em;
+            font-weight: bold;
+            border: 3px solid #818CF8;
+        }
+
+        .kid-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #F3F4F6;
+        }
+
+        .kid-body {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            color: #D1D5DB;
+        }
+
+        .info-icon {
+            color: #9CA3AF;
+            width: 20px;
+            text-align: center;
+        }
+
+        .info-value {
+            color: #E5E7EB;
+        }
+
+        .class-badge {
+            background: #10B981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+            <div style="color: #9CA3AF;">Instructor Dashboard</div>
+            <a href="/" class="navbar-btn" onclick="logoutInstructor()">Logout</a>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="header-section">
+            <h1 style="margin-bottom: 10px;">Today's Classes</h1>
+            <p style="color: #9CA3AF;" id="dateDisplay">Loading date...</p>
+        </div>
+
+        <div id="loading" class="loading-container" style="text-align: center; padding: 50px; color: #9CA3AF;">
+            <h2>Loading Today's Schedule...</h2>
+        </div>
+
+        <div id="kidsGrid" class="kids-grid" style="display: none;"></div>
+        <div id="error" class="error" style="display: none; text-align: center; margin-top: 20px; color: #EF4444;">
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        if (!localStorage.getItem('instructorLoggedIn')) {
+            window.location.href = '/';
+        }
+
+        document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+
+        async function loadTodaysStudents() {
+            try {
+                const response = await fetch('/api/todays-students');
+                const data = await response.json();
+
+                if (data.success) {
+                    renderStudents(data.students);
+                } else {
+                    showError(data.error || 'Failed to load data');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                showError('Check your connection to the server.');
+            }
+        }
+
+        function renderStudents(students) {
+            const grid = document.getElementById('kidsGrid');
+            const loading = document.getElementById('loading');
+
+            loading.style.display = 'none';
+            grid.style.display = 'grid';
+            grid.innerHTML = '';
+
+            if (students.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #9CA3AF;">No classes scheduled for today.</div>';
+                return;
+            }
+
+            students.forEach(student => {
+                const card = document.createElement('div');
+                card.className = 'kid-card';
+                card.innerHTML = `
+                    <div class="kid-header">
+                        <div class="kid-initial">${student.studentName.charAt(0)}</div>
+                        <div>
+                            <div class="kid-name">${student.studentName}</div>
+                            <div class="class-badge">${student.serviceTitle}</div>
+                        </div>
+                    </div>
+                    <div class="kid-body">
+                         <div class="info-row">
+                            <span class="info-icon">📅</span>
+                            <div>
+                                <div style="font-size: 0.85em; color: #9CA3AF;">Class Date</div>
+                                <div class="info-value">${student.classDate}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function showError(msg) {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            loading.style.display = 'none';
+            error.style.display = 'block';
+            error.textContent = 'Error: ' + msg;
+        }
+
+        function logoutInstructor() {
+            localStorage.removeItem('instructorLoggedIn');
+            window.location.href = '/';
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadTodaysStudents);
+    </script>
+</body>
+
+</html>

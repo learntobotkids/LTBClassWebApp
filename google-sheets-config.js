@@ -46,7 +46,7 @@ module.exports = {
      *
      * If you want to use a different Google Sheet, replace this ID
      */
-    SPREADSHEET_ID: '1mkfyTOrcflampKY_BG13yjst7-AfEK4Oxvl-VU9BFME', // The "Child Names" sheet
+    SPREADSHEET_ID: '1W6ojeogcA__vqYcQvwpav07rP9g5rAMpYXvHHY3sRKM', // The "Child Names" sheet
 
     // ========================================================================
     // GOOGLE DRIVE CONFIGURATION
@@ -87,6 +87,12 @@ module.exports = {
      * Default: 'All Booking Info'
      */
     BOOKING_SHEET: 'All Booking Info',
+
+    /**
+     * Name of the sheet (tab) containing instructor data
+     * Default: 'instructors'
+     */
+    INSTRUCTORS_SHEET: 'instructors',
 
     // ========================================================================
     // COLUMN MAPPINGS FOR STUDENT NAMES SHEET
@@ -140,6 +146,24 @@ module.exports = {
         STUDENT_NAME: 4,    // Column E: Student's full name
         SERVICE_TITLE: 7,   // Column H: Class/Service Title
         CLASS_DATE: 12      // Column M: Date of class (e.g., "Jul 1, 2024")
+    },
+
+    // ========================================================================
+    // COLUMN MAPPINGS FOR INSTRUCTORS SHEET
+    // ========================================================================
+    INSTRUCTOR_COLUMNS: {
+        NAME: 0,            // Column A: Instructor Name
+        PASSCODE: 8         // Column I: Passcode
+    },
+
+    // ========================================================================
+    // COLUMN MAPPINGS FOR ALL KIDS PAGE (Relative to 'Child Names!A:Z')
+    // ========================================================================
+    ALL_KIDS_COLUMNS: {
+        NAME: 3,            // Column D: Child Name
+        PARENT_NAME: 6,     // Column G: Parent Name
+        EMAIL: 7,           // Column H: Email
+        HEADSHOT: 8         // Column I: Headshot
     },
 
     // ========================================================================

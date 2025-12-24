@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LearnToBot Class - Projects</title>
     <link rel="stylesheet" href="kids-theme.css">
+    <link rel="stylesheet" href="mobile.css">
     <style>
         * {
             margin: 0;
@@ -1240,6 +1241,7 @@
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
                 <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
+                <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
                 <li><a href="/test-page.html" class="navbar-link">Test Page</a></li>
             </ul>
 
@@ -1318,9 +1320,150 @@
                         style="background: none; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer; font-size: 0.9em;">
                         Continue without logging in
                     </button>
+                    <div style="margin-top: 15px; font-size: 0.85em;">
+                        <a href="#" onclick="openInstructorLogin()" style="color: #4B5563; text-decoration: none;">Are
+                            you an instructor?</a>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Instructor Login Modal -->
+        <div id="instructorLoginModal" class="modal-overlay" onclick="if(event.target === this) closeInstructorLogin()">
+            <div class="modal"
+                style="max-width: 400px; background: #1F2937; padding: 30px; border-radius: 20px; border: 2px solid #374151;">
+                <div class="modal-header"
+                    style="border-bottom: 1px solid #374151; padding-bottom: 15px; margin-bottom: 20px;">
+                    <h2 style="color: #60A5FA; font-size: 1.5em;">👨‍🏫 Instructor Login</h2>
+                    <button class="close-modal" onclick="closeInstructorLogin()">×</button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 20px;">
+                    <div>
+                        <label
+                            style="color: #9CA3AF; font-size: 0.9em; margin-bottom: 8px; display: block; font-weight: 600;">Instructor
+                            Name</label>
+                        <select id="instructorSelect"
+                            style="width: 100%; padding: 12px; background: #111827; border: 2px solid #374151; color: white; border-radius: 10px; font-size: 1em;">
+                            <option value="">Select your name...</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            style="color: #9CA3AF; font-size: 0.9em; margin-bottom: 8px; display: block; font-weight: 600;">Passcode</label>
+                        <input type="password" id="instructorPasscode"
+                            style="width: 100%; padding: 12px; background: #111827; border: 2px solid #374151; color: white; border-radius: 10px; font-size: 1em;"
+                            placeholder="Enter 4-digit code">
+                    </div>
+
+                    <div id="instructorLoginError"
+                        style="background: rgba(239, 68, 68, 0.1); color: #EF4444; padding: 10px; border-radius: 8px; font-size: 0.9em; display: none; border: 1px solid rgba(239, 68, 68, 0.2);">
+                    </div>
+
+                    <button onclick="submitInstructorLogin()"
+                        style="background: #3B82F6; color: white; padding: 14px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: all 0.2s;">
+                        Login to Dashboard
+                    </button>
+
+                    <button onclick="closeInstructorLogin()"
+                        style="background: transparent; color: #9CA3AF; padding: 10px; border: none; cursor: pointer; font-size: 0.9em; text-decoration: underline;">
+                        Cancel and go back
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // INSTRUCTOR LOGIN LOGIC
+
+            async function openInstructorLogin() {
+                // Close student modal
+                document.getElementById('loginModal').classList.remove('active');
+
+                // Open instructor modal
+                const modal = document.getElementById('instructorLoginModal');
+                modal.classList.add('active');
+
+                // Load instructors
+                const select = document.getElementById('instructorSelect');
+                select.innerHTML = '<option value="">Loading names...</option>';
+
+                try {
+                    const response = await fetch('/api/instructors-list');
+                    const data = await response.json();
+
+                    if (data.success) {
+                        select.innerHTML = '<option value="">Select your name...</option>';
+                        data.instructors.forEach(name => {
+                            const option = document.createElement('option');
+                            option.value = name;
+                            option.textContent = name;
+                            select.appendChild(option);
+                        });
+                    } else {
+                        select.innerHTML = '<option value="">Error loading names</option>';
+                    }
+                } catch (e) {
+                    console.error('Error fetching instructors', e);
+                    select.innerHTML = '<option value="">Connection error</option>';
+                }
+            }
+
+            function closeInstructorLogin() {
+                document.getElementById('instructorLoginModal').classList.remove('active');
+                // Re-open student modal
+                setTimeout(() => {
+                    document.getElementById('loginModal').classList.add('active');
+                }, 100);
+            }
+
+            async function submitInstructorLogin() {
+                const name = document.getElementById('instructorSelect').value;
+                const passcode = document.getElementById('instructorPasscode').value;
+                const errorDiv = document.getElementById('instructorLoginError');
+                const btn = document.querySelector('#instructorLoginModal button[onclick="submitInstructorLogin()"]');
+
+                if (!name || !passcode) {
+                    errorDiv.textContent = 'Please select a name and enter passcode';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                errorDiv.style.display = 'none';
+                btn.textContent = 'Verifying...';
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+
+                try {
+                    const response = await fetch('/api/instructor-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, passcode })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        localStorage.setItem('instructorLoggedIn', 'true');
+                        localStorage.setItem('instructorName', name);
+                        window.location.href = '/instructor-dashboard.html';
+                    } else {
+                        errorDiv.textContent = data.error || 'Incorrect name or passcode';
+                        errorDiv.style.display = 'block';
+                        btn.textContent = 'Login to Dashboard';
+                        btn.disabled = false;
+                        btn.style.opacity = '1';
+                    }
+                } catch (e) {
+                    errorDiv.textContent = 'Connection error. Check server.';
+                    errorDiv.style.display = 'block';
+                    btn.textContent = 'Login to Dashboard';
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+            }
+        </script>
 
         <div class="header">
             <h1>🤖 LearnToBot Class</h1>
@@ -2741,6 +2884,7 @@
         });
     </script>
     <script src="mode-indicator.js"></script>
+    <script src="mobile-nav.js"></script>
 </body>
 
 </html>
