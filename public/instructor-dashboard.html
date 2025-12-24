@@ -13,17 +13,20 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* --- UPDATED CSS FOR MINIMALIST DESIGN --- */
+
         body {
-            font-family: 'Nunito', sans-serif;
+            /* Apple-system font stack for that native feel */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             margin: 0;
             padding: 0;
-            background-color: #f5f5f5;
-            /* Light grey background */
+            background-color: #F8F9FA;
+            /* Slightly cleaner white/grey */
             padding-top: 60px;
             /* Space for fixed header */
             padding-bottom: 70px;
             /* Space for fixed footer */
-            color: #333;
+            color: #1F2937;
         }
 
         /* --- HEADER --- */
@@ -96,19 +99,40 @@
             margin: 0 auto;
         }
 
-        /* --- STUDENT CARD --- */
+        /* --- NEW CARD STYLES --- */
         .student-card {
             background: white;
-            padding: 16px;
+            padding: 12px 20px;
+            /* More horizontal breathing room */
             display: flex;
             align-items: center;
-            border-bottom: 1px solid #e0e0e0;
-            position: relative;
+            border-bottom: 1px solid #E5E7EB;
+            /* Very light subtle border */
+            min-height: 72px;
+            /* Consistent height like iOS list items */
+        }
+
+        .student-initial-fallback {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #E5E7EB;
+            /* Light grey */
+            color: #4B5563;
+            /* Darker grey text */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            /* Semi-bold */
+            margin-right: 16px;
+            flex-shrink: 0;
         }
 
         .student-headshot {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
             object-fit: cover;
             margin-right: 16px;
@@ -116,59 +140,86 @@
             border: 1px solid #eee;
         }
 
-        .student-initial-fallback {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: #eee;
-            color: #666;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            font-weight: bold;
-            margin-right: 16px;
-            flex-shrink: 0;
-        }
-
         .student-info {
             flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-width: 0;
+            /* Text truncation fix */
         }
 
         .student-name {
             font-size: 16px;
-            font-weight: 700;
-            color: #222;
-            margin-bottom: 4px;
+            font-weight: 600;
+            /* Apple style bold but not heavy */
+            color: #111827;
+            /* Near black */
+            margin-bottom: 2px;
         }
 
         .student-project {
             font-size: 14px;
-            color: #555;
+            color: #6B7280;
+            /* Cool grey for secondary text */
             line-height: 1.3;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .attendance-actions {
             display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 12px;
-            margin-left: 10px;
+            align-items: center;
+            gap: 16px;
+            /* Space between icons */
+            margin-left: 12px;
         }
 
-        .points-badge {
-            font-size: 14px;
-            color: #666;
-            font-weight: 500;
-        }
-
-        .action-button {
+        /* Action Buttons */
+        .icon-btn {
             background: none;
             border: none;
+            padding: 8px;
             cursor: pointer;
-            color: #757575;
-            font-size: 24px;
-            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .icon-btn:active {
+            background-color: #f3f4f6;
+        }
+
+        .icon-img {
+            width: 24px;
+            height: 24px;
+            opacity: 0.7;
+        }
+
+        /* Checkbox Style for "Today" view */
+        .check-btn {
+            width: 32px;
+            height: 32px;
+            background: #22C55E;
+            /* Green */
+            border-radius: 6px;
+            /* Rounded square */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .check-btn.unchecked {
+            background: #E5E7EB;
+            color: transparent;
         }
 
         /* Warning Icon for absent/issue */
@@ -177,26 +228,7 @@
             font-size: 30px;
         }
 
-        /* FAB for Adding (Floating Action Button style from screenshot) */
-        .fab-add {
-            position: fixed;
-            bottom: 80px;
-            /* Above footer */
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            background-color: #db3236;
-            border-radius: 50%;
-            color: white;
-            border: none;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            cursor: pointer;
-            z-index: 900;
-        }
+
 
         /* --- FOOTER TABS --- */
         .footer-tabs {
@@ -286,8 +318,7 @@
         <!-- Content injected via JS -->
     </div>
 
-    <!-- FAB -->
-    <button class="fab-add" onclick="alert('Feature coming soon')">+</button>
+    <!-- FAB REMOVED -->
 
     <!-- FOOTER TABS -->
     <nav class="footer-tabs">
@@ -403,6 +434,20 @@
             }
         }
 
+        function renderHeadshot(url, name) {
+            const initial = name ? name.charAt(0).toUpperCase() : '?';
+            if (url) {
+                return `
+                    <div style="position: relative; width: 50px; height: 50px; margin-right: 16px;">
+                         <img src="${url}" class="student-headshot" style="position: absolute; top:0; left:0; width:100%; height:100%; margin:0;" 
+                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                         <div class="student-initial-fallback" style="display:none; width:100%; height:100%; margin:0;">${initial}</div>
+                    </div>
+                `;
+            }
+            return `<div class="student-initial-fallback">${initial}</div>`;
+        }
+
         function renderToday(container) {
             if (!studentsData || studentsData.length === 0) {
                 container.innerHTML = `
@@ -413,58 +458,166 @@
                 return;
             }
 
-            let html = '';
+            let html = '<div style="background: white; border-top: 1px solid #e5e7eb;">';
 
-            // Render Cards
             studentsData.forEach(student => {
-                // Image handling
-                let headshotHtml = `<div class="student-initial-fallback">${student.studentName ? student.studentName.charAt(0) : '?'}</div>`;
-                if (student.headshot) {
-                    // Logic to fix path if needed
-                    let url = student.headshot;
-                    if (url.includes('Child Names_Images/')) {
-                        // Assume server serves these under headshots/
-                        // The actual mapped path needs to be checked. For now, assuming raw URL or specific path mapping
-                        // If it's a google drive URL (lh3.google...), it works directly
-                        // If it's a local path from the sheet scraper which saves to Child Names_Images...
-                        // We need to know where /headshots points to.
-                        // Let's assume the sheet has full URLs or we need to map them.
-                        // For now, if it starts with http, use it.
-                    }
-
-                    headshotHtml = `<img src="${url}" class="student-headshot" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
-                                    <div class="student-initial-fallback" style="display:none">${student.studentName ? student.studentName.charAt(0) : '?'}</div>`;
-                }
+                const isCheckedIn = student.checkedIn === true;
+                const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
+                const checkContent = isCheckedIn ? '✓' : '';
 
                 html += `
-                <div class="student-card">
-                    ${headshotHtml}
+                <div class="student-card" onclick="openStudentDetail('${student.studentName.replace(/'/g, "\\'")}', '${student.headshot || ''}')" style="cursor: pointer;">
+                    ${renderHeadshot(student.headshot, student.studentName)}
+                    
                     <div class="student-info">
                         <div class="student-name">${student.studentName}</div>
                         <div class="student-project">${student.currentProject || 'No Active Project'}</div>
                     </div>
+                    
                     <div class="attendance-actions">
-                        <!-- Attendance Action Button -->
-                        <button class="action-button" onclick="toggleAttendance('${student.studentName}')">
-                             ✅
+                        <!-- Attendance Checkbox -->
+                        <button class="${checkBtnClass}" onclick="event.stopPropagation(); toggleAttendance(${student.rowIndex}, ${!isCheckedIn})">
+                             ${checkContent}
                         </button>
                     </div>
                 </div>
                 `;
             });
+            html += '</div>';
 
             container.innerHTML = html;
         }
 
-        function renderAllStudents(container) {
+        async function toggleAttendance(rowIndex, newStatus) {
+            // 1. Check Offline Status
+            if (!navigator.onLine) {
+                alert("You are offline, update was not made.");
+                return;
+            }
+
+            // Optimistic UI Update
+            const student = studentsData.find(s => s.rowIndex === rowIndex);
+            if (student) {
+                student.checkedIn = newStatus;
+                render(); // Re-render immediately
+            }
+
+            try {
+                const response = await fetch('/api/mark-attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rowIndex, status: newStatus })
+                });
+
+                if (!response.ok) throw new Error('Failed to update');
+
+                // Success
+            } catch (e) {
+                console.error(e);
+                alert('You are offline, update was not made.');
+                // Revert
+                if (student) {
+                    student.checkedIn = !newStatus;
+                    render();
+                }
+            }
+        }
+
+        async function renderAllStudents(container) {
             container.innerHTML = '<div class="loading-container">Loading all students...</div>';
 
-            // Reuse existing API or new one?
-            // Using simple placeholder implementation as requested
-            fetch('/api/instructors-list') // Just to test specific API, but we want students
-                .then(() => {
-                    container.innerHTML = '<div class="empty-state">Feature coming soon: All Students List</div>';
-                });
+            // Filter/Search State
+            let searchTerm = '';
+
+            try {
+                const response = await fetch('/api/all-kids');
+                const data = await response.json();
+
+                if (!data.success) throw new Error(data.error);
+
+                const students = data.kids;
+
+                // Render function to handle re-rendering on search
+                const renderList = () => {
+                    const filtered = students.filter(s =>
+                        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
+                    );
+
+                    if (filtered.length === 0) {
+                        return `<div class="empty-state">No students found matching "${searchTerm}"</div>`;
+                    }
+
+                    return filtered.map(s => {
+                        // Icons (SVGs mimicking the screenshot)
+                        const iconUser = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
+                        const iconEdit = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+                        const iconCamera = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
+
+                        return `
+                        <div class="student-card">
+                            ${renderHeadshot(s.headshot, s.name)}
+                            <div class="student-info">
+                                <div class="student-name">${s.name}</div>
+                                <div class="student-project">${s.email || ''}</div>
+                            </div>
+                            <div class="attendance-actions">
+                                <button class="icon-btn">${iconUser}<span style="font-size:10px; font-weight:bold; margin-left:-2px;">+</span></button>
+                                <button class="icon-btn">${iconEdit}</button>
+                                <button class="icon-btn">${iconCamera}</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('');
+                };
+
+                // Search Bar HTML
+                const searchHtml = `
+                    <div style="background: #db3236; padding: 10px 16px; color: white; display: flex; align-items: center; position: sticky; top: 60px; z-index: 99;">
+                         <div style="flex-grow: 1; position: relative;">
+                             <input type="text" id="studentSearch" placeholder="Search students..." 
+                                    style="width: 100%; padding: 8px 35px 8px 12px; border-radius: 4px; border: none; font-size: 14px; outline: none;"
+                                    value="${searchTerm}">
+                             <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #999;">🔍</div>
+                         </div>
+                         <div style="margin-left: 15px; font-size: 24px;">☑️</div>
+                         <div style="margin-left: 15px; font-size: 24px;">🔄</div>
+                    </div>
+                `;
+
+                // Override the main header? Or just place below?
+                // The main header is fixed. "All Students" view usually has its own sub-header or replaces functionality.
+                // The screenshot shows a red header "ALL STUDENTS" with specific icons.
+                // My APP header is already present. I'll modify the Page Title to "ALL STUDENTS" in switchTab.
+                // The search bar in screenshot is inside the red header.
+                // My header structure is: [Back] [Logo] [Title] ... [Search] [Check] [Refresh]
+                // I can reuse the main header actions! Just need to wire up the search icon to show a search bar.
+                // For simplicity/speed, I'll render the list directly.
+
+                // Let's attach the search event listener after rendering
+                const updateView = () => {
+                    container.innerHTML = `
+                        <div style="background: white; border-top: 1px solid #e5e7eb; padding-bottom: 80px;">
+                            ${renderList()}
+                        </div>
+                     `;
+                }
+
+                // Initial Render
+                updateView();
+
+                // Setup Search Logic (Hooks into existing header search icon or add one)
+                // Actually, let's keep it simple: List only for now as per "lists out ALL the kids" requirement.
+                // Screenshot has search icon in header. 
+
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = `<div class="empty-state">
+                    <h3>Failed to load students</h3>
+                    <p>${e.message}</p>
+                    <button onclick="renderAllStudents(document.getElementById('mainContent'))" style="margin-top:10px;">Retry</button>
+                </div>`;
+            }
         }
 
         function renderUploadTest(container) {
@@ -628,11 +781,122 @@
             }
         }
 
-        function toggleAttendance(name) {
-            // Mock action
-            alert(`Marked attendance for ${name}`);
+        // ============================================================================
+        // STUDENT DETAIL VIEW
+        // ============================================================================
+
+        async function openStudentDetail(studentName, headshotUrl) {
+            const container = document.getElementById('mainContent');
+
+            // 1. Show Loading State
+            container.innerHTML = '<div class="loading-container">Loading student details...</div>';
+
+            // Update Header
+            document.getElementById('pageTitle').innerText = studentName.toUpperCase();
+
+            // Hide Tabs (Detail view typically takes over)
+            // Or keep tabs but highlight none? Let's keep it simple.
+
+            try {
+                // 2. Fetch Data
+                const response = await fetch(`/api/student-projects/${encodeURIComponent(studentName)}`);
+                const data = await response.json();
+
+                if (data.success && data.student) {
+                    renderStudentDetail(data.student, headshotUrl);
+                } else {
+                    container.innerHTML = `<div class="empty-state">
+                        <h3>Failed to load details</h3>
+                        <p>${data.error || 'Student not found'}</p>
+                        <button onclick="switchTab('today')" style="margin-top:15px; padding:10px 20px; background:#db3236; color:white; border:none; border-radius:5px;">Back to Today</button>
+                    </div>`;
+                }
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = `<div class="empty-state">
+                    <h3>Connection Error</h3>
+                    <button onclick="switchTab('today')" style="margin-top:15px; padding:10px 20px; background:#db3236; color:white; border:none; border-radius:5px;">Back</button>
+                </div>`;
+            }
+        }
+
+        function renderStudentDetail(studentData, headshotUrl) {
+            const projects = studentData; // assignedProjects, inProgressProjects, completedProjects
+            const container = document.getElementById('mainContent');
+
+            // Helper for icons
+            const getIcon = (type) => {
+                const lower = (type || '').toLowerCase();
+                if (lower.includes('scratch')) return '🐱';
+                if (lower.includes('python')) return '🐍';
+                if (lower.includes('web')) return '🌐';
+                return '📄';
+            };
+
+            // Helper for sections
+            const renderSection = (title, items, icon, colorClass) => {
+                if (!items || items.length === 0) return '';
+
+                let listHtml = items.map(p => `
+                    <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center;">
+                        <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
+                        <div style="flex-grow: 1;">
+                            <div style="font-weight: 600; color: #333; font-size: 15px;">${p.name}</div>
+                            <div style="font-size: 12px; color: #777; margin-top: 2px;">
+                                ${p.type || 'Project'} • ${p.date || p.completedDate || p.status || 'Assigned'}
+                            </div>
+                        </div>
+                        ${p.rating ? `<div style="font-weight:bold; color:#F59E0B;">${p.rating}★</div>` : ''}
+                    </div>
+                `).join('');
+
+                return `
+                    <div style="margin-top: 20px; background: white; border-top: 4px solid ${colorClass}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                        <div style="padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; align-items: center; font-weight: bold; color: #444;">
+                            <span style="margin-right: 10px;">${icon}</span> ${title} (${items.length})
+                        </div>
+                        <div>${listHtml}</div>
+                    </div>
+                `;
+            };
+
+            const html = `
+                <div style="padding-bottom: 80px;">
+                    <!-- Header Profile -->
+                    <div style="background: white; padding: 20px; text-align: center; border-bottom: 1px solid #eee;">
+                        <img src="${headshotUrl || ''}" onerror="this.src='https://via.placeholder.com/100?text=?'" 
+                             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #db3236; margin-bottom: 10px;">
+                        <h2 style="margin: 0; color: #333;">${studentData.studentName}</h2>
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 15px;">
+                            <div style="text-align: center;">
+                                <div style="font-weight: bold; font-size: 18px; color: #db3236;">${studentData.totalPoints || 0}</div>
+                                <div style="font-size: 11px; color: #888; text-transform: uppercase;">Points</div>
+                            </div>
+                            <div style="text-align: center;">
+                                <div style="font-weight: bold; font-size: 18px; color: #333;">${studentData.totalCompleted || 0}</div>
+                                <div style="font-size: 11px; color: #888; text-transform: uppercase;">Completed</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sections -->
+                    ${renderSection('Assigned Projects', projects.assignedProjects, '📌', '#EF4444')}
+                    ${renderSection('Working On', projects.inProgressProjects, '🚧', '#3B82F6')}
+                    ${renderSection('Completed', projects.completedProjects, '✅', '#10B981')}
+
+                    <!-- Back Button -->
+                    <div style="padding: 20px; text-align: center;">
+                        <button onclick="switchTab('today')" style="background: #edf2f7; color: #4a5568; padding: 12px 30px; border: none; border-radius: 30px; font-weight: 600;">
+                            ← Back to Dashboard
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            container.innerHTML = html;
         }
     </script>
 </body>
 
 </html>
+```

@@ -2855,10 +2855,21 @@
             // Initialize Staging Environment
             console.log('Staging environment initialized');
 
+            // MOBILE DETECTION: Force Instructor Login
+            const isMobile = window.innerWidth <= 768; // Simple check matching CSS breakpoint
+
             // Ensure login modal is active
             // Ensure login modal is active ONLY if not logged in
             const modal = document.getElementById('loginModal');
-            if (modal && !currentStudent) {
+
+            if (isMobile) {
+                // FORCE INSTRUCTOR LOGIN ON MOBILE
+                console.log('Mobile device detected - Opening Instructor Login');
+                if (modal) modal.classList.remove('active'); // Ensure student modal is closed
+                openInstructorLogin(); // Defined earlier in file
+            }
+            else if (modal && !currentStudent) {
+                // DESKTOP: Open Student Login
                 modal.classList.add('active');
                 loadStudents(); // Load student list
 

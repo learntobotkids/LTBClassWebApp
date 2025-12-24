@@ -50,6 +50,10 @@ let lastStudentsFetch = 0;         // Timestamp of last fetch
 let progressCache = null;          // Stores: [{studentName: "Alice", projectName: "Calculator", ...}, ...]
 let lastProgressFetch = 0;         // Timestamp of last fetch
 
+// Cache for project list (Code -> Name map)
+let projectListCache = null;       // Stores: Map("PROJ101" -> "Intro to Scratch")
+let lastProjectListFetch = 0;      // Timestamp of last fetch
+
 // Cache for login names (just the names, for login dropdown)
 let loginNamesCache = null;        // Stores: ["Alice", "Bob", "Charlie", ...]
 let lastLoginNamesFetch = 0;       // Timestamp of last fetch
@@ -125,6 +129,114 @@ async function getGoogleSheetsClient() {
     } catch (error) {
         console.error('Error initializing Google Sheets client:', error.message);
         throw error;
+    }
+}
+
+/**
+ * Creates and returns a Google Drive API client
+ */
+async function getGoogleDriveClient() {
+    try {
+        let credentials;
+        if (process.env.GOOGLE_CREDENTIALS) {
+            credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+        } else {
+            const credentialsPath = path.join(__dirname, config.CREDENTIALS_PATH);
+            if (fs.existsSync(credentialsPath)) {
+                credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+            } else {
+                throw new Error('Credentials not found');
+            }
+        }
+
+        const auth = new google.auth.GoogleAuth({
+            credentials,
+            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+        });
+
+        const client = await auth.getClient();
+        return google.drive({ version: 'v3', auth: client });
+    } catch (error) {
+        console.error('Error initializing Google Drive client:', error.message);
+        throw error;
+    }
+}
+
+// ============================================================================
+// FUNCTION: Sync Headshots from Drive
+// ============================================================================
+
+/**
+ * Downloads all headshots from the configured Drive folder to public/headshots
+ */
+async function syncHeadshots() {
+    console.log('🔄 Starting Headshot Sync...');
+    const localDir = path.join(__dirname, 'public', 'headshots');
+
+    // Ensure directory exists
+    if (!fs.existsSync(localDir)) {
+        fs.mkdirSync(localDir, { recursive: true });
+    }
+
+    try {
+        const drive = await getGoogleDriveClient();
+        const folderId = config.DRIVE_HEADSHOTS_FOLDER_ID;
+
+        // List files in the folder
+        // We only want images
+        const res = await drive.files.list({
+            q: `'${folderId}' in parents and trashed = false and mimeType contains 'image/'`,
+            fields: 'files(id, name, mimeType)',
+            pageSize: 1000
+        });
+
+        const files = res.data.files;
+        if (!files || files.length === 0) {
+            console.log('No headshots found in Drive folder.');
+            return { success: true, count: 0, downloaded: 0 }; // Return success with 0 files
+        }
+
+        console.log(`Found ${files.length} headshots in Drive.`);
+        let downloadCount = 0;
+
+        for (const file of files) {
+            const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_'); // Safety
+            const localPath = path.join(localDir, sanitizedName);
+
+            // Skip if exists (simple caching strategy)
+            // Ideally we check mod time, but this suffices for static headshots
+            if (fs.existsSync(localPath)) {
+                continue;
+            }
+
+            console.log(`Downloading new headshot: ${file.name}...`);
+
+            const dest = fs.createWriteStream(localPath);
+            const response = await drive.files.get(
+                { fileId: file.id, alt: 'media' },
+                { responseType: 'stream' }
+            );
+
+            await new Promise((resolve, reject) => {
+                response.data
+                    .on('end', () => {
+                        downloadCount++;
+                        resolve();
+                    })
+                    .on('error', err => {
+                        console.error(`Error downloading ${file.name}:`, err);
+                        reject(err);
+                    })
+                    .pipe(dest);
+            });
+        }
+
+        console.log(`✅ Headshot Sync Complete. Downloaded ${downloadCount} new images.`);
+        return { success: true, count: files.length, downloaded: downloadCount };
+
+    } catch (error) {
+        console.error('❌ Headshot Sync Failed:', error.message);
+        return { success: false, error: error.message };
     }
 }
 
@@ -337,12 +449,37 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         // Column mapping relative to fetch range (D=0, E=1, ..., I=5)
         // Name is at index 0 (Column D)
         // Headshot is at index 5 (Column I)
+
+        // Cache local headshots for checking
+        let localHeadshots = new Set();
+        const headshotsDir = path.join(__dirname, 'public', 'headshots');
+        if (fs.existsSync(headshotsDir)) {
+            const files = fs.readdirSync(headshotsDir);
+            files.forEach(f => localHeadshots.add(f));
+        }
+
         const students = rows.slice(1)
             .filter(row => row[0] && row[0].trim())
-            .map(row => ({
-                name: row[0].trim(),
-                headshot: row[5] ? row[5].trim() : '' // Column I is index 5 relative to D
-            }));
+            .map(row => {
+                const name = row[0].trim();
+                let headshot = row[5] ? row[5].trim() : '';
+
+                // Try to map to local file
+                // Start by assuming Column I is the filename
+                // Handle cases where it might be a full path "Folder/Image.jpg"
+                let filename = path.basename(headshot);
+
+                // Also handle sanitized versions we might have downloaded
+                const sanitized = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+                if (localHeadshots.has(filename)) {
+                    headshot = `/headshots/${filename}`;
+                } else if (localHeadshots.has(sanitized)) {
+                    headshot = `/headshots/${sanitized}`;
+                }
+
+                return { name, headshot };
+            });
 
         // Remove duplicates (based on name) and sort alphabetically
         // Using a Map to keep unique names (last one wins if duplicate)
@@ -372,6 +509,67 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         throw error;
     }
 }
+
+/**
+ * Fetches the list of all projects and creates a map of Code -> Full Name
+ * 
+ * @param {boolean} forceRefresh - If true, ignore cache
+ * @returns {Promise<Map>} - Map of project code to full project name
+ */
+async function fetchProjectList(forceRefresh = false) {
+    const now = Date.now();
+
+    // Check cache
+    const cacheAge = now - lastProjectListFetch;
+    if (!forceRefresh && projectListCache && cacheAge < config.CACHE_DURATION) {
+        console.log('Returning cached project list');
+        return projectListCache;
+    }
+
+    try {
+        console.log('Fetching project list from Google Sheets...');
+
+        // Get authenticated Sheets API client
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch columns A (Code) and B (Name)
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.PROJECT_LIST_SHEET}!A:B`,
+        });
+
+        const rows = response.data.values || [];
+        const projectMap = new Map();
+
+        // Skip header, process rows
+        rows.slice(1).forEach(row => {
+            const code = row[config.PROJECT_LIST_COLUMNS.CODE]; // Column A
+            const name = row[config.PROJECT_LIST_COLUMNS.NAME]; // Column B
+
+            if (code) {
+                // If name is present, use it. If not, use code or empty string.
+                // We want to return just the Name part if possible, or maybe both?
+                // Requirement: "PROJxxx: <full project name>"
+                // So this map will store the Full Name part.
+                projectMap.set(code.trim().toUpperCase(), name ? name.trim() : '');
+            }
+        });
+
+        // Update cache
+        projectListCache = projectMap;
+        lastProjectListFetch = now;
+
+        return projectMap;
+
+    } catch (error) {
+        console.error('Error fetching project list:', error.message);
+        if (projectListCache) return projectListCache;
+        // Return empty map on failure if no cache
+        return new Map();
+    }
+}
+
+
 
 // ============================================================================
 // FUNCTION: Get Student Progress Summary
@@ -481,6 +679,22 @@ async function getStudentProjectsByName(studentName) {
         // Fetch all project log entries
         const projects = await fetchProjectLog();
 
+        // Fetch project name definitions (Code -> Full Name)
+        const projectMap = await fetchProjectList();
+
+        // Helper to formatting
+        // Code: "PROJ101" -> Map Value: "Introduction to Scratch"
+        // Result: "PROJ101 - Introduction to Scratch"
+        const formatProjectName = (code) => {
+            if (!code) return 'Unknown Project';
+            const cleanCode = code.trim();
+            const fullName = projectMap.get(cleanCode.toUpperCase());
+            if (fullName) {
+                return `${cleanCode} - ${fullName}`;
+            }
+            return cleanCode; // Fallback to just the code
+        };
+
         // Filter to only this student's projects (case-insensitive match)
         const normalizedSearchName = studentName.toLowerCase().trim();
         const studentProjects = projects.filter(project =>
@@ -496,11 +710,15 @@ async function getStudentProjectsByName(studentName) {
         studentProjects.forEach(project => {
             const statusLower = project.projectStatus ? project.projectStatus.toLowerCase() : '';
 
+            // Format the display name using our map
+            const displayName = formatProjectName(project.projectName);
+
             // Determine category based on status keywords
             if (statusLower.includes('completed')) {
                 // Completed project - include completion details
                 completedProjects.push({
-                    name: project.projectName,
+                    name: displayName,
+                    originalCode: project.projectName,
                     status: project.projectStatus,
                     completedDate: project.completedDate,
                     type: project.projectType,
@@ -510,7 +728,8 @@ async function getStudentProjectsByName(studentName) {
             } else if (statusLower.includes('progress') || statusLower.includes('working')) {
                 // In-progress project
                 inProgressProjects.push({
-                    name: project.projectName,
+                    name: displayName,
+                    originalCode: project.projectName,
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType
@@ -518,7 +737,8 @@ async function getStudentProjectsByName(studentName) {
             } else if (statusLower.includes('assigned') || statusLower.includes('assign')) {
                 // Newly assigned project
                 assignedProjects.push({
-                    name: project.projectName,
+                    name: displayName,
+                    originalCode: project.projectName,
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType,
@@ -577,16 +797,15 @@ async function fetchBookingInfo(forceRefresh = false) {
         const sheets = await getGoogleSheetsClient();
 
         // Fetch data
-        // We fetch columns A to M (Date is in M)
+        // We fetch columns A to N (Checked In is in N)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.BOOKING_SHEET}!A:M`,
+            range: `${config.BOOKING_SHEET}!A:N`,
         });
 
         const rows = response.data.values || [];
 
         // Helper to format today's date to match sheet format: "Jan 1, 2024"
-        // Note: This relies on server locale being US English
         const today = new Date();
         const options = { year: 'numeric', month: 'short', day: 'numeric' };
         // Clean format: "Dec 6, 2025"
@@ -595,9 +814,12 @@ async function fetchBookingInfo(forceRefresh = false) {
         console.log(`Filtering for date: ${todayStr}`);
 
         // Filter for today
-        const bookings = rows.slice(1) // Skip header
-            .filter(row => {
-                const dateStr = row[config.BOOKING_COLUMNS.CLASS_DATE];
+        // We map first to preserve the original row index (1-based)
+        const bookings = rows
+            .map((row, index) => ({ rowData: row, rowIndex: index + 1 })) // 1-based index
+            .slice(1) // Skip header
+            .filter(({ rowData }) => {
+                const dateStr = rowData[config.BOOKING_COLUMNS.CLASS_DATE];
                 // Simple string match first (fastest)
                 if (dateStr === todayStr) return true;
 
@@ -605,10 +827,12 @@ async function fetchBookingInfo(forceRefresh = false) {
                 const rowDate = new Date(dateStr);
                 return rowDate.toDateString() === today.toDateString();
             })
-            .map(row => ({
-                studentName: row[config.BOOKING_COLUMNS.STUDENT_NAME],
-                serviceTitle: row[config.BOOKING_COLUMNS.SERVICE_TITLE],
-                classDate: row[config.BOOKING_COLUMNS.CLASS_DATE]
+            .map(({ rowData, rowIndex }) => ({
+                studentName: rowData[config.BOOKING_COLUMNS.STUDENT_NAME],
+                serviceTitle: rowData[config.BOOKING_COLUMNS.SERVICE_TITLE],
+                classDate: rowData[config.BOOKING_COLUMNS.CLASS_DATE],
+                checkedIn: (rowData[config.BOOKING_COLUMNS.CHECKED_IN] || '').toString().toUpperCase() === 'TRUE',
+                rowIndex: rowIndex
             }))
             .filter(b => b.studentName && b.serviceTitle); // Ensure valid data
 
@@ -651,6 +875,7 @@ async function fetchEnrichedBookingInfo() {
 
         // 3. Get Project Logs
         const allProjects = await fetchProjectLog();
+        const projectMap = await fetchProjectList();
 
         // Helper to find latest project for a student
         const getLatestProject = (studentName) => {
@@ -694,10 +919,17 @@ async function fetchEnrichedBookingInfo() {
             const studentInfo = studentMap.get(name.toLowerCase().trim());
             const project = getLatestProject(name);
 
+            let currentProject = 'No active project';
+            if (project) {
+                const code = project.projectName.trim().toUpperCase();
+                const fullName = projectMap.get(code);
+                currentProject = fullName ? `${code} - ${fullName}` : project.projectName;
+            }
+
             return {
                 ...booking,
                 headshot: studentInfo ? studentInfo.headshot : '',
-                currentProject: project ? project.projectName : 'No active project'
+                currentProject: currentProject
             };
         });
 
@@ -940,199 +1172,44 @@ async function fetchInstructors(forceRefresh = false) {
 }
 
 // ============================================================================
-// EXPORT FUNCTIONS
+// FUNCTION: Mark Student Attendance
 // ============================================================================
-// Make these functions available to other files that import this module
 
-module.exports = {
-    fetchStudents,                  // Get student list
-    fetchProjectLog,                // Get all project log entries
-    fetchInstructors                // Get instructor list with credentials
-};
+/**
+ * Marks a student as present (Checked In) in the Google Sheet
+ * @param {number} rowIndex - The row index in the 'All Booking Info' sheet
+ * @param {boolean} status - TRUE for present, FALSE for absent/unchecked
+ */
+async function markStudentAttendance(rowIndex, status) {
+    if (!rowIndex) throw new Error('Row Index is required');
 
-// ============================================================================
-// HELPER: Get Google Drive Client
-// ============================================================================
-async function getGoogleDriveClient() {
     try {
-        let credentials;
+        console.log(`Marking attendance for Row ${rowIndex}: ${status}`);
+        const sheets = await getGoogleSheetsClient();
 
-        // Check for environment variable first (for cloud deployment)
-        if (process.env.GOOGLE_CREDENTIALS) {
-            credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
-        } else {
-            // Fall back to file for local/offline mode
-            const credentialsPath = path.join(__dirname, config.CREDENTIALS_PATH);
-            if (!fs.existsSync(credentialsPath)) {
-                throw new Error('Google credentials not found. Set GOOGLE_CREDENTIALS env var or provide ' + config.CREDENTIALS_PATH);
+        // Update Column N (14th column, so index 13)
+        // Range: All Booking Info!N{rowIndex}
+        const range = `${config.BOOKING_SHEET}!N${rowIndex}`;
+        const value = status ? 'TRUE' : 'FALSE';
+
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: range,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [[value]]
             }
-            credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
-        }
-
-        const auth = new google.auth.GoogleAuth({
-            credentials,
-            scopes: [
-                'https://www.googleapis.com/auth/spreadsheets.readonly',
-                'https://www.googleapis.com/auth/drive.readonly'
-            ],
         });
-        const client = await auth.getClient();
-        return google.drive({ version: 'v3', auth: client });
+
+        // Invalidate cache so UI refreshes with new data
+        bookingCache = null;
+        lastBookingFetch = 0;
+
+        return { success: true };
     } catch (error) {
-        console.error('Error initializing Google Drive client:', error.message);
+        console.error('Error marking attendance:', error);
         throw error;
     }
-}
-
-// ============================================================================
-// FUNCTION: Sync Headshots from Drive
-// ============================================================================
-/**
- * Downloads student headshots from Google Drive to local public/headshots folder
- */
-async function syncHeadshots() {
-    console.log('Starting headshot sync...');
-    const drive = await getGoogleDriveClient();
-
-    // 1. Get list of students and their expected headshot filenames
-    const students = await fetchStudentNamesForLogin(true);
-
-    // 2. Find the "Child Names_Images" subfolder
-    // The sheet paths look like "Child Names_Images/filename.jpg"
-    // So we need to find this folder first
-    let targetFolderId = config.DRIVE_HEADSHOTS_FOLDER_ID; // Default to root
-
-    console.log(`Searching for "Child Names_Images" folder inside ${targetFolderId}...`);
-
-    try {
-        const folderRes = await drive.files.list({
-            q: `'${targetFolderId}' in parents and name = 'Child Names_Images' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-            fields: 'files(id, name)',
-        });
-
-        if (folderRes.data.files && folderRes.data.files.length > 0) {
-            targetFolderId = folderRes.data.files[0].id;
-            console.log(`Found "Child Names_Images" folder: ${targetFolderId}`);
-        } else {
-            console.warn('Could not find "Child Names_Images" subfolder. Searching in root instead.');
-        }
-    } catch (err) {
-        console.error('Error finding subfolder:', err.message);
-    }
-
-    // 3. List files in the target folder
-    // We increase page size to ensure we get as many as possible
-    console.log(`Listing files in folder ${targetFolderId}...`);
-    let driveFiles = [];
-    try {
-        let nextPageToken = null;
-        do {
-            const res = await drive.files.list({
-                q: `'${targetFolderId}' in parents and trashed = false`,
-                fields: 'nextPageToken, files(id, name, mimeType)',
-                pageSize: 1000,
-                pageToken: nextPageToken
-            });
-
-            if (res.data.files) {
-                driveFiles.push(...res.data.files);
-            }
-            nextPageToken = res.data.nextPageToken;
-        } while (nextPageToken);
-
-        console.log(`Found ${driveFiles.length} files in Drive folder`);
-    } catch (err) {
-        console.error('Error listing files:', err.message);
-        return { downloaded: 0, errors: 1 };
-    }
-
-    // 4. Ensure local headshots directory exists
-    const headshotsDir = path.join(__dirname, 'public', 'headshots');
-    if (!fs.existsSync(headshotsDir)) {
-        fs.mkdirSync(headshotsDir, { recursive: true });
-    }
-
-    // 5. Match and download
-    let downloadCount = 0;
-    let errorCount = 0;
-
-    // Create a map for faster lookup
-    const driveFileMap = new Map();
-    driveFiles.forEach(f => driveFileMap.set(f.name, f));
-
-    // Prepare list of downloads
-    const downloadQueue = [];
-
-    for (const student of students) {
-        if (!student.headshot) continue;
-
-        // The sheet has "Child Names_Images/filename.jpg"
-        // We need just "filename.jpg" to match with Drive
-        const expectedFilename = student.headshot.split('/').pop();
-
-        // Find by name
-        const driveFile = driveFileMap.get(expectedFilename);
-
-        if (driveFile) {
-            // We use the FULL path from the sheet as the local filename structure?
-            // Wait, front-end expects "headshots/filename.jpg" (flattened) 
-            // OR "headshots/Child Names_Images/filename.jpg" (nested)?
-            // The frontend code I wrote handles "Child Names_Images/" prefix by replacing it with "headshots/".
-            // Implementation detail: Let's preserve the filename but put it directly in headshots/ 
-            // The frontend logic was: headshotUrl.replace('Child Names_Images/', 'headshots/')
-            // This implies the URL is "headshots/filename.jpg".
-            // So we should save it as "public/headshots/filename.jpg".
-
-            // BUT wait, multiple students might have same filename? Unlikely for headshots.
-            // Let's stick to flat structure in public/headshots/
-
-            const destPath = path.join(headshotsDir, expectedFilename);
-
-            // Optimization: Skip if file exists and size > 0?
-            // For now, let's just checking if it exists to save bandwidth/time, 
-            // assuming headshots don't change often.
-            if (!fs.existsSync(destPath)) {
-                downloadQueue.push({ fileId: driveFile.id, destPath, name: expectedFilename });
-            }
-        }
-    }
-
-    console.log(`identified ${downloadQueue.length} new headshots to download.`);
-
-    // Process queue with some concurrency limit (e.g., 5 at a time)
-    // to avoid hitting rate limits or opening too many streams
-    const CONCURRENCY = 5;
-    for (let i = 0; i < downloadQueue.length; i += CONCURRENCY) {
-        const batch = downloadQueue.slice(i, i + CONCURRENCY);
-        await Promise.all(batch.map(async (item) => {
-            try {
-                // console.log(`Downloading ${item.name}...`);
-                const dest = fs.createWriteStream(item.destPath);
-
-                const response = await drive.files.get(
-                    { fileId: item.fileId, alt: 'media' },
-                    { responseType: 'stream' }
-                );
-
-                await new Promise((resolve, reject) => {
-                    response.data
-                        .on('end', () => resolve())
-                        .on('error', err => reject(err))
-                        .pipe(dest);
-                });
-
-                downloadCount++;
-            } catch (err) {
-                console.error(`Failed to download ${item.name}:`, err.message);
-                errorCount++;
-                // Try to delete partial file
-                if (fs.existsSync(item.destPath)) fs.unlinkSync(item.destPath);
-            }
-        }));
-    }
-
-    console.log(`Headshot sync complete: ${downloadCount} new downloaded, ${errorCount} errors.`);
-    return { downloaded: downloadCount, errors: errorCount };
 }
 
 // ============================================================================
@@ -1140,49 +1217,29 @@ async function syncHeadshots() {
 // ============================================================================
 
 module.exports = {
+    // Core Fetchers
     fetchStudents,                  // Get student list
     fetchProjectLog,                // Get all project log entries
+    fetchProjectList,               // Get project code->name map
+    fetchInstructors,               // Get instructor list
     fetchStudentNamesForLogin,      // Get student names for login dropdown
+
+    // Aggregators & Helpers
     getStudentProgress,             // Get progress summary for all students
     getStudentProjectsByName,       // Get projects for one specific student
     fetchBookingInfo,               // Get today's classes
-    fetchEnrichedBookingInfo,       // Get enriched data for dashboard (NEW)
+    fetchEnrichedBookingInfo,       // Get enriched data for dashboard
     fetchAllKids,                   // Get all kids detailed data
+
+    // Sync & Misc
+    syncHeadshots,                  // Download headshots from Drive
     syncMasterDatabase,             // Download full sheet to local JSON
     getLocalMasterDB,               // Get local offline data
-    clearCache,                     // Clear all cached data
-    fetchInstructors                // Get instructor list with credentials
+    clearCache                      // Clear all cached data
 };
 
 /*
  * ============================================================================
  * END OF GOOGLE-SHEETS-SERVICE.JS
- * ============================================================================
- *
- * This service provides a clean interface for accessing Google Sheets data:
- *
- * CACHING STRATEGY:
- * - Data is cached in memory for CACHE_DURATION (5 minutes by default)
- * - Reduces API calls to Google (which have rate limits)
- * - If API call fails, returns stale cache instead of error (graceful degradation)
- * - Can force refresh by passing forceRefresh=true
- *
- * ERROR HANDLING:
- * - If fresh fetch fails, tries to return cached data (even if old)
- * - Logs errors but doesn't crash the app
- * - Allows offline operation when combined with local JSON caching
- *
- * USAGE EXAMPLE:
- * const googleSheetsService = require('./google-sheets-service');
- *
- * // Get student names for login
- * const students = await googleSheetsService.fetchStudentNamesForLogin();
- *
- * // Get progress for one student
- * const progress = await googleSheetsService.getStudentProjectsByName('Alice');
- *
- * // Force refresh
- * const freshData = await googleSheetsService.fetchProjectLog(true);
- *
  * ============================================================================
  */

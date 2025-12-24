@@ -13,6 +13,7 @@
 }
 
 @media (max-width: 768px) {
+
     /* Global Adjustments */
     body {
         padding-top: 70px;
@@ -55,12 +56,14 @@
     /* Hamburger - Show on right */
     .mobile-menu-btn {
         display: block;
-        color: white; /* Default to white if inherit fails */
+        color: white;
+        /* Default to white if inherit fails */
     }
-    
+
     /* Usually Auth is on the right, we might want to hide it or move it */
     .navbar-auth {
-        display: none; /* Simplify headers for now, or move into menu if needed */
+        display: none;
+        /* Simplify headers for now, or move into menu if needed */
     }
 
     /* Navbar Menu - Stacked and Hidden */
@@ -72,7 +75,8 @@
         margin-top: 15px;
         padding-top: 15px;
         border-top: 1px solid rgba(255, 255, 255, 0.1);
-        align-items: flex-start; /* Align left */
+        align-items: flex-start;
+        /* Align left */
     }
 
     .navbar-menu.mobile-open {
@@ -92,36 +96,38 @@
     .student-grid,
     .quick-actions,
     .student-stats,
-    .stats-bar, 
+    .stats-bar,
     .grid-container,
-    .projects-grid, 
+    .projects-grid,
     .clients-grid {
         grid-template-columns: 1fr !important;
         display: grid !important;
         gap: 15px !important;
     }
-    
+
     .stats-bar {
         flex-direction: column;
         gap: 20px;
     }
 
     /* Table Responsiveness */
-    .connections-table, table {
+    .connections-table,
+    table {
         display: block;
         width: 100%;
         overflow-x: auto;
     }
 
     /* Inputs and Buttons - Touch Friendly */
-    button, 
-    .action-btn, 
-    .navbar-btn, 
-    select, 
+    button,
+    .action-btn,
+    .navbar-btn,
+    select,
     input {
-        min-height: 48px; /* Touch target size */
+        min-height: 48px;
+        /* Touch target size */
     }
-    
+
     .search-input {
         width: 100%;
         max-width: none;
@@ -131,34 +137,42 @@
     .student-card {
         padding: 15px;
     }
-    
+
     .student-stats {
-        grid-template-columns: repeat(2, 1fr) !important; /* 2 columns might fit for stats */
+        grid-template-columns: repeat(2, 1fr) !important;
+        /* 2 columns might fit for stats */
     }
 
-    /* Sidebar logic for Staging page specifically */
+    /* Sidebar logic - HIDE completely on mobile as requested */
     #student-folder-sidebar {
-        position: static !important;
+        display: none !important;
+    }
+
+    /* Hide Connections Button on mobile */
+    .connection-monitor-btn,
+    #connectionBtn {
+        display: none !important;
+    }
+
+    .page-content {
+        margin-right: 0 !important;
+        padding: 15px;
         width: 100% !important;
-        height: auto !important;
-        border-left: none !important;
-        border-bottom: 2px solid #333;
-        margin-bottom: 20px;
-        padding-bottom: 20px;
     }
 
     .page-content {
         margin-right: 0 !important;
         padding: 15px;
     }
-    
+
     /* Project Page */
     .video-container {
-        padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+        padding-bottom: 56.25%;
+        /* 16:9 Aspect Ratio */
         height: 0;
         position: relative;
     }
-    
+
     .video-container iframe,
     .video-container video {
         width: 100%;
@@ -170,6 +184,13 @@
 }
 
 @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

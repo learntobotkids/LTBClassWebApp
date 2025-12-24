@@ -100,6 +100,12 @@ module.exports = {
      */
     INSTRUCTORS_SHEET: 'instructors',
 
+    /**
+     * Name of the sheet (tab) containing full project details
+     * Default: 'Project List'
+     */
+    PROJECT_LIST_SHEET: 'Project List',
+
     // ========================================================================
     // COLUMN MAPPINGS FOR STUDENT NAMES SHEET
     // ========================================================================
@@ -151,7 +157,8 @@ module.exports = {
     BOOKING_COLUMNS: {
         STUDENT_NAME: 4,    // Column E: Student's full name
         SERVICE_TITLE: 7,   // Column H: Class/Service Title
-        CLASS_DATE: 12      // Column M: Date of class (e.g., "Jul 1, 2024")
+        CLASS_DATE: 12,     // Column M: Date of class
+        CHECKED_IN: 13      // Column N: Checked In? (TRUE/FALSE)
     },
 
     // ========================================================================
@@ -163,12 +170,26 @@ module.exports = {
     },
 
     // ========================================================================
+    // COLUMN MAPPINGS FOR PROJECT LIST SHEET
+    // ========================================================================
+    PROJECT_LIST_COLUMNS: {
+        CODE: 0,            // Column A: Project Code (e.g., PROJ101)
+        NAME: 1             // Column B: Full Project Name
+    },
+
+    /**
+     * Name of the sheet (tab) containing project list
+     * Default: 'Projects List'
+     */
+    PROJECT_LIST_SHEET: 'Projects List',
+
+    // ========================================================================
     // COLUMN MAPPINGS FOR ALL KIDS PAGE (Relative to 'Child Names!A:Z')
     // ========================================================================
     ALL_KIDS_COLUMNS: {
-        NAME: 3,            // Column D: Child Name
-        PARENT_NAME: 6,     // Column G: Parent Name
-        EMAIL: 7,           // Column H: Email
+        NAME: 2,            // Column C: Child names
+        PARENT_NAME: 4,     // Column E: Parent First Name (or F for Last)
+        EMAIL: 1,           // Column B: Parent Email
         HEADSHOT: 8         // Column I: Headshot
     },
 

@@ -981,6 +981,25 @@ app.get('/api/google-sheets/student-progress', async (req, res) => {
 });
 
 /**
+ * POST /api/mark-attendance
+ * Updates student attendance status
+ */
+app.post('/api/mark-attendance', async (req, res) => {
+    try {
+        const { rowIndex, status } = req.body;
+        if (!rowIndex) {
+            return res.status(400).json({ success: false, error: 'Row Index is required' });
+        }
+
+        await googleSheetsService.markStudentAttendance(rowIndex, status);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error marking attendance:', error);
+        res.status(500).json({ success: false, error: 'Failed to update attendance' });
+    }
+});
+
+/**
  * GET /api/all-kids
  * API Endpoint: Get All Kids (Detailed)
  */
@@ -991,6 +1010,36 @@ app.get('/api/all-kids', async (req, res) => {
     } catch (error) {
         console.error('Error fetching all kids:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch kids data' });
+    }
+});
+
+
+// Initialize cached data and sync headshots on startup
+(async () => {
+    try {
+        await googleSheetsService.fetchStudents();
+        console.log('✅ Initial student data cached');
+
+        // Sync Headshots
+        console.log('📸 Syncing headshots from Drive...');
+        googleSheetsService.syncHeadshots().then(res => {
+            console.log(`Heashot sync finished: ${res.downloaded} new files.`);
+        }).catch(err => {
+            console.error('Headshot sync warning:', err.message);
+        });
+
+    } catch (error) {
+        console.error('⚠️ Initial data fetch failed:', error.message);
+    }
+})();
+
+// Endpoint to force headshot sync
+app.get('/api/sync-headshots', async (req, res) => {
+    try {
+        const result = await googleSheetsService.syncHeadshots();
+        res.json({ success: true, ...result });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -1475,17 +1524,35 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Upload failed:', error);
-
+        console.error('Upload error:', error);
         // Cleanup on error too
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
+        next(error);
+    }
+});
 
-        res.status(500).json({
-            success: false,
-            error: 'Upload failed: ' + error.message
+// ============================================================================
+// STUDENT DETAIL ENDPOINT (FOR INSTRUCTOR DASHBOARD)
+// ============================================================================
+app.get('/api/student-projects/:studentName', async (req, res, next) => {
+    try {
+        const studentName = req.params.studentName;
+        if (!studentName) {
+            return res.status(400).json({ success: false, error: 'Student name is required' });
+        }
+
+        console.log(`Fetching project history for: ${studentName}`);
+        const data = await googleSheetsService.getStudentProjectsByName(studentName);
+
+        res.json({
+            success: true,
+            student: data
         });
+    } catch (error) {
+        console.error(`Error fetching projects for ${req.params.studentName}:`, error);
+        next(error);
     }
 });
 
