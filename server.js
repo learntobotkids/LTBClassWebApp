@@ -1426,10 +1426,21 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
         console.log(`Starting upload to Drive: ${fileName} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
 
         // 1. Authenticate with Google Drive
-        const auth = new google.auth.GoogleAuth({
-            keyFile: config.CREDENTIALS_PATH,
-            scopes: ['https://www.googleapis.com/auth/drive'],
-        });
+        let auth;
+        if (process.env.GOOGLE_CREDENTIALS) {
+            // PROD: Use environment variable
+            const credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
+            auth = new google.auth.GoogleAuth({
+                credentials,
+                scopes: ['https://www.googleapis.com/auth/drive'],
+            });
+        } else {
+            // LOCAL: Use file
+            auth = new google.auth.GoogleAuth({
+                keyFile: config.CREDENTIALS_PATH,
+                scopes: ['https://www.googleapis.com/auth/drive'],
+            });
+        }
         const drive = google.drive({ version: 'v3', auth });
 
         // 2. Stream file to Drive
