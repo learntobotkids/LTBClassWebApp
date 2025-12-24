@@ -3,247 +3,635 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Today's Classes | Instructor Dashboard</title>
-    <!-- Use same theme as All Kids page for consistency -->
-    <link rel="stylesheet" href="kids-theme.css">
-    <link rel="stylesheet" href="mobile.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Instructor Dashboard</title>
+    <!-- Use standard font similar to screenshot -->
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Navbar consistency overrides */
-        .navbar {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            background: linear-gradient(135deg, #1F2937 0%, #111827 100%) !important;
-            border-bottom: 2px solid #3B82F6 !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
-            z-index: 1000 !important;
-            padding: 0 20px !important;
-            height: 70px !important;
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .navbar-container {
-            max-width: 1400px;
-            margin: 0 auto;
+        body {
+            font-family: 'Nunito', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            /* Light grey background */
+            padding-top: 60px;
+            /* Space for fixed header */
+            padding-bottom: 70px;
+            /* Space for fixed footer */
+            color: #333;
+        }
+
+        /* --- HEADER --- */
+        .app-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            /* Site Theme Gradient */
+            background: linear-gradient(180deg, #292E49 0%, #536976 100%);
+            /* Teal Border */
+            border-bottom: 4px solid #4ECDC4;
+            color: white;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            height: 70px !important;
+            padding: 0 16px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
         }
 
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #E5E7EB !important;
-            text-decoration: none;
-            font-size: 1.5em !important;
-            font-weight: 700;
-            transition: all 0.3s ease;
-            text-shadow: none !important;
-        }
-
-        /* Adjust page content for fixed navbar */
-        body {
-            padding-top: 80px;
-        }
-
-        .kids-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 25px;
-            padding: 20px 0;
-        }
-
-        .kid-card {
-            background: #1F2937;
-            border-radius: 15px;
-            overflow: hidden;
-            border: 1px solid #374151;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .kid-header {
-            background: #374151;
-            padding: 20px;
+        .header-left {
             display: flex;
             align-items: center;
             gap: 15px;
-            border-bottom: 1px solid #4B5563;
         }
 
-        .kid-initial {
+        .back-icon {
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .app-logo {
+            width: 32px;
+            height: 32px;
+            background: white;
+            border-radius: 50%;
+            padding: 2px;
+        }
+
+        .app-logo img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .header-right {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-icon {
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        /* --- CONTENT AREA --- */
+        .content-area {
+            width: 100%;
+            max-width: 600px;
+            /* Limit width on desktop */
+            margin: 0 auto;
+        }
+
+        /* --- STUDENT CARD --- */
+        .student-card {
+            background: white;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .student-headshot {
             width: 60px;
             height: 60px;
             border-radius: 50%;
-            background: #4F46E5;
-            color: white;
+            object-fit: cover;
+            margin-right: 16px;
+            flex-shrink: 0;
+            border: 1px solid #eee;
+        }
+
+        .student-initial-fallback {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #eee;
+            color: #666;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8em;
+            font-size: 24px;
             font-weight: bold;
-            border: 3px solid #818CF8;
+            margin-right: 16px;
+            flex-shrink: 0;
         }
 
-        .kid-name {
-            font-size: 1.3em;
-            font-weight: 600;
-            color: #F3F4F6;
-        }
-
-        .kid-body {
-            padding: 20px;
+        .student-info {
             flex-grow: 1;
+        }
+
+        .student-name {
+            font-size: 16px;
+            font-weight: 700;
+            color: #222;
+            margin-bottom: 4px;
+        }
+
+        .student-project {
+            font-size: 14px;
+            color: #555;
+            line-height: 1.3;
+        }
+
+        .attendance-actions {
             display: flex;
             flex-direction: column;
+            align-items: flex-end;
             gap: 12px;
+            margin-left: 10px;
         }
 
-        .info-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            color: #D1D5DB;
+        .points-badge {
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
         }
 
-        .info-icon {
-            color: #9CA3AF;
-            width: 20px;
-            text-align: center;
+        .action-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #757575;
+            font-size: 24px;
+            padding: 4px;
         }
 
-        .info-value {
-            color: #E5E7EB;
+        /* Warning Icon for absent/issue */
+        .warning-icon {
+            color: #BDBDBD;
+            font-size: 30px;
         }
 
-        .class-badge {
-            background: #10B981;
+        /* FAB for Adding (Floating Action Button style from screenshot) */
+        .fab-add {
+            position: fixed;
+            bottom: 80px;
+            /* Above footer */
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background-color: #db3236;
+            border-radius: 50%;
             color: white;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.8em;
-            font-weight: bold;
-            display: inline-block;
-            margin-top: 5px;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            cursor: pointer;
+            z-index: 900;
         }
+
+        /* --- FOOTER TABS --- */
+        .footer-tabs {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60px;
+            background: #db3236;
+            /* Using same red for active, based on request/screenshot interpretation or maybe white? Screenshot usually has white/dark footer. User said "persistent footer... selectable from bottom". Let's assume a standard tab bar look. Usually white bg with icons. */
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #757575;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .tab-item.active {
+            color: #db3236;
+        }
+
+        .tab-icon {
+            font-size: 24px;
+            margin-bottom: 2px;
+        }
+
+        /* Loading State */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        /* Empty State */
+        .empty-state {
+            padding: 40px;
+            text-align: center;
+            color: #888;
+        }
+
+        /* --- ICONS SVG --- */
+        /* Using inline SVG for simplicity and performance */
     </style>
 </head>
 
 <body>
 
-    <!-- Navigation Bar -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <a href="/" class="navbar-brand">
-                <span class="navbar-logo">🤖</span>
-                <span>LearnToBot</span>
-            </a>
-            <div style="color: #9CA3AF;">Instructor Dashboard</div>
-            <a href="/" class="navbar-btn" onclick="logoutInstructor()">Logout</a>
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="back-icon" onclick="logout()">←</div>
+            <div class="app-logo">
+                <!-- Simple logo placeholder -->
+                <div
+                    style="width: 100%; height: 100%; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+                    🤖</div>
+            </div>
+            <div class="header-title" id="pageTitle">TODAY</div>
+        </div>
+        <div class="header-right">
+            <div class="header-icon">🔍</div> <!-- Search -->
+            <div class="header-icon">☑️</div> <!-- Select/Check -->
+            <div class="header-icon" onclick="loadData()">🔄</div> <!-- Refresh -->
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <div class="content-area" id="mainContent">
+        <!-- Content injected via JS -->
+    </div>
+
+    <!-- FAB -->
+    <button class="fab-add" onclick="alert('Feature coming soon')">+</button>
+
+    <!-- FOOTER TABS -->
+    <nav class="footer-tabs">
+        <div class="tab-item active" onclick="switchTab('today')">
+            <div class="tab-icon">📅</div>
+            <div>TODAY</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('all')">
+            <div class="tab-icon">👥</div>
+            <div>ALL KIDS</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('report')">
+            <div class="tab-icon">📊</div>
+            <div>CLASS REPORT</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('projects')">
+            <div class="tab-icon">📁</div>
+            <div>PROJECTS</div>
+        </div>
+        <div class="tab-item" onclick="switchTab('upload')"> <!-- NEW TAB -->
+            <div class="tab-icon">📤</div>
+            <div style="font-size: 10px;">VIDEO TEST</div>
         </div>
     </nav>
 
-    <div class="page-content">
-        <div class="header-section">
-            <h1 style="margin-bottom: 10px;">Today's Classes</h1>
-            <p style="color: #9CA3AF;" id="dateDisplay">Loading date...</p>
-        </div>
-
-        <div id="loading" class="loading-container" style="text-align: center; padding: 50px; color: #9CA3AF;">
-            <h2>Loading Today's Schedule...</h2>
-        </div>
-
-        <div id="kidsGrid" class="kids-grid" style="display: none;"></div>
-        <div id="error" class="error" style="display: none; text-align: center; margin-top: 20px; color: #EF4444;">
-        </div>
-    </div>
-
     <script>
-        // Check authentication
-        if (!localStorage.getItem('instructorLoggedIn')) {
-            window.location.href = '/';
-        }
+        // State
+        let currentTab = 'today';
+        let studentsData = [];
 
-        document.getElementById('dateDisplay').textContent = new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            checkLogin();
+            loadData();
         });
 
-        async function loadTodaysStudents() {
-            try {
-                const response = await fetch('/api/todays-students');
-                const data = await response.json();
-
-                if (data.success) {
-                    renderStudents(data.students);
-                } else {
-                    showError(data.error || 'Failed to load data');
-                }
-            } catch (err) {
-                console.error('Error:', err);
-                showError('Check your connection to the server.');
+        function checkLogin() {
+            if (localStorage.getItem('instructorLoggedIn') !== 'true') {
+                // If not logged in, redirect home
+                window.location.href = '/';
             }
         }
 
-        function renderStudents(students) {
-            const grid = document.getElementById('kidsGrid');
-            const loading = document.getElementById('loading');
-
-            loading.style.display = 'none';
-            grid.style.display = 'grid';
-            grid.innerHTML = '';
-
-            if (students.length === 0) {
-                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #9CA3AF;">No classes scheduled for today.</div>';
-                return;
-            }
-
-            students.forEach(student => {
-                const card = document.createElement('div');
-                card.className = 'kid-card';
-                card.innerHTML = `
-                    <div class="kid-header">
-                        <div class="kid-initial">${student.studentName.charAt(0)}</div>
-                        <div>
-                            <div class="kid-name">${student.studentName}</div>
-                            <div class="class-badge">${student.serviceTitle}</div>
-                        </div>
-                    </div>
-                    <div class="kid-body">
-                         <div class="info-row">
-                            <span class="info-icon">📅</span>
-                            <div>
-                                <div style="font-size: 0.85em; color: #9CA3AF;">Class Date</div>
-                                <div class="info-value">${student.classDate}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function showError(msg) {
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
-            loading.style.display = 'none';
-            error.style.display = 'block';
-            error.textContent = 'Error: ' + msg;
-        }
-
-        function logoutInstructor() {
+        function logout() {
             localStorage.removeItem('instructorLoggedIn');
             window.location.href = '/';
         }
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', loadTodaysStudents);
+        function switchTab(tab) {
+            // Update UI
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            // Find component based on index or text
+            const index = ['today', 'all', 'report', 'projects', 'upload'].indexOf(tab);
+            if (index >= 0) {
+                document.querySelectorAll('.tab-item')[index].classList.add('active');
+            }
+
+            currentTab = tab;
+
+            // Update Header Title
+            const titles = {
+                'today': 'TODAY',
+                'all': 'ALL STUDENTS',
+                'report': 'CLASS REPORT',
+                'projects': 'PROJECTS',
+                'upload': 'VIDEO UPLOAD TEST'
+            };
+            document.getElementById('pageTitle').innerText = titles[tab];
+
+            // Re-render content
+            render();
+        }
+
+        async function loadData() {
+            const container = document.getElementById('mainContent');
+            container.innerHTML = '<div class="loading-container"><div>Loading...</div></div>';
+
+            try {
+                // Fetch Today's Students
+                const response = await fetch('/api/todays-students');
+                const data = await response.json();
+
+                if (data.success) {
+                    studentsData = data.students;
+                    render();
+                } else {
+                    container.innerHTML = `<div class="empty-state">
+                        <h3>Failed to load data</h3>
+                        <p style="color: red;">${data.error || 'Unknown error'}</p>
+                    </div>`;
+                }
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = `<div class="empty-state">
+                    <h3>Connection Error</h3>
+                    <p>Could not connect to server.</p>
+                </div>`;
+            }
+        }
+
+        function render() {
+            const container = document.getElementById('mainContent');
+            container.innerHTML = '';
+
+            if (currentTab === 'today') {
+                renderToday(container);
+            } else if (currentTab === 'all') {
+                renderAllStudents(container);
+            } else if (currentTab === 'upload') {
+                renderUploadTest(container);
+            } else {
+                container.innerHTML = '<div class="empty-state">This page is empty for now.</div>';
+            }
+        }
+
+        function renderToday(container) {
+            if (!studentsData || studentsData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No classes found for today</h3>
+                        <p>Check the scheduled bookings.</p>
+                    </div>`;
+                return;
+            }
+
+            let html = '';
+
+            // Render Cards
+            studentsData.forEach(student => {
+                // Image handling
+                let headshotHtml = `<div class="student-initial-fallback">${student.studentName ? student.studentName.charAt(0) : '?'}</div>`;
+                if (student.headshot) {
+                    // Logic to fix path if needed
+                    let url = student.headshot;
+                    if (url.includes('Child Names_Images/')) {
+                        // Assume server serves these under headshots/
+                        // The actual mapped path needs to be checked. For now, assuming raw URL or specific path mapping
+                        // If it's a google drive URL (lh3.google...), it works directly
+                        // If it's a local path from the sheet scraper which saves to Child Names_Images...
+                        // We need to know where /headshots points to.
+                        // Let's assume the sheet has full URLs or we need to map them.
+                        // For now, if it starts with http, use it.
+                    }
+
+                    headshotHtml = `<img src="${url}" class="student-headshot" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                                    <div class="student-initial-fallback" style="display:none">${student.studentName ? student.studentName.charAt(0) : '?'}</div>`;
+                }
+
+                html += `
+                <div class="student-card">
+                    ${headshotHtml}
+                    <div class="student-info">
+                        <div class="student-name">${student.studentName}</div>
+                        <div class="student-project">${student.currentProject || 'No Active Project'}</div>
+                    </div>
+                    <div class="attendance-actions">
+                        <!-- Attendance Action Button -->
+                        <button class="action-button" onclick="toggleAttendance('${student.studentName}')">
+                             ✅
+                        </button>
+                    </div>
+                </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function renderAllStudents(container) {
+            container.innerHTML = '<div class="loading-container">Loading all students...</div>';
+
+            // Reuse existing API or new one?
+            // Using simple placeholder implementation as requested
+            fetch('/api/instructors-list') // Just to test specific API, but we want students
+                .then(() => {
+                    container.innerHTML = '<div class="empty-state">Feature coming soon: All Students List</div>';
+                });
+        }
+
+        function renderUploadTest(container) {
+            container.innerHTML = `
+                <div style="padding: 24px; max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px;">
+                    <h2 style="color: #2D3748; margin-bottom: 20px; font-size: 1.5em; text-align: center;">📹 Video Upload Test</h2>
+                    
+                    <div style="border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
+                        <input type="file" id="videoInput" accept="video/*" style="display: none;" onchange="handleFileSelect(this)">
+                        <label for="videoInput" style="cursor: pointer; display: block;">
+                            <div style="font-size: 40px; margin-bottom: 10px;">☁️</div>
+                            <span style="color: #4A5568; font-weight: 500;">Click to select video</span>
+                            <div id="fileName" style="margin-top: 10px; color: #3182CE; font-size: 0.9em; font-weight: bold; overflow-wrap: break-word;"></div>
+                        </label>
+                    </div>
+
+                    <div id="progressContainer" style="display: none; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #4A5568; font-size: 0.9em;">
+                            <span id="uploadStatus">Uploading...</span>
+                            <span id="uploadPercent">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 10px; background: #EDF2F7; border-radius: 5px; overflow: hidden;">
+                            <div id="progressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
+                        </div>
+                        <p id="timeRemaining" style="font-size: 0.8em; color: #718096; text-align: right; margin-top: 5px;">Estimating time...</p>
+                    </div>
+
+                    <div id="uploadResult" style="display: none; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;"></div>
+
+                    <button id="uploadBtn" onclick="uploadVideo()" disabled 
+                            style="width: 100%; padding: 12px; background: #CBD5E0; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: not-allowed; transition: all 0.2s;">
+                        Start Upload
+                    </button>
+                    
+                    <p style="text-align: center; color: #718096; font-size: 0.8em; margin-top: 15px;">
+                        Videos will be uploaded to the test Google Drive folder.
+                    </p>
+                </div>
+            `;
+        }
+
+        let selectedFile = null;
+
+        function handleFileSelect(input) {
+            if (input.files && input.files[0]) {
+                selectedFile = input.files[0];
+                document.getElementById('fileName').innerText = selectedFile.name;
+
+                const btn = document.getElementById('uploadBtn');
+                btn.disabled = false;
+                btn.style.background = '#3182CE'; // Blue
+                btn.style.cursor = 'pointer';
+
+                // Hide previous results
+                document.getElementById('uploadResult').style.display = 'none';
+                document.getElementById('progressContainer').style.display = 'none';
+            }
+        }
+
+        function uploadVideo() {
+            if (!selectedFile) return;
+
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.style.background = '#CBD5E0';
+            btn.innerText = 'Uploading...';
+
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const percentText = document.getElementById('uploadPercent');
+            const statusText = document.getElementById('uploadStatus');
+            const timeText = document.getElementById('timeRemaining');
+            const resultDiv = document.getElementById('uploadResult');
+
+            progressContainer.style.display = 'block';
+            resultDiv.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('video', selectedFile);
+
+            const xhr = new XMLHttpRequest();
+            const startTime = Date.now();
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percent + '%';
+                    percentText.innerText = Math.round(percent) + '%';
+
+                    // Calculate remaining time
+                    const elapsedTime = (Date.now() - startTime) / 1000; // seconds
+                    const uploadSpeed = e.loaded / elapsedTime; // bytes per second
+                    const remainingBytes = e.total - e.loaded;
+                    const remainingSeconds = remainingBytes / uploadSpeed;
+
+                    if (remainingSeconds < 60) {
+                        timeText.innerText = `~${Math.round(remainingSeconds)}s remaining`;
+                    } else {
+                        timeText.innerText = `~${Math.round(remainingSeconds / 60)}m remaining`;
+                    }
+                }
+            });
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    btn.innerText = 'Start Upload';
+                    btn.disabled = false;
+                    btn.style.background = '#3182CE';
+
+                    if (xhr.status === 200) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                statusText.innerText = 'Complete!';
+                                timeText.innerText = '';
+
+                                resultDiv.className = 'success-box';
+                                resultDiv.style.background = '#C6F6D5';
+                                resultDiv.style.color = '#22543D';
+                                resultDiv.style.display = 'block';
+                                resultDiv.innerHTML = `
+                                    <strong>✅ Upload Successful!</strong><br>
+                                    <span style="font-size: 0.9em">File ID: ${response.fileId}</span>
+                                `;
+
+                                // Reset file input
+                                document.getElementById('videoInput').value = '';
+                                selectedFile = null;
+                                document.getElementById('fileName').innerText = '';
+                            } else {
+                                throw new Error(response.error);
+                            }
+                        } catch (e) {
+                            showError(e.message || 'Unknown server error');
+                        }
+                    } else {
+                        // Try to parse error message from server
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            showError(response.error || 'Server error ' + xhr.status);
+                        } catch (e) {
+                            console.error('Failed to parse error response:', xhr.responseText);
+                            // Alert the user with the raw text so they can tell us what it says
+                            alert('CRITICAL SERVER ERROR (See Console for details):\n\n' + xhr.responseText.substring(0, 200));
+                            showError('Server Code ' + xhr.status + '. Raw response alerted.');
+                        }
+                    }
+                }
+            };
+
+            xhr.open('POST', '/api/upload-video', true);
+            xhr.send(formData);
+
+            function showError(msg) {
+                statusText.innerText = 'Failed';
+                progressBar.style.background = '#FC8181'; // Red
+                resultDiv.style.background = '#FED7D7';
+                resultDiv.style.color = '#742A2A';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `<strong>❌ Error:</strong> ${msg}`;
+            }
+        }
+
+        function toggleAttendance(name) {
+            // Mock action
+            alert(`Marked attendance for ${name}`);
+        }
     </script>
 </body>
 

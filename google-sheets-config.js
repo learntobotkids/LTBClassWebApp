@@ -58,6 +58,12 @@ module.exports = {
      */
     DRIVE_HEADSHOTS_FOLDER_ID: '1oKkD9JYBAhSM5NKXy9gcejXZ6DkEwVL3',
 
+    /**
+     * Folder ID for Video Upload Tests
+     * URL: https://drive.google.com/drive/u/0/folders/0AKsnksCLda4GUk9PVA
+     */
+    VIDEO_UPLOAD_FOLDER_ID: '0AKsnksCLda4GUk9PVA',
+
     // ========================================================================
     // SHEET/TAB NAMES
     // ========================================================================

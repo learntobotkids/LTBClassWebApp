@@ -48,12 +48,21 @@ require('dotenv').config();
 
 const express = require('express');        // Creates web server and handles web requests
 const path = require('path');              // Helps work with file/folder paths (works on Windows, Mac, Linux)
-const os = require('os');                  // Gets info about the computer (hostname, network, etc.)
-const fs = require('fs');                  // Reads and writes files on the computer
-const csv = require('csv-parser');         // Reads CSV (spreadsheet) files
+const os = require('os');                  // For getting system info (and temp dir)
+const fs = require('fs');                  // Reading/writing files
+const csv = require('csv-parser');         // Tool for reading CSV files (simple spreadsheets)
+const { google } = require('googleapis');  // Google API client
+const multer = require('multer');          // Middleware for handling file uploads
+
+// Configure Multer for file uploads (store in temp directory)
+const upload = multer({
+    dest: os.tmpdir(),
+    limits: { fileSize: 500 * 1024 * 1024 } // Limit to 500MB
+});
 const http = require('http');              // Creates HTTP server (the foundation of web servers)
 const socketIO = require('socket.io');     // Enables real-time, two-way communication (like walkie-talkies)
 const googleSheetsService = require('./google-sheets-service'); // Our custom code for Google Sheets
+const config = require('./google-sheets-config'); // Configuration file
 const { exec } = require('child_process'); // Execute system commands (to open folders)
 
 // ============================================================================
@@ -1389,11 +1398,83 @@ app.post('/api/instructor-login', express.json(), async (req, res) => {
  */
 app.get('/api/todays-students', async (req, res) => {
     try {
-        const students = await googleSheetsService.fetchBookingInfo();
+        const students = await googleSheetsService.fetchEnrichedBookingInfo();
         res.json({ success: true, students });
     } catch (error) {
         console.error('Error fetching todays students:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch bookings' });
+    }
+});
+
+
+// ============================================================================
+// VIDEO UPLOAD ENDPOINT
+// ============================================================================
+app.post('/api/upload-video', upload.single('video'), async (req, res) => {
+    console.log('Received video upload request');
+
+    if (!req.file) {
+        return res.status(400).json({ success: false, error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    // Sanitize filename to remove non-ascii chars which might cause issues
+    const fileName = req.file.originalname.replace(/[^\x00-\x7F]/g, "");
+    const mimeType = req.file.mimetype;
+
+    try {
+        console.log(`Starting upload to Drive: ${fileName} (${(req.file.size / 1024 / 1024).toFixed(2)} MB)`);
+
+        // 1. Authenticate with Google Drive
+        const auth = new google.auth.GoogleAuth({
+            keyFile: config.CREDENTIALS_PATH,
+            scopes: ['https://www.googleapis.com/auth/drive'],
+        });
+        const drive = google.drive({ version: 'v3', auth });
+
+        // 2. Stream file to Drive
+        const fileMetadata = {
+            name: fileName,
+            parents: [config.VIDEO_UPLOAD_FOLDER_ID]
+        };
+
+        const media = {
+            mimeType: mimeType,
+            body: fs.createReadStream(filePath)
+        };
+
+        const response = await drive.files.create({
+            resource: fileMetadata,
+            media: media,
+            fields: 'id, webViewLink',
+            supportsAllDrives: true
+        });
+
+        console.log(`Upload complete! File ID: ${response.data.id}`);
+
+        // 3. Cleanup temp file
+        fs.unlink(filePath, (err) => {
+            if (err) console.error('Error deleting temp file:', err);
+        });
+
+        res.json({
+            success: true,
+            fileId: response.data.id,
+            webViewLink: response.data.webViewLink
+        });
+
+    } catch (error) {
+        console.error('Upload failed:', error);
+
+        // Cleanup on error too
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        res.status(500).json({
+            success: false,
+            error: 'Upload failed: ' + error.message
+        });
     }
 });
 
@@ -1933,27 +2014,32 @@ app.get('/api/ratings', (req, res) => {
 });
 
 // ============================================================================
+// GLOBAL ERROR HANDLER
+// ============================================================================
+// Catches errors from Multer or other middlewares
+app.use((err, req, res, next) => {
+    console.error('SERVER ERROR:', err);
+    res.status(500).json({
+        success: false,
+        error: err.message || 'Unknown Server Error',
+        stack: err.stack
+    });
+});
+
+
+
+// ============================================================================
 // STEP 19: START THE SERVER
 // ============================================================================
 // This actually starts the web server and makes it listen for connections
-
 server.listen(PORT, '0.0.0.0', () => {
-    // '0.0.0.0' means accept connections from any IP address on the network
-    // If we used 'localhost', only local connections would work
-
-    const localIP = getLocalIPAddress();
-
-    // Print nice startup message
-    console.log('\n========================================');
-    console.log('LearnToBot Class Web App - Server Started');
-    console.log('========================================');
-    console.log(`\nServer is running on:`);
-    console.log(`  - Local:   http://localhost:${PORT}`);
-    console.log(`  - Network: http://${localIP}:${PORT}`);
-    console.log(`  - Teacher Panel: http://${localIP}:${PORT}/teacher.html`);
-    console.log('\nStudents should access: http://${localIP}:${PORT}');
-    console.log('\nPress Ctrl+C to stop the server');
-    console.log('========================================\n');
+    console.log('\n\n');
+    console.log('=============================================');
+    console.log('🚀 LEARNTOBOT SERVER STARTED');
+    console.log('=============================================');
+    console.log(`📡 Local Access:  http://localhost:${PORT}`);
+    console.log('=============================================');
+    console.log('\nPress Ctrl+C to stop the server\n');
 });
 
 /*

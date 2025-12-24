@@ -616,11 +616,95 @@ async function fetchBookingInfo(forceRefresh = false) {
         bookingCache = bookings;
         lastBookingFetch = now;
 
+
         console.log(`Found ${bookings.length} bookings for today`);
         return bookings;
     } catch (error) {
         console.error('Error fetching bookings:', error.message);
         if (bookingCache) return bookingCache;
+        throw error;
+    }
+}
+
+// ============================================================================
+// FUNCTION: Fetch Enriched Booking Info (Booking + Headshot + Project)
+// ============================================================================
+
+/**
+ * Fetches bookings for today and enriches them with:
+ * 1. Headshot URL (from Child Names sheet)
+ * 2. Current Project (Latest assigned/in-progress from Project Log)
+ * 
+ * This provides a complete data object for the Instructor Dashboard
+ * 
+ * @returns {Promise<Array>} - Array of enriched student objects
+ */
+async function fetchEnrichedBookingInfo() {
+    try {
+        // 1. Get Today's Bookings
+        const bookings = await fetchBookingInfo();
+        if (bookings.length === 0) return [];
+
+        // 2. Get Student Headshots (efficiently, maybe cached)
+        const students = await fetchStudentNamesForLogin(); // Returns [{name, headshot}]
+        const studentMap = new Map(students.map(s => [s.name.toLowerCase().trim(), s]));
+
+        // 3. Get Project Logs
+        const allProjects = await fetchProjectLog();
+
+        // Helper to find latest project for a student
+        const getLatestProject = (studentName) => {
+            const normalizedName = studentName.toLowerCase().trim();
+            const studentProjects = allProjects.filter(p =>
+                p.studentName && p.studentName.toLowerCase().trim() === normalizedName
+            );
+
+            if (studentProjects.length === 0) return null;
+
+            // Sort by Date (newest first). Note: 'date' string might need parsing if format is inconsistent
+            // Assuming ISO or consistent format, otherwise simple string sort might be risky but likely okay for logs
+            // Ideally we rely on the order in the sheet (bottom = newest)
+            // Let's assume the array order from fetchProjectLog preserves sheet order (which is usually chronological)
+            // So we just take the last element? Or sort?
+            // Safer to sort if we have dates. The `date` field is from sheet.
+            // Let's trust sheet order (bottom is latest) for now as simpler fallback
+
+            // Actually, let's reverse iteration to find the *last* assigned "Active" project?
+            // "Current Project" usually means 'In Progress' or the very latest 'Assigned'.
+
+            // Prioritize IN PROGRESS
+            const inProgress = studentProjects.filter(p =>
+                p.projectStatus && (p.projectStatus.toLowerCase().includes('progress') || p.projectStatus.toLowerCase().includes('working'))
+            );
+            if (inProgress.length > 0) return inProgress[inProgress.length - 1]; // Latest in-progress
+
+            // Then ASSIGNED
+            const assigned = studentProjects.filter(p =>
+                p.projectStatus && (p.projectStatus.toLowerCase().includes('assigned') || p.projectStatus.toLowerCase().includes('new'))
+            );
+            if (assigned.length > 0) return assigned[assigned.length - 1]; // Latest assigned
+
+            // Fallback to just the very last entry (maybe completed?)
+            return studentProjects[studentProjects.length - 1];
+        };
+
+        // 4. Merge Data
+        const enrichedBookings = bookings.map(booking => {
+            const name = booking.studentName;
+            const studentInfo = studentMap.get(name.toLowerCase().trim());
+            const project = getLatestProject(name);
+
+            return {
+                ...booking,
+                headshot: studentInfo ? studentInfo.headshot : '',
+                currentProject: project ? project.projectName : 'No active project'
+            };
+        });
+
+        return enrichedBookings;
+
+    } catch (error) {
+        console.error('Error fetching enriched bookings:', error);
         throw error;
     }
 }
@@ -863,14 +947,6 @@ async function fetchInstructors(forceRefresh = false) {
 module.exports = {
     fetchStudents,                  // Get student list
     fetchProjectLog,                // Get all project log entries
-    fetchStudentNamesForLogin,      // Get student names for login dropdown
-    getStudentProgress,             // Get progress summary for all students
-    getStudentProjectsByName,       // Get projects for one specific student
-    fetchBookingInfo,               // Get today's classes
-    fetchAllKids,                   // Get all kids detailed data
-    syncMasterDatabase,             // Download full sheet to local JSON
-    clearCache,                     // Clear all cached data
-    syncHeadshots,                  // Download headshots from Drive
     fetchInstructors                // Get instructor list with credentials
 };
 
@@ -1058,6 +1134,25 @@ async function syncHeadshots() {
     console.log(`Headshot sync complete: ${downloadCount} new downloaded, ${errorCount} errors.`);
     return { downloaded: downloadCount, errors: errorCount };
 }
+
+// ============================================================================
+// EXPORTS
+// ============================================================================
+
+module.exports = {
+    fetchStudents,                  // Get student list
+    fetchProjectLog,                // Get all project log entries
+    fetchStudentNamesForLogin,      // Get student names for login dropdown
+    getStudentProgress,             // Get progress summary for all students
+    getStudentProjectsByName,       // Get projects for one specific student
+    fetchBookingInfo,               // Get today's classes
+    fetchEnrichedBookingInfo,       // Get enriched data for dashboard (NEW)
+    fetchAllKids,                   // Get all kids detailed data
+    syncMasterDatabase,             // Download full sheet to local JSON
+    getLocalMasterDB,               // Get local offline data
+    clearCache,                     // Clear all cached data
+    fetchInstructors                // Get instructor list with credentials
+};
 
 /*
  * ============================================================================
