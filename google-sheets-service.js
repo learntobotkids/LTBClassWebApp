@@ -1235,7 +1235,8 @@ module.exports = {
     syncHeadshots,                  // Download headshots from Drive
     syncMasterDatabase,             // Download full sheet to local JSON
     getLocalMasterDB,               // Get local offline data
-    clearCache                      // Clear all cached data
+    clearCache,                     // Clear all cached data
+    markStudentAttendance           // Mark student present/absent
 };
 
 /*

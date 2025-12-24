@@ -79,6 +79,10 @@ app.use((req, res, next) => {
     next();
 });
 
+// Middleware to parse JSON bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // Port: Use environment variable for cloud hosting (Render), default to 3000 for local/classroom use
 const PORT = process.env.PORT || 3000;
 const SERVER_START_TIME = Date.now();     // Remember when we started (for uptime tracking)

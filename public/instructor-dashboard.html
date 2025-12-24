@@ -489,11 +489,9 @@
         }
 
         async function toggleAttendance(rowIndex, newStatus) {
-            // 1. Check Offline Status
-            if (!navigator.onLine) {
-                alert("You are offline, update was not made.");
-                return;
-            }
+            // Optimistic UI Update
+            // We proceed immediately. If fetch fails, we revert.
+            // This handles cases where navigator.onLine is false but connection exists (localhost, etc)
 
             // Optimistic UI Update
             const student = studentsData.find(s => s.rowIndex === rowIndex);
@@ -503,18 +501,37 @@
             }
 
             try {
+                console.log(`Sending attendance update: Row ${rowIndex}, Status ${newStatus}`);
                 const response = await fetch('/api/mark-attendance', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ rowIndex, status: newStatus })
                 });
 
-                if (!response.ok) throw new Error('Failed to update');
+                if (!response.ok) {
+                    // Try to parse error from server
+                    let errorMsg = 'Server Error';
+                    try {
+                        const errData = await response.json();
+                        errorMsg = errData.error || response.statusText;
+                    } catch (parseErr) {
+                        errorMsg = response.statusText;
+                    }
+                    throw new Error(errorMsg);
+                }
 
                 // Success
             } catch (e) {
-                console.error(e);
-                alert('You are offline, update was not made.');
+                console.error('Attendance Update Failed:', e);
+
+                // If the browser knows it's offline, or if the error is a network error, show the offline message
+                if (!navigator.onLine || e.message === 'Failed to fetch') {
+                    alert('You are offline, update was not made.');
+                } else {
+                    // Otherwise show the specific error (e.g. server error)
+                    alert(`Update Failed: ${e.message}`);
+                }
+
                 // Revert
                 if (student) {
                     student.checkedIn = !newStatus;
