@@ -999,7 +999,7 @@ app.post('/api/mark-attendance', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('Error marking attendance:', error);
-        res.status(500).json({ success: false, error: 'Failed to update attendance' });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
