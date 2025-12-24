@@ -114,7 +114,7 @@ async function getGoogleSheetsClient() {
         const auth = new google.auth.GoogleAuth({
             credentials,
             scopes: [
-                'https://www.googleapis.com/auth/spreadsheets.readonly',
+                'https://www.googleapis.com/auth/spreadsheets',
                 'https://www.googleapis.com/auth/drive.readonly'
             ],
         });
