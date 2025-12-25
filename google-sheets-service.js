@@ -290,14 +290,40 @@ async function fetchStudents(forceRefresh = false) {
 
         // Process rows into student objects
         // Skip first row (header) and filter out empty rows
+
+        // Cache local headshots for checking (Logic ported from fetchStudentNamesForLogin)
+        let localHeadshots = new Set();
+        const headshotsDir = path.join(__dirname, 'public', 'headshots');
+        if (fs.existsSync(headshotsDir)) {
+            const files = fs.readdirSync(headshotsDir);
+            files.forEach(f => localHeadshots.add(f));
+        }
+
         const students = rows.slice(1)
-            .filter(row => row[0] && row[1])  // Must have both ID and name
-            .map(row => ({
-                id: row[0],    // Column A: Student ID
-                name: row[1],  // Column B: Student Name
-                // Column X is the 24th column (index 23)
-                note: row[23] ? row[23].trim() : ''
-            }));
+            .filter(row => row[0])  // Must have ID (Name logic relaxed as ID is key)
+            .map(row => {
+                const headshotRaw = row[8] ? row[8].trim() : ''; // Column I (Index 8)
+                let headshot = headshotRaw;
+
+                // Map to local file if exists
+                if (headshotRaw) {
+                    let filename = path.basename(headshotRaw);
+                    const sanitized = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
+
+                    if (localHeadshots.has(filename)) {
+                        headshot = `/headshots/${filename}`;
+                    } else if (localHeadshots.has(sanitized)) {
+                        headshot = `/headshots/${sanitized}`;
+                    }
+                }
+
+                return {
+                    id: row[0].trim(),    // Column A: Student ID
+                    name: row[1] ? row[1].trim() : 'Unknown',  // Column B: Student Name
+                    headshot: headshot,
+                    note: row[23] ? row[23].trim() : '' // Column X
+                };
+            });
 
         // Update cache
         studentsCache = students;
@@ -676,13 +702,15 @@ async function getStudentProgress() {
  *   totalPoints: 1500
  * }
  */
-async function getStudentProjectsByName(studentName) {
+async function getStudentProjects(studentId, forceRefresh = false) {
     try {
+        console.log(`Getting projects for ID: ${studentId} (Refresh: ${forceRefresh})`);
+
         // Fetch all project log entries
-        const projects = await fetchProjectLog();
+        const projects = await fetchProjectLog(forceRefresh);
 
         // Fetch project name definitions (Code -> Full Name)
-        const projectMap = await fetchProjectList();
+        const projectMap = await fetchProjectList(forceRefresh);
 
         // Helper to formatting
         // Code: "PROJ101" -> Map Value: "Introduction to Scratch"
@@ -697,11 +725,9 @@ async function getStudentProjectsByName(studentName) {
             return cleanCode; // Fallback to just the code
         };
 
-        // Filter to only this student's projects (case-insensitive match)
-        const normalizedSearchName = studentName.toLowerCase().trim();
+        // Filter to only this student's projects (by ID)
         const studentProjects = projects.filter(project =>
-            project.studentName &&
-            project.studentName.toLowerCase().trim() === normalizedSearchName
+            project.studentId === studentId
         );
 
         // Categorize projects by status
@@ -719,6 +745,7 @@ async function getStudentProjectsByName(studentName) {
             if (statusLower.includes('completed')) {
                 // Completed project - include completion details
                 completedProjects.push({
+                    studentId: project.studentId, // Crucial: specific ID for this entry
                     name: displayName,
                     originalCode: project.projectName,
                     status: project.projectStatus,
@@ -730,6 +757,7 @@ async function getStudentProjectsByName(studentName) {
             } else if (statusLower.includes('progress') || statusLower.includes('working')) {
                 // In-progress project
                 inProgressProjects.push({
+                    studentId: project.studentId, // Crucial: specific ID for this entry
                     name: displayName,
                     originalCode: project.projectName,
                     status: project.projectStatus,
@@ -739,6 +767,7 @@ async function getStudentProjectsByName(studentName) {
             } else if (statusLower.includes('assigned') || statusLower.includes('assign')) {
                 // Newly assigned project
                 assignedProjects.push({
+                    studentId: project.studentId, // Crucial: specific ID for this entry
                     name: displayName,
                     originalCode: project.projectName,
                     status: project.projectStatus,
@@ -756,8 +785,8 @@ async function getStudentProjectsByName(studentName) {
 
         // Return organized data
         return {
-            studentName: studentName,
-            studentId: studentProjects.length > 0 ? studentProjects[0].studentId : null,
+            studentName: studentProjects.length > 0 ? studentProjects[0].studentName : '',
+            studentId: studentId,
             assignedProjects: assignedProjects,
             completedProjects: completedProjects,
             inProgressProjects: inProgressProjects,
@@ -800,10 +829,10 @@ async function fetchBookingInfo(forceRefresh = false) {
         const sheets = await getGoogleSheetsClient();
 
         // Fetch data
-        // We fetch columns A to N (Checked In is in N)
+        // We fetch columns A to O (Student ID is in O)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.BOOKING_SHEET}!A:N`,
+            range: `${config.BOOKING_SHEET}!A:O`,
         });
 
         const rows = response.data.values || [];
@@ -836,6 +865,7 @@ async function fetchBookingInfo(forceRefresh = false) {
                 serviceTitle: rowData[config.BOOKING_COLUMNS.SERVICE_TITLE],
                 classDate: rowData[config.BOOKING_COLUMNS.CLASS_DATE],
                 checkedIn: (rowData[config.BOOKING_COLUMNS.CHECKED_IN] || '').toString().toUpperCase() === 'TRUE',
+                studentId: rowData[config.BOOKING_COLUMNS.STUDENT_ID], // New ID field
                 rowIndex: rowIndex
             }))
             .filter(b => b.studentName && b.serviceTitle); // Ensure valid data
@@ -873,33 +903,26 @@ async function fetchEnrichedBookingInfo() {
         const bookings = await fetchBookingInfo();
         if (bookings.length === 0) return [];
 
-        // 2. Get Student Headshots (efficiently, maybe cached)
-        const students = await fetchStudentNamesForLogin(); // Returns [{name, headshot}]
-        const studentMap = new Map(students.map(s => [s.name.toLowerCase().trim(), s]));
+        // 2. Get Student Data (from Child Names sheet, keyed by ID)
+        const students = await fetchStudents();
+        const studentMap = new Map();
+        students.forEach(s => {
+            if (s.id) studentMap.set(s.id.trim(), s);
+        });
 
         // 3. Get Project Logs
         const allProjects = await fetchProjectLog();
         const projectMap = await fetchProjectList();
 
-        // Helper to find latest project for a student
-        const getLatestProject = (studentName) => {
-            const normalizedName = studentName.toLowerCase().trim();
+        // Helper to find latest project for a student (by ID)
+        const getLatestProject = (studentId) => {
+            if (!studentId) return null;
+            // Filter by ID instead of name
             const studentProjects = allProjects.filter(p =>
-                p.studentName && p.studentName.toLowerCase().trim() === normalizedName
+                p.studentId && p.studentId === studentId
             );
 
             if (studentProjects.length === 0) return null;
-
-            // Sort by Date (newest first). Note: 'date' string might need parsing if format is inconsistent
-            // Assuming ISO or consistent format, otherwise simple string sort might be risky but likely okay for logs
-            // Ideally we rely on the order in the sheet (bottom = newest)
-            // Let's assume the array order from fetchProjectLog preserves sheet order (which is usually chronological)
-            // So we just take the last element? Or sort?
-            // Safer to sort if we have dates. The `date` field is from sheet.
-            // Let's trust sheet order (bottom is latest) for now as simpler fallback
-
-            // Actually, let's reverse iteration to find the *last* assigned "Active" project?
-            // "Current Project" usually means 'In Progress' or the very latest 'Assigned'.
 
             // Prioritize IN PROGRESS
             const inProgress = studentProjects.filter(p =>
@@ -913,15 +936,20 @@ async function fetchEnrichedBookingInfo() {
             );
             if (assigned.length > 0) return assigned[assigned.length - 1]; // Latest assigned
 
-            // Fallback to just the very last entry (maybe completed?)
+            // Fallback to just the very last entry
             return studentProjects[studentProjects.length - 1];
         };
 
         // 4. Merge Data
         const enrichedBookings = bookings.map(booking => {
-            const name = booking.studentName;
-            const studentInfo = studentMap.get(name.toLowerCase().trim());
-            const project = getLatestProject(name);
+            const sid = booking.studentId ? booking.studentId.trim() : '';
+            const studentInfo = studentMap.get(sid);
+
+            if (!studentInfo) {
+                console.log(`[Link Warning] Booking ID "${sid}" not found in Child Names (Keys: ${studentMap.size}). Fallback Name: "${booking.studentName}"`);
+            }
+
+            const project = getLatestProject(sid);
 
             let currentProject = 'No active project';
             if (project) {
@@ -932,8 +960,11 @@ async function fetchEnrichedBookingInfo() {
 
             return {
                 ...booking,
+                // User Request: "Kids names are in Column E in 'All Booking Info' tab"
+                // Prioritize the name from the Booking Sheet (booking.studentName)
+                studentName: booking.studentName || (studentInfo ? studentInfo.name : 'Unknown'),
                 headshot: studentInfo ? studentInfo.headshot : '',
-                studentId: studentInfo ? studentInfo.id : '',
+                studentId: sid, // Ensure this is passed!
                 currentProject: currentProject,
                 note: studentInfo ? studentInfo.note : ''
             };
@@ -1232,7 +1263,9 @@ module.exports = {
 
     // Aggregators & Helpers
     getStudentProgress,             // Get progress summary for all students
-    getStudentProjectsByName,       // Get projects for one specific student
+    getStudentProgress,             // Get progress summary for all students
+    getStudentProjects,             // Get projects for one specific student
+    fetchBookingInfo,               // Get today's classes
     fetchBookingInfo,               // Get today's classes
     fetchEnrichedBookingInfo,       // Get enriched data for dashboard
     fetchAllKids,                   // Get all kids detailed data
@@ -1264,7 +1297,7 @@ module.exports = {
             // Ideally we should cache this but for now we fetch fresh to be safe
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId: config.SPREADSHEET_ID,
-                range: `${config.PROJECT_PROGRESS_SHEET}!A:AB`,
+                range: `${config.PROGRESS_SHEET}!A:AB`,
             });
 
             const rows = response.data.values || [];
@@ -1274,19 +1307,37 @@ module.exports = {
             // Column I is Index 8 (Project Name)
 
             let targetRowIndex = -1;
-            // Iterate backwards to find latest assignment if multiple? No, usually unique or we take latest.
+            console.log(`Searching ${rows.length} rows for: SID="${studentId}", Proj="${projectCode}"`);
+
+            // Log first 3 rows to understand data format
+            for (let k = 1; k < Math.min(rows.length, 4); k++) {
+                console.log(`Sample Row ${k}: SID="${rows[k][2]}", Name="${rows[k][4]}", Proj="${rows[k][8]}"`);
+            }
+
             for (let i = rows.length - 1; i >= 1; i--) {
                 const row = rows[i];
-                if (row[2] === studentId && row[8].trim().toLowerCase() === projectCode.trim().toLowerCase()) {
-                    // Check if it's already completed?
-                    // User might be re-uploading or updating. Just update the found row.
-                    targetRowIndex = i + 1; // 1-based index for API
+                if (!row[2] || !row[8]) continue;
+
+                const sid = row[2];
+                const pCode = row[8].trim();
+
+                // Debug log for potential matches (same student)
+                if (sid === studentId) {
+                    console.log(`Checking Row ${i + 1}: SID matched. Project in sheet: "${pCode}" vs Requested: "${projectCode}"`);
+                }
+
+                // Normalize for comparison: remove all spaces, lowercase
+                const normalize = (str) => str.replace(/\s+/g, '').toLowerCase();
+
+                if (sid === studentId && normalize(pCode) === normalize(projectCode)) {
+                    targetRowIndex = i + 1;
                     break;
                 }
             }
 
             if (targetRowIndex === -1) {
-                throw new Error('Project entry not found in log.');
+                // Throw informative error
+                throw new Error(`Project entry not found. Searched for SID="${studentId}" & Proj="${projectCode}". Data format mismatch likely.`);
             }
 
             console.log(`Found matching project at row ${targetRowIndex}`);
@@ -1307,19 +1358,19 @@ module.exports = {
 
             const requests = [
                 {   // Status -> Completed (Col J / 9)
-                    range: `${config.PROJECT_PROGRESS_SHEET}!J${targetRowIndex}`,
+                    range: `${config.PROGRESS_SHEET}!J${targetRowIndex}`,
                     values: [['Completed']]
                 },
                 {   // Video Link (Col Q / 16)
-                    range: `${config.PROJECT_PROGRESS_SHEET}!Q${targetRowIndex}`,
+                    range: `${config.PROGRESS_SHEET}!Q${targetRowIndex}`,
                     values: [[videoLink]]
                 },
                 {   // Completed Date (Col Z / 25)
-                    range: `${config.PROJECT_PROGRESS_SHEET}!Z${targetRowIndex}`,
+                    range: `${config.PROGRESS_SHEET}!Z${targetRowIndex}`,
                     values: [[todayStr]]
                 },
                 {   // Rating (Col AB / 27)
-                    range: `${config.PROJECT_PROGRESS_SHEET}!AB${targetRowIndex}`,
+                    range: `${config.PROGRESS_SHEET}!AB${targetRowIndex}`,
                     values: [[rating.toString()]]
                 }
             ];

@@ -1540,25 +1540,28 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
 // ============================================================================
 // STUDENT DETAIL ENDPOINT (FOR INSTRUCTOR DASHBOARD)
 // ============================================================================
-app.get('/api/student-projects/:studentName', async (req, res, next) => {
+// ----------------------------------------------------------------------------
+// API: Get Student Projects by ID (Updated)
+// ----------------------------------------------------------------------------
+app.get('/api/student-projects/:studentId', async (req, res) => {
     try {
-        const studentName = req.params.studentName;
-        if (!studentName) {
-            return res.status(400).json({ success: false, error: 'Student name is required' });
-        }
+        const studentId = req.params.studentId;
+        // Decode in case it's URL encoded (e.g. emails)
+        const decodedId = decodeURIComponent(studentId);
 
-        console.log(`Fetching project history for: ${studentName}`);
+        console.log(`[REQUEST] GET /api/student-projects/${studentId}`);
 
         // Force refresh for latest data
-        const studentData = await googleSheetsService.getStudentProjectsByName(studentName, true);
+        const studentData = await googleSheetsService.getStudentProjects(decodedId, true);
+
+        console.log(`Successfully retrieved projects for ID: ${decodedId}`);
 
         res.json({
             success: true,
             student: studentData
         });
-
     } catch (error) {
-        console.error('Error fetching student projects:', error);
+        console.error('Error fetching student history:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch student projects' });
     }
 });

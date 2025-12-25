@@ -465,8 +465,11 @@
                 const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
                 const checkContent = isCheckedIn ? '✓' : '';
 
+                const safeName = student.studentName.replace(/'/g, "\\'");
+                const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
+
                 html += `
-                <div class="student-card" onclick="openStudentDetail('${student.studentName.replace(/'/g, "\\'")}', '${student.headshot || ''}')" style="cursor: pointer;">
+                <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
                     ${renderHeadshot(student.headshot, student.studentName)}
                     
                     <div class="student-info">
@@ -813,7 +816,7 @@
         // STUDENT DETAIL VIEW
         // ============================================================================
 
-        async function openStudentDetail(studentName, headshotUrl) {
+        async function openStudentDetail(studentId, studentName, headshotUrl) {
             const container = document.getElementById('mainContent');
 
             // 1. Show Loading State
@@ -826,11 +829,15 @@
             // Or keep tabs but highlight none? Let's keep it simple.
 
             try {
-                // 2. Fetch Data
-                const response = await fetch(`/api/student-projects/${encodeURIComponent(studentName)}`);
+                // 2. Fetch Data using ID
+                const response = await fetch(`/api/student-projects/${encodeURIComponent(studentId)}`);
                 const data = await response.json();
 
                 if (data.success && data.student) {
+                    // Update student object with name/headshot purely for display if API didn't return them (it should though)
+                    // The API returns the aggregated object from service
+                    if (!data.student.studentName) data.student.studentName = studentName;
+
                     renderStudentDetail(data.student, headshotUrl);
                 } else {
                     container.innerHTML = `<div class="empty-state">
@@ -843,6 +850,7 @@
                 console.error(e);
                 container.innerHTML = `<div class="empty-state">
                     <h3>Connection Error</h3>
+                    <p style="color:red; font-size:12px;">${e.message}</p>
                     <button onclick="switchTab('today')" style="margin-top:15px; padding:10px 20px; background:#db3236; color:white; border:none; border-radius:5px;">Back</button>
                 </div>`;
             }
@@ -861,42 +869,15 @@
                 return '📄';
             };
 
-            // Helper for sections
-            const renderSection = (title, items, icon, colorClass) => {
-                if (!items || items.length === 0) return '';
-
-                let listHtml = items.map(p => `
-                    <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center;">
-                        <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
-                        <div style="flex-grow: 1;">
-                            <div style="font-weight: 600; color: #333; font-size: 15px;">${p.name}</div>
-                            <div style="font-size: 12px; color: #777; margin-top: 2px;">
-                                ${p.type || 'Project'} • ${p.date || p.completedDate || p.status || 'Assigned'}
-                            </div>
-                        </div>
-                        ${p.rating ? `<div style="font-weight:bold; color:#F59E0B;">${p.rating}★</div>` : ''}
-                    </div>
-                `).join('');
-
-                return `
-                    <div style="margin-top: 20px; background: white; border-top: 4px solid ${colorClass}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                        <div style="padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; align-items: center; font-weight: bold; color: #444;">
-                            <span style="margin-right: 10px;">${icon}</span> ${title} (${items.length})
-                        </div>
-                        <div>${listHtml}</div>
-                    </div>
-                `;
-            };
-
             const html = `
-                <div style="padding-bottom: 80px;">
-                    <!-- Header Profile -->
-                    <div style="background: white; padding: 20px; text-align: center; border-bottom: 1px solid #eee;">
-                        <!-- Back Button internal -->
-                        <div onclick="switchTab('today')" style="position: absolute; left: 20px; top: 80px; font-size: 24px; cursor: pointer;">←</div>
+                <div class="animate-fade-in">
+                    <button onclick="switchTab('today')" style="background:none; border:none; color:#666; cursor:pointer; display:flex; align-items:center; margin-bottom:15px; font-size:14px;">
+                        <span style="margin-right:5px;">←</span> Back to Dashboard
+                    </button>
 
-                        <img src="${headshotUrl || ''}" onerror="this.src='https://via.placeholder.com/100?text=?'" 
-                             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid #db3236; margin-bottom: 10px;">
+                    <div style="background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;">
+                        <img src="${headshotUrl || '/api/placeholder/150/150'}" 
+                             style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px;">
                         <h2 style="margin: 0; color: #333;">${studentData.studentName}</h2>
                         <div style="display: flex; justify-content: center; gap: 20px; margin-top: 15px;">
                             <div style="text-align: center;">
@@ -910,15 +891,50 @@
                         </div>
                     </div>
 
-                    ${renderSectionWithAction('Assigned Projects', projects.assignedProjects, '📌', '#db3236', studentData.studentId)}
-                    ${renderSectionWithAction('Working On', projects.inProgressProjects, '🚧', '#3182ce', studentData.studentId)}
+                    ${renderSectionWithAction('Assigned Projects', projects.assignedProjects, '📌', '#db3236', studentData.studentId, studentData.studentName, headshotUrl)}
+                    ${renderSectionWithAction('Working On', projects.inProgressProjects, '🚧', '#3182ce', studentData.studentId, studentData.studentName, headshotUrl)}
                     ${renderSection('Completed', projects.completedProjects, '✅', '#38a169')}
                 </div>
             `;
             container.innerHTML = html;
         }
 
-        function renderSectionWithAction(title, items, icon, colorClass, studentId) {
+        // Helper specifically for Completed section (no action button)
+        function renderSection(title, items, icon, colorClass) {
+            if (!items || items.length === 0) return '';
+
+            const getIcon = (type) => { // Duplicate helper but safely scoped
+                const lower = (type || '').toLowerCase();
+                if (lower.includes('scratch')) return '🐱';
+                if (lower.includes('python')) return '🐍';
+                if (lower.includes('web')) return '🌐';
+                return '📄';
+            };
+
+            let listHtml = items.map(p => `
+                <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center;">
+                    <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
+                    <div style="flex-grow: 1;">
+                        <div style="font-weight: 600; color: #333; font-size: 15px;">${p.name}</div>
+                        <div style="font-size: 12px; color: #777; margin-top: 2px;">
+                            ${p.type || 'Project'} • ${p.date || p.completedDate || p.status || 'Assigned'}
+                        </div>
+                    </div>
+                    ${p.rating ? `<div style="font-weight:bold; color:#F59E0B;">${p.rating}★</div>` : ''}
+                </div>
+            `).join('');
+
+            return `
+                <div style="margin-top: 20px; background: white; border-top: 4px solid ${colorClass}; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="padding: 10px 15px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; align-items: center; font-weight: bold; color: #444;">
+                        <span style="margin-right: 10px;">${icon}</span> ${title} (${items.length})
+                    </div>
+                    <div>${listHtml}</div>
+                </div>
+            `;
+        }
+
+        function renderSectionWithAction(title, items, icon, colorClass, studentId, studentName, headshotUrl) {
             if (!items || items.length === 0) return '';
 
             const getIcon = (type) => {
@@ -929,6 +945,8 @@
                 return '📄';
             };
 
+            const safeStr = (str) => (str || '').toString().replace(/'/g, "\\'");
+
             let listHtml = items.map(p => `
                 <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; position: relative;">
                     <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
@@ -938,7 +956,7 @@
                             ${p.type || 'Project'} • ${p.date || 'Assigned'}
                         </div>
                     </div>
-                    <div onclick="openCompletionModal('${studentId}', '${p.originalCode.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}', '${(document.querySelector('img[src*=\"headshot\"]') || {}).src || ''}', '${document.querySelector('h2').innerText.replace(/'/g, "\\'")}')" 
+                    <div onclick="openCompletionModal('${safeStr(studentId)}', '${safeStr(p.originalCode)}', '${safeStr(p.name)}', '${safeStr(headshotUrl)}', '${safeStr(studentName)}')" 
                          style="position: absolute; right: 10px; bottom: 10px; background: #ECFDF5; color: #047857; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #6EE7B7;">
                         <span style="font-size: 16px;">✓</span>
                     </div>
@@ -1003,7 +1021,7 @@
                             <div id="modalProgressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
                         </div>
                     </div>
-                    <button id="completeBtn" onclick="submitCompletion('${studentId}', '${projectCode}')" 
+                    <button id="completeBtn" onclick="submitCompletion('${studentId}', '${projectCode}', '${studentName.replace(/'/g, "\\'")}', '${headshotUrl}')" 
                         style="width: 100%; background: #db3236; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; opacity: 0.5; cursor: not-allowed;" disabled>
                         Mark as Complete
                     </button>
@@ -1045,7 +1063,7 @@
                 }
             };
 
-            window.submitCompletion = async (sid, pCode) => {
+            window.submitCompletion = async (sid, pCode, sName, sHeadshot) => {
                 const btn = document.getElementById('completeBtn');
                 const resultDiv = document.getElementById('completionResult');
                 const file = document.getElementById('modalVideoInput').files[0];
@@ -1079,7 +1097,9 @@
 
                     setTimeout(() => {
                         document.getElementById('completionModal').remove();
-                        openStudentDetail(document.querySelector('h2').innerText, '');
+                        // Correctly call the detail opener with ID, Name, and Headshot
+                        // We must decode/unescape if they were passed safely
+                        openStudentDetail(sid, sName, sHeadshot);
                     }, 1500);
 
                 } catch (e) {

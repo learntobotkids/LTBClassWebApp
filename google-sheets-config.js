@@ -102,9 +102,9 @@ module.exports = {
 
     /**
      * Name of the sheet (tab) containing full project details
-     * Default: 'Project List'
+     * Default: 'Projects List'
      */
-    PROJECT_LIST_SHEET: 'Project List',
+    PROJECT_LIST_SHEET: 'Projects List',
 
     // ========================================================================
     // COLUMN MAPPINGS FOR STUDENT NAMES SHEET
@@ -147,7 +147,7 @@ module.exports = {
         PROJECT_TYPE: 26,   // Column AA: Type of project (Scratch, Python, etc.)
         RATING: 27,         // Column AB: Student's rating of the project (1-5 stars)
         POINTS: 28,         // Column AC: Points earned for completing project
-        VIDEO_LINK: 16      // Column Q: Link to uploaded video evidence
+        VIDEO_LINK: 16,     // Column Q: Link to uploaded video evidence
 
         // Note: We skip columns K-Y as they're not currently used by the app
         // If you add more columns, add them here with their index number
@@ -162,7 +162,8 @@ module.exports = {
         STUDENT_NAME: 4,    // Column E: Student's full name
         SERVICE_TITLE: 7,   // Column H: Class/Service Title
         CLASS_DATE: 12,     // Column M: Date of class
-        CHECKED_IN: 13      // Column N: Checked In? (TRUE/FALSE)
+        CHECKED_IN: 13,     // Column N: Checked In? (TRUE/FALSE)
+        STUDENT_ID: 14      // Column O: Student ID (Unique)
     },
 
     // ========================================================================
@@ -183,9 +184,9 @@ module.exports = {
 
     /**
      * Name of the sheet (tab) containing project list
-     * Default: 'Projects List'
+     * Default: 'Project List'
      */
-    PROJECT_LIST_SHEET: 'Projects List',
+    // PROJECT_LIST_SHEET: 'Project List', // Already defined above
 
     // ========================================================================
     // COLUMN MAPPINGS FOR ALL KIDS PAGE (Relative to 'Child Names!A:Z')
