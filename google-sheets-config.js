@@ -115,7 +115,8 @@ module.exports = {
         KEY: 'A',           // Column A: Unique key/ID for each student
         NAME: 'B',          // Column B: Child's full name
         LOGIN_NAME: 'C',    // Column C: Name shown in login dropdown
-        HEADSHOT: 'I'       // Column I: Headshot image URL
+        HEADSHOT: 'I',      // Column I: Headshot image URL
+        NOTE: 'X'           // Column X: Note for child
     },
 
     // ========================================================================

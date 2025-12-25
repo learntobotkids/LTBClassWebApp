@@ -279,10 +279,10 @@ async function fetchStudents(forceRefresh = false) {
         const sheets = await getGoogleSheetsClient();
 
         // Fetch data from Google Sheets
-        // Range "A:B" means columns A and B (ID and Name)
+        // Range "A:Z" to include Notes (Column X is index 23)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!A:B`,
+            range: `${config.STUDENT_NAMES_SHEET}!A:Z`,
         });
 
         // Extract rows from response
@@ -294,7 +294,9 @@ async function fetchStudents(forceRefresh = false) {
             .filter(row => row[0] && row[1])  // Must have both ID and name
             .map(row => ({
                 id: row[0],    // Column A: Student ID
-                name: row[1]   // Column B: Student Name
+                name: row[1],  // Column B: Student Name
+                // Column X is the 24th column (index 23)
+                note: row[23] ? row[23].trim() : ''
             }));
 
         // Update cache
@@ -929,7 +931,8 @@ async function fetchEnrichedBookingInfo() {
             return {
                 ...booking,
                 headshot: studentInfo ? studentInfo.headshot : '',
-                currentProject: currentProject
+                currentProject: currentProject,
+                note: studentInfo ? studentInfo.note : ''
             };
         });
 

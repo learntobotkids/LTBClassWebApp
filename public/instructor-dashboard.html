@@ -472,6 +472,17 @@
                     <div class="student-info">
                         <div class="student-name">${student.studentName}</div>
                         <div class="student-project">${student.currentProject || 'No Active Project'}</div>
+                        ${student.note ? `
+                            <div class="student-note" style="
+                                font-size: 0.85rem; 
+                                color: #d9534f; 
+                                margin-top: 4px; 
+                                font-style: italic; 
+                                font-weight: 500;
+                            ">
+                                Note: ${student.note}
+                            </div>
+                        ` : ''}
                     </div>
                     
                     <div class="attendance-actions">
