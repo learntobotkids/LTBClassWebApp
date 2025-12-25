@@ -144,7 +144,10 @@ module.exports = {
         COMPLETED_DATE: 25, // Column Z: Date project was completed
         PROJECT_TYPE: 26,   // Column AA: Type of project (Scratch, Python, etc.)
         RATING: 27,         // Column AB: Student's rating of the project (1-5 stars)
-        POINTS: 28          // Column AC: Points earned for completing project
+        PROJECT_TYPE: 26,   // Column AA: Type of project (Scratch, Python, etc.)
+        RATING: 27,         // Column AB: Student's rating of the project (1-5 stars)
+        POINTS: 28,         // Column AC: Points earned for completing project
+        VIDEO_LINK: 16      // Column Q: Link to uploaded video evidence
 
         // Note: We skip columns K-Y as they're not currently used by the app
         // If you add more columns, add them here with their index number

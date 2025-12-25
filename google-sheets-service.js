@@ -757,6 +757,7 @@ async function getStudentProjectsByName(studentName) {
         // Return organized data
         return {
             studentName: studentName,
+            studentId: studentProjects.length > 0 ? studentProjects[0].studentId : null,
             assignedProjects: assignedProjects,
             completedProjects: completedProjects,
             inProgressProjects: inProgressProjects,
@@ -932,6 +933,7 @@ async function fetchEnrichedBookingInfo() {
             return {
                 ...booking,
                 headshot: studentInfo ? studentInfo.headshot : '',
+                studentId: studentInfo ? studentInfo.id : '',
                 currentProject: currentProject,
                 note: studentInfo ? studentInfo.note : ''
             };
@@ -1240,7 +1242,112 @@ module.exports = {
     syncMasterDatabase,             // Download full sheet to local JSON
     getLocalMasterDB,               // Get local offline data
     clearCache,                     // Clear all cached data
-    markStudentAttendance           // Mark student present/absent
+    markStudentAttendance,          // Mark student present/absent
+
+    /**
+     * Marks a project as complete, saves rating and video link.
+     *
+     * @param {string} studentId - The Student ID (Column C in Project Log)
+     * @param {string} projectCode - The Project Name (Column I in Project Log)
+     * @param {string} videoLink - The Shareable Video Link (Column Q)
+     * @param {number} rating - The Star Rating (1-5) (Column AB)
+     */
+    async markProjectComplete(studentId, projectCode, videoLink, rating) {
+        try {
+            console.log(`Marking project complete: Student ${studentId}, Project ${projectCode}`);
+
+            const sheets = await getGoogleSheetsClient();
+
+            // 1. Fetch entire Project Log to find the row
+            // We need columns C (SID), I (Project Name), J (Status)
+            // Range A:AB (to include Rating)
+            // Ideally we should cache this but for now we fetch fresh to be safe
+            const response = await sheets.spreadsheets.values.get({
+                spreadsheetId: config.SPREADSHEET_ID,
+                range: `${config.PROJECT_PROGRESS_SHEET}!A:AB`,
+            });
+
+            const rows = response.data.values || [];
+
+            // Find the matching row
+            // Column C is Index 2 (SID)
+            // Column I is Index 8 (Project Name)
+
+            let targetRowIndex = -1;
+            // Iterate backwards to find latest assignment if multiple? No, usually unique or we take latest.
+            for (let i = rows.length - 1; i >= 1; i--) {
+                const row = rows[i];
+                if (row[2] === studentId && row[8].trim().toLowerCase() === projectCode.trim().toLowerCase()) {
+                    // Check if it's already completed?
+                    // User might be re-uploading or updating. Just update the found row.
+                    targetRowIndex = i + 1; // 1-based index for API
+                    break;
+                }
+            }
+
+            if (targetRowIndex === -1) {
+                throw new Error('Project entry not found in log.');
+            }
+
+            console.log(`Found matching project at row ${targetRowIndex}`);
+
+            // 2. Prepare Updates
+            // We need to update multiple non-contiguous columns: Status (J), Video (Q), Date (Z), Rating (AB)
+            // Actually, we can just do individual updates or one batch update if ranges are close.
+            // Status (Col J, index 9)
+            // Video (Col Q, index 16)
+            // Date (Col Z, index 25)
+            // Rating (Col AB, index 27)
+
+            // Let's use batchUpdate for efficiency
+
+            const today = new Date();
+            const options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
+            const todayStr = today.toLocaleDateString('en-US', options);
+
+            const requests = [
+                {   // Status -> Completed (Col J / 9)
+                    range: `${config.PROJECT_PROGRESS_SHEET}!J${targetRowIndex}`,
+                    values: [['Completed']]
+                },
+                {   // Video Link (Col Q / 16)
+                    range: `${config.PROJECT_PROGRESS_SHEET}!Q${targetRowIndex}`,
+                    values: [[videoLink]]
+                },
+                {   // Completed Date (Col Z / 25)
+                    range: `${config.PROJECT_PROGRESS_SHEET}!Z${targetRowIndex}`,
+                    values: [[todayStr]]
+                },
+                {   // Rating (Col AB / 27)
+                    range: `${config.PROJECT_PROGRESS_SHEET}!AB${targetRowIndex}`,
+                    values: [[rating.toString()]]
+                }
+            ];
+
+            // Execute updates sequentially or Promise.all
+            // Google Sheets API batchUpdate is strictly for formatting/structure usually.
+            // values.batchUpdate is better for data.
+
+            await sheets.spreadsheets.values.batchUpdate({
+                spreadsheetId: config.SPREADSHEET_ID,
+                resource: {
+                    data: requests,
+                    valueInputOption: 'USER_ENTERED'
+                }
+            });
+
+            console.log('Project marked as complete successfully.');
+
+            // Invalidate Caches
+            projectLogCache = null;
+
+            return { success: true };
+
+        } catch (error) {
+            console.error('Error marking project complete:', error);
+            throw error;
+        }
+    }
 };
 
 /*

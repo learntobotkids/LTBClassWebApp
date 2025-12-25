@@ -1548,15 +1548,41 @@ app.get('/api/student-projects/:studentName', async (req, res, next) => {
         }
 
         console.log(`Fetching project history for: ${studentName}`);
-        const data = await googleSheetsService.getStudentProjectsByName(studentName);
+
+        // Force refresh for latest data
+        const studentData = await googleSheetsService.getStudentProjectsByName(studentName, true);
 
         res.json({
             success: true,
-            student: data
+            student: studentData
         });
+
     } catch (error) {
-        console.error(`Error fetching projects for ${req.params.studentName}:`, error);
-        next(error);
+        console.error('Error fetching student projects:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch student projects' });
+    }
+});
+
+// ============================================================================
+// PROJECT COMPLETION ENDPOINT
+// ============================================================================
+app.post('/api/complete-project', async (req, res) => {
+    try {
+        const { studentId, projectCode, videoLink, rating } = req.body;
+
+        if (!studentId || !projectCode || !rating) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        console.log(`Completing project: ${projectCode} for Student ${studentId}`);
+
+        await googleSheetsService.markProjectComplete(studentId, projectCode, videoLink || '', rating);
+
+        res.json({ success: true, message: 'Project marked as complete' });
+
+    } catch (error) {
+        console.error('Error completing project:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
