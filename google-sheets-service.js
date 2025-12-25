@@ -809,7 +809,8 @@ async function fetchBookingInfo(forceRefresh = false) {
 
         // Helper to format today's date to match sheet format: "Jan 1, 2024"
         const today = new Date();
-        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        // Force Central Time to match class location, otherwise UTC servers (Render) will be a day ahead in the evening
+        const options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
         // Clean format: "Dec 6, 2025"
         const todayStr = today.toLocaleDateString('en-US', options);
 
