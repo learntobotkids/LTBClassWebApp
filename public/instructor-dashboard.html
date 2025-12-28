@@ -1300,8 +1300,9 @@
             }
 
             async function uploadVideoFile(file) {
-                // Request Wake Lock
+                // Request Wake Lock & Set Flag
                 await requestWakeLock();
+                isUploading = true;
 
                 return new Promise((resolve, reject) => {
                     const formData = new FormData();
@@ -1348,6 +1349,168 @@
                     xhr.open('POST', '/api/upload-video', true);
                     xhr.send(formData);
                 });
+            }
+        }
+
+        // ============================================================================
+        // HELPER: In-App Camera Logic
+        // ============================================================================
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let recordingInterval = null;
+        let isRecording = false;
+
+        window.openCamera = async () => {
+            const overlay = document.getElementById('cameraOverlay');
+            const videoEl = document.getElementById('cameraPreview');
+
+            try {
+                // Force 720p - ideal height 720
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // Rear camera
+                        height: { ideal: 720 }
+                    },
+                    audio: true
+                };
+
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoEl.srcObject = mediaStream;
+                overlay.style.display = 'flex';
+            } catch (err) {
+                console.error('Camera Error:', err);
+                alert('Could not access camera: ' + err.message);
+            }
+        };
+
+        window.closeCamera = () => {
+            const overlay = document.getElementById('cameraOverlay');
+            overlay.style.display = 'none';
+
+            // Stop Stream
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+
+            // Reset UI
+            resetRecordingUI();
+        };
+
+        window.toggleRecording = () => {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        };
+
+        function startRecording() {
+            recordedChunks = [];
+            try {
+                // Try to use a small container format if possible, but standard is usually webm or mp4
+                const options = { mimeType: 'video/webm;codecs=vp8' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    // Fallback to default
+                    mediaRecorder = new MediaRecorder(mediaStream);
+                } else {
+                    mediaRecorder = new MediaRecorder(mediaStream, options);
+                }
+            } catch (e) {
+                console.warn('MediaRecorder init failed, trying default', e);
+                mediaRecorder = new MediaRecorder(mediaStream);
+            }
+
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+
+            mediaRecorder.onstop = uploadRecordedVideo;
+
+            mediaRecorder.start();
+            isRecording = true;
+
+            // UI Updates
+            const btn = document.getElementById('recordBtn');
+            btn.style.background = 'transparent';
+            btn.innerHTML = '<div style="width: 30px; height: 30px; background: #ff3b30; border-radius: 4px; margin: 16px;"></div>'; // Stop square
+
+            document.getElementById('recordingTimer').style.display = 'block';
+            let seconds = 0;
+            document.getElementById('recordingTimer').innerText = "00:00";
+
+            recordingInterval = setInterval(() => {
+                seconds++;
+                const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('recordingTimer').innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            isRecording = false;
+            resetRecordingUI();
+            clearInterval(recordingInterval);
+            document.getElementById('recordBtn').innerHTML = '';
+            document.getElementById('recordBtn').style.background = '#ff3b30';
+        }
+
+        function resetRecordingUI() {
+            document.getElementById('recordingTimer').style.display = 'none';
+            document.getElementById('recordBtn').innerHTML = '';
+            document.getElementById('recordBtn').style.background = '#ff3b30';
+            isRecording = false;
+            clearInterval(recordingInterval);
+        }
+
+        async function uploadRecordedVideo() {
+            // Compile Blob
+            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+
+            // Close the Camera Overlay immediately
+            window.closeCamera();
+
+            // Generate a Filename
+            const date = new Date().toISOString().slice(0, 10);
+            const filename = `recording_${date}.webm`;
+
+            // Update UPLOAD UI in Modal to show we are working
+            document.getElementById('modalFileName').innerText = "🎥 " + filename;
+
+            // Disable Main Button to prevent double submit
+            const btn = document.getElementById('completeBtn');
+            btn.disabled = true;
+            btn.innerText = "Auto-Uploading...";
+            btn.style.background = '#db3236';
+
+            // TRIGGER AUTO UPLOAD
+            try {
+                const videoLink = await uploadVideoFile(blob); // uploadVideoFile handles blobs
+
+                // Store the Link and enable completion
+                let secretInput = document.getElementById('hiddenUploadedLink');
+                if (!secretInput) {
+                    secretInput = document.createElement('input');
+                    secretInput.type = 'hidden';
+                    secretInput.id = 'hiddenUploadedLink';
+                    document.getElementById('editMode').appendChild(secretInput); // Append to editMode container
+                }
+                secretInput.value = videoLink;
+
+                btn.innerText = "Video Uploaded! Click to Finish.";
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+                btn.style.background = '#047857'; // Green to indicate success
+
+            } catch (err) {
+                console.error('Auto Upload Failed:', err);
+                alert('Auto-Upload Failed: ' + err.message);
+                btn.innerText = "Upload Failed";
             }
         }
     </script>
