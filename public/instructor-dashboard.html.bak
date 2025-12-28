@@ -91,6 +91,31 @@
             cursor: pointer;
         }
 
+        .sync-icon {
+            font-size: 20px;
+            cursor: pointer;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .sync-icon.serializing {
+            animation: spin 1s linear infinite;
+            background: #FFD700;
+            color: #333;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
         /* --- CONTENT AREA --- */
         .content-area {
             width: 100%;
@@ -304,7 +329,7 @@
                     style="width: 100%; height: 100%; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
                     🤖</div>
             </div>
-            <div class="header-title" id="pageTitle">TODAY</div>
+            <div class="header-title" id="pageTitle">TODAY2</div>
         </div>
         <div class="header-right">
             <div class="header-icon">🔍</div> <!-- Search -->
@@ -324,7 +349,7 @@
     <nav class="footer-tabs">
         <div class="tab-item active" onclick="switchTab('today')">
             <div class="tab-icon">📅</div>
-            <div>TODAY</div>
+            <div>TODAY2</div>
         </div>
         <div class="tab-item" onclick="switchTab('all')">
             <div class="tab-icon">👥</div>
@@ -345,6 +370,14 @@
     </nav>
 
     <script>
+        window.onerror = function (message, source, lineno, colno, error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'position:fixed; top:50px; left:0; width:100%; background:red; color:white; padding:20px; z-index:9999; font-size:14px; text-align:left;';
+            errorDiv.innerHTML = `<h3>CRITICAL ERROR</h3><p>${message}</p><p>Line: ${lineno}</p>`;
+            document.body.appendChild(errorDiv);
+            return false;
+        };
+
         // State
         let currentTab = 'today';
         let studentsData = [];
@@ -380,7 +413,7 @@
 
             // Update Header Title
             const titles = {
-                'today': 'TODAY',
+                'today': 'TODAY2',
                 'all': 'ALL STUDENTS',
                 'report': 'CLASS REPORT',
                 'projects': 'PROJECTS',
@@ -394,30 +427,41 @@
 
         async function loadData() {
             const container = document.getElementById('mainContent');
-            container.innerHTML = '<div class="loading-container"><div>Loading...</div></div>';
+            container.innerHTML = '<div class="loading-container"><div>Loading Data... (v2)</div></div>';
 
             try {
+                console.log('Fetching data...');
                 // Fetch Today's Students
                 const response = await fetch('/api/todays-students');
                 const data = await response.json();
+                console.log('Data received:', data);
 
                 if (data.success) {
                     studentsData = data.students;
+                    console.log('Student count:', studentsData.length);
+                    // Force a check
+                    if (studentsData.length === 0) {
+                        // Alert just once to know it worked
+                        // alert('Loaded 0 students');
+                    }
                     render();
                 } else {
                     container.innerHTML = `<div class="empty-state">
                         <h3>Failed to load data</h3>
                         <p style="color: red;">${data.error || 'Unknown error'}</p>
                     </div>`;
+                    alert('API Error: ' + data.error);
                 }
             } catch (e) {
-                console.error(e);
+                console.error('Load Error:', e);
                 container.innerHTML = `<div class="empty-state">
                     <h3>Connection Error</h3>
-                    <p>Could not connect to server.</p>
+                    <p>${e.message}</p>
                 </div>`;
+                alert('Fetch Error: ' + e.message);
             }
         }
+
 
         function render() {
             const container = document.getElementById('mainContent');
@@ -449,57 +493,68 @@
         }
 
         function renderToday(container) {
-            if (!studentsData || studentsData.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No classes found for today</h3>
-                        <p>Check the scheduled bookings.</p>
-                    </div>`;
-                return;
+            try {
+                if (!studentsData || studentsData.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No classes found for today</h3>
+                            <p>Check the scheduled bookings.</p>
+                        </div>`;
+                    return;
+                }
+
+                let html = '<div style="background: white; border-top: 1px solid #e5e7eb;">';
+
+                studentsData.forEach(student => {
+                    const isCheckedIn = student.checkedIn === true;
+                    const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
+                    const checkContent = isCheckedIn ? '✓' : '';
+
+                    const sName = student.studentName || 'Unknown Student';
+                    const safeName = sName.toString().replace(/'/g, "\\'");
+                    const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
+
+                    html += `
+                    <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
+                        ${renderHeadshot(student.headshot, sName)}
+                        
+                        <div class="student-info">
+                            <div class="student-name">${sName}</div>
+                            <div class="student-project">${student.currentProject || 'No Active Project'}</div>
+                            ${student.note ? `
+                                <div class="student-note" style="
+                                    font-size: 0.85rem; 
+                                    color: #d9534f; 
+                                    margin-top: 4px; 
+                                    font-style: italic; 
+                                    font-weight: 500;
+                                ">
+                                    Note: ${student.note}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="attendance-actions">
+                            <!-- Attendance Checkbox -->
+                            <button class="${checkBtnClass}" onclick="event.stopPropagation(); toggleAttendance(${student.rowIndex}, ${!isCheckedIn})">
+                                 ${checkContent}
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                });
+                html += '</div>';
+
+                container.innerHTML = html;
+            } catch (error) {
+                console.error('Render Error:', error);
+                container.innerHTML = `<div style="padding: 20px; color: red;">
+                    <h3>Rendering Error</h3>
+                    <p>${error.message}</p>
+                    <pre style="background:#eee; padding:10px; overflow:auto; font-size:10px;">${error.stack}</pre>
+                </div>`;
+                alert('Detailed Render Error: ' + error.message);
             }
-
-            let html = '<div style="background: white; border-top: 1px solid #e5e7eb;">';
-
-            studentsData.forEach(student => {
-                const isCheckedIn = student.checkedIn === true;
-                const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
-                const checkContent = isCheckedIn ? '✓' : '';
-
-                const safeName = student.studentName.replace(/'/g, "\\'");
-                const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
-
-                html += `
-                <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
-                    ${renderHeadshot(student.headshot, student.studentName)}
-                    
-                    <div class="student-info">
-                        <div class="student-name">${student.studentName}</div>
-                        <div class="student-project">${student.currentProject || 'No Active Project'}</div>
-                        ${student.note ? `
-                            <div class="student-note" style="
-                                font-size: 0.85rem; 
-                                color: #d9534f; 
-                                margin-top: 4px; 
-                                font-style: italic; 
-                                font-weight: 500;
-                            ">
-                                Note: ${student.note}
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="attendance-actions">
-                        <!-- Attendance Checkbox -->
-                        <button class="${checkBtnClass}" onclick="event.stopPropagation(); toggleAttendance(${student.rowIndex}, ${!isCheckedIn})">
-                             ${checkContent}
-                        </button>
-                    </div>
-                </div>
-                `;
-            });
-            html += '</div>';
-
-            container.innerHTML = html;
         }
 
         async function toggleAttendance(rowIndex, newStatus) {
@@ -557,97 +612,43 @@
         async function renderAllStudents(container) {
             container.innerHTML = '<div class="loading-container">Loading all students...</div>';
 
-            // Filter/Search State
-            let searchTerm = '';
-
             try {
                 const response = await fetch('/api/all-kids');
                 const data = await response.json();
 
                 if (!data.success) throw new Error(data.error);
 
-                const students = data.kids;
+                const students = data.kids || [];
 
-                // Render function to handle re-rendering on search
+                // Simple render function
                 const renderList = () => {
-                    const filtered = students.filter(s =>
-                        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
-                    );
+                    if (students.length === 0) return '<div class="empty-state">No students found</div>';
 
-                    if (filtered.length === 0) {
-                        return `<div class="empty-state">No students found matching "${searchTerm}"</div>`;
-                    }
-
-                    return filtered.map(s => {
-                        // Icons (SVGs mimicking the screenshot)
-                        const iconUser = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-                        const iconEdit = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
-                        const iconCamera = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
-
+                    return students.map(s => {
                         return `
-                        <div class="student-card">
-                            ${renderHeadshot(s.headshot, s.name)}
-                            <div class="student-info">
-                                <div class="student-name">${s.name}</div>
-                                <div class="student-project">${s.email || ''}</div>
-                            </div>
-                            <div class="attendance-actions">
-                                <button class="icon-btn">${iconUser}<span style="font-size:10px; font-weight:bold; margin-left:-2px;">+</span></button>
-                                <button class="icon-btn">${iconEdit}</button>
-                                <button class="icon-btn">${iconCamera}</button>
-                            </div>
-                        </div>
-                        `;
+                       <div class="student-card" onclick="openStudentDetail('${(s.studentId || '').replace(/'/g, "\\'")}', '${(s.name || '').replace(/'/g, "\\'")}', '${s.headshot || ''}')" style="cursor:pointer">
+                           ${renderHeadshot(s.headshot, s.name)}
+                           <div class="student-info">
+                               <div class="student-name">${s.name}</div>
+                               <div class="student-project">${s.email || ''}</div>
+                           </div>
+                           <div class="attendance-actions">
+                               <div style="font-size: 20px;">➡️</div>
+                           </div>
+                       </div>
+                       `;
                     }).join('');
                 };
 
-                // Search Bar HTML
-                const searchHtml = `
-                    <div style="background: #db3236; padding: 10px 16px; color: white; display: flex; align-items: center; position: sticky; top: 60px; z-index: 99;">
-                         <div style="flex-grow: 1; position: relative;">
-                             <input type="text" id="studentSearch" placeholder="Search students..." 
-                                    style="width: 100%; padding: 8px 35px 8px 12px; border-radius: 4px; border: none; font-size: 14px; outline: none;"
-                                    value="${searchTerm}">
-                             <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #999;">🔍</div>
-                         </div>
-                         <div style="margin-left: 15px; font-size: 24px;">☑️</div>
-                         <div style="margin-left: 15px; font-size: 24px;">🔄</div>
+                container.innerHTML = `
+                    <div style="background: white; border-top: 1px solid #e5e7eb; padding-bottom: 80px;">
+                        ${renderList()}
                     </div>
                 `;
 
-                // Override the main header? Or just place below?
-                // The main header is fixed. "All Students" view usually has its own sub-header or replaces functionality.
-                // The screenshot shows a red header "ALL STUDENTS" with specific icons.
-                // My APP header is already present. I'll modify the Page Title to "ALL STUDENTS" in switchTab.
-                // The search bar in screenshot is inside the red header.
-                // My header structure is: [Back] [Logo] [Title] ... [Search] [Check] [Refresh]
-                // I can reuse the main header actions! Just need to wire up the search icon to show a search bar.
-                // For simplicity/speed, I'll render the list directly.
-
-                // Let's attach the search event listener after rendering
-                const updateView = () => {
-                    container.innerHTML = `
-                        <div style="background: white; border-top: 1px solid #e5e7eb; padding-bottom: 80px;">
-                            ${renderList()}
-                        </div>
-                     `;
-                }
-
-                // Initial Render
-                updateView();
-
-                // Setup Search Logic (Hooks into existing header search icon or add one)
-                // Actually, let's keep it simple: List only for now as per "lists out ALL the kids" requirement.
-                // Screenshot has search icon in header. 
-
             } catch (e) {
                 console.error(e);
-                container.innerHTML = `<div class="empty-state">
-                    <h3>Failed to load students</h3>
-                    <p>${e.message}</p>
-                    <button onclick="renderAllStudents(document.getElementById('mainContent'))" style="margin-top:10px;">Retry</button>
-                </div>`;
+                container.innerHTML = `<div class="empty-state">Error: ${e.message}</div>`;
             }
         }
 
@@ -893,17 +894,17 @@
 
                     ${renderSectionWithAction('Assigned Projects', projects.assignedProjects, '📌', '#db3236', studentData.studentId, studentData.studentName, headshotUrl)}
                     ${renderSectionWithAction('Working On', projects.inProgressProjects, '🚧', '#3182ce', studentData.studentId, studentData.studentName, headshotUrl)}
-                    ${renderSectionWithAction('Completed', projects.completedProjects, '✅', '#38a169', studentData.studentId, studentData.studentName, headshotUrl)}
+                    ${renderSection('Completed', projects.completedProjects, '✅', '#38a169', studentData.studentId, studentData.studentName, headshotUrl)}
                 </div>
             `;
             container.innerHTML = html;
         }
 
-        // Helper specifically for Completed section (no action button)
-        function renderSection(title, items, icon, colorClass) {
+        // Helper specifically for Completed section
+        function renderSection(title, items, icon, colorClass, studentId, studentName, headshotUrl) {
             if (!items || items.length === 0) return '';
 
-            const getIcon = (type) => { // Duplicate helper but safely scoped
+            const getIcon = (type) => {
                 const lower = (type || '').toLowerCase();
                 if (lower.includes('scratch')) return '🐱';
                 if (lower.includes('python')) return '🐍';
@@ -911,8 +912,11 @@
                 return '📄';
             };
 
+            const safeStr = (str) => (str || '').toString().replace(/'/g, "\\'");
+
             let listHtml = items.map(p => `
-                <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center;">
+                <div onclick="openEditCompletionModal('${safeStr(studentId)}', '${safeStr(p.originalCode)}', '${safeStr(p.name)}', '${safeStr(headshotUrl)}', '${safeStr(studentName)}', '${safeStr(p.videoLink)}', '${safeStr(p.rating)}')"
+                     style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; cursor: pointer; transition: background 0.2s;">
                     <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
                     <div style="flex-grow: 1;">
                         <div style="font-weight: 600; color: #333; font-size: 15px;">${p.name}</div>
@@ -921,6 +925,7 @@
                         </div>
                     </div>
                     ${p.rating ? `<div style="font-weight:bold; color:#F59E0B;">${p.rating}★</div>` : ''}
+                    <div style="margin-left: 10px; color: #cbd5e0;">⋮</div>
                 </div>
             `).join('');
 
@@ -945,19 +950,10 @@
                 return '📄';
             };
 
-            // Helper to escape for HTML attribute (double quotes)
-            const safeAttr = (str) => (str || '').toString().replace(/"/g, '&quot;');
+            const safeStr = (str) => (str || '').toString().replace(/'/g, "\\'");
 
             let listHtml = items.map(p => `
-                <div class="project-item-row"
-                     data-sid="${safeAttr(studentId)}"
-                     data-pcode="${safeAttr(p.originalCode)}"
-                     data-pname="${safeAttr(p.name)}"
-                     data-headshot="${safeAttr(headshotUrl)}"
-                     data-sname="${safeAttr(studentName)}"
-                     data-video="${safeAttr(p.videoLink)}"
-                     data-rating="${safeAttr(p.rating)}"
-                     style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; position: relative; cursor: pointer; transition: background 0.2s;">
+                <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; position: relative;">
                     <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
                     <div style="flex-grow: 1; padding-right: 40px;">
                         <div style="font-weight: 600; color: #333; font-size: 15px;">${p.name}</div>
@@ -965,8 +961,9 @@
                             ${p.type || 'Project'} • ${p.date || 'Assigned'}
                         </div>
                     </div>
-                    <div style="position: absolute; right: 10px; bottom: 10px; background: #ECFDF5; color: #047857; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; border: 1px solid #6EE7B7; z-index: 10;">
-                        <span style="font-size: 20px; pointer-events: none;">${p.videoLink ? '👁️' : '✓'}</span>
+                    <div onclick="openCompletionModal('${safeStr(studentId)}', '${safeStr(p.originalCode)}', '${safeStr(p.name)}', '${safeStr(headshotUrl)}', '${safeStr(studentName)}')" 
+                         style="position: absolute; right: 10px; bottom: 10px; background: #ECFDF5; color: #047857; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #6EE7B7;">
+                        <span style="font-size: 16px;">✓</span>
                     </div>
                 </div>
             `).join('');
@@ -981,377 +978,239 @@
             `;
         }
 
-        // Global Event Delegation for robustness
-        // Handles clicks on dynamic elements without needing inline onclicks
-        document.addEventListener('click', function (e) {
-            // Check if clicked element or parent is a project-item-row
-            const row = e.target.closest('.project-item-row');
-            if (row) {
-                e.stopPropagation(); // Stop bubbling
-                console.log('Row Click Detected:', row.dataset);
-                try {
-                    const d = row.dataset;
-                    // Ensure modal function exists
-                    if (window.openCompletionModal) {
-                        window.openCompletionModal(d.sid, d.pcode, d.pname, d.headshot, d.sname, d.video, d.rating, d.status, d.date);
-                    } else {
-                        console.error('Modal function not found!');
-                        alert('System Error: Modal function missing. Please refresh.');
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert('Action Failed: ' + err.message);
-                }
-            }
-        });
 
-        window.openCompletionModal = function (studentId, projectCode, projectName, headshotUrl, studentName, existingVideo, existingRating, currentStatus, successfulDate) {
-            // Helper for inline onclick strings
-            const safeStr = (str) => (str || '').toString().replace(/'/g, "\\'").replace(/\n/g, ' ').replace(/\r/g, '');
 
+        // UNIFIED EDIT/COMPLETE MODAL
+        function openEditCompletionModal(studentId, projectCode, projectName, headshotUrl, studentName, videoLink, currentRating) {
             const modalId = 'completionModal';
-            const existing = document.getElementById(modalId);
-            if (existing) existing.remove();
+            if (document.getElementById(modalId)) document.getElementById(modalId).remove();
 
             const modal = document.createElement('div');
             modal.id = modalId;
             modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1000; overflow-y: auto; padding-bottom: 50px;';
 
-            // Convert Drive link to Preview link for iframe
-            let embedUrl = '';
-            if (existingVideo && existingVideo.includes('drive.google.com')) {
-                embedUrl = existingVideo.replace('/view', '/preview');
-            }
+            // Clean up potentially undefined/null strings
+            if (videoLink === 'undefined') videoLink = '';
+            if (currentRating === 'undefined') currentRating = 0;
+            currentRating = parseInt(currentRating) || 0;
 
-            const isViewMode = !!(existingVideo && existingRating);
-            const initialRating = existingRating ? parseInt(existingRating) : 0;
+            const hasVideo = !!videoLink && videoLink.trim().length > 0;
+            const titleText = hasVideo ? 'Edit Project Details' : 'Complete Project';
+            const btnText = hasVideo ? 'Update Project' : 'Mark as Complete';
 
             modal.innerHTML = `
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="display: flex; align-items: center; margin-bottom: 30px;">
                         <button onclick="document.getElementById('${modalId}').remove()" style="background: none; border: none; font-size: 24px; padding: 0; margin-right: 15px;">✕</button>
-                        <h2 style="margin: 0; font-size: 18px;">${isViewMode ? 'Project Evidence' : 'Complete Project'}</h2>
+                        <h2 style="margin: 0; font-size: 18px;">${titleText}</h2>
                     </div>
+                    
                     <div style="text-align: center; margin-bottom: 30px;">
                          <img src="${headshotUrl}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; margin-bottom: 10px;">
                          <h3 style="margin: 0; color: #333;">${studentName}</h3>
                          <div style="color: #666; margin-top: 5px; font-weight: 500;">${projectName}</div>
                     </div>
 
-                    <!-- VIEW MODE -->
-                    <div id="viewMode" style="display: ${isViewMode ? 'block' : 'none'};">
-                        <div style="margin-bottom: 30px; text-align: center;">
-                            <div style="margin-bottom: 10px; font-weight: 600; color: #444;">Rated by Student</div>
-                            <div class="star-rating-static" style="font-size: 40px; color: #ddd;">
-                                ${[1, 2, 3, 4, 5].map(i => `<span style="color: ${i <= initialRating ? '#F59E0B' : '#ddd'};">★</span>`).join('')}
+                    <!-- RATING SECTION -->
+                    <div style="margin-bottom: 30px; text-align: center;">
+                        <div style="margin-bottom: 10px; font-weight: 600; color: #444;">Project Rating</div>
+                        <div class="star-rating" style="font-size: 40px; color: #ddd; cursor: pointer;">
+                            <span onclick="setRating(1)" data-val="1">★</span>
+                            <span onclick="setRating(2)" data-val="2">★</span>
+                            <span onclick="setRating(3)" data-val="3">★</span>
+                            <span onclick="setRating(4)" data-val="4">★</span>
+                            <span onclick="setRating(5)" data-val="5">★</span>
+                        </div>
+                        <input type="hidden" id="selectedRating" value="${currentRating}">
+                    </div>
+
+                    <!-- VIDEO SECTION -->
+                    <div id="videoSection" style="margin-bottom: 30px;">
+                        ${hasVideo ? `
+                            <div style="margin-bottom:15px;">
+                                <div style="font-weight:600; color:#444; margin-bottom:8px;">Current Video Evidence:</div>
+                                <iframe src="${videoLink.replace('/view', '/preview')}" width="100%" height="250" style="border:none; border-radius:8px;"></iframe>
                             </div>
-                        </div>
-                        
-                        ${embedUrl ? `
-                        <div style="margin-bottom: 30px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            <iframe src="${embedUrl}" width="100%" height="320" style="border:none;"></iframe>
-                        </div>
+                            <div style="text-align:center;">
+                                <button onclick="toggleUploadForm()" style="background:#EDF2F7; border:none; padding:8px 16px; border-radius:20px; font-size:13px; color:#4A5568; font-weight:600;">Replace Video ↺</button>
+                            </div>
                         ` : ''}
-
-                        <button onclick="switchToEditMode()" 
-                             style="width: 100%; border: 2px solid #db3236; color: #db3236; background: white; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
-                            🔄 Update / Redo
-                        </button>
                     </div>
 
-                    <!-- EDIT MODE (For new or updating) -->
-                    <div id="editMode" style="display: ${isViewMode ? 'none' : 'block'};">
-                        <div style="margin-bottom: 40px; text-align: center;">
-                            <div style="margin-bottom: 10px; font-weight: 600; color: #444;">Ask ${studentName} how they would rate this project?</div>
-                            <div class="star-rating" style="font-size: 40px; color: #ddd; cursor: pointer;">
-                                <span onclick="setRating(1)" data-val="1">★</span>
-                                <span onclick="setRating(2)" data-val="2">★</span>
-                                <span onclick="setRating(3)" data-val="3">★</span>
-                                <span onclick="setRating(4)" data-val="4">★</span>
-                                <span onclick="setRating(5)" data-val="5">★</span>
-                            </div>
-                            <input type="hidden" id="selectedRating" value="${initialRating}">
-                        </div>
-
-                        <div style="border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
-                            <input type="file" id="modalVideoInput" accept="video/*" style="display: none;" onchange="handleModalFileSelect(this)">
-                            <div style="display: flex; gap: 15px; justify-content: center;">
-                                <label for="modalVideoInput" style="cursor: pointer; flex: 1; border: 1px solid #CBD5E0; border-radius: 8px; padding: 15px; background: white;">
-                                    <div style="font-size: 30px; margin-bottom: 5px;">📁</div>
-                                    <span style="color: #4A5568; font-weight: 500; display: block;">Upload File</span>
-                                </label>
-                                
-                                <div onclick="openCamera()" style="cursor: pointer; flex: 1; border: 1px solid #CBD5E0; border-radius: 8px; padding: 15px; background: white;">
-                                    <div style="font-size: 30px; margin-bottom: 5px;">🎥</div>
-                                    <span style="color: #4A5568; font-weight: 500; display: block;">Record (720p)</span>
-                                </div>
-                            </div>
+                    <!-- UPLOAD FORM (Hidden if video exists initially) -->
+                    <div id="uploadFormContainer" style="${hasVideo ? 'display:none;' : ''} border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
+                        <input type="file" id="modalVideoInput" accept="video/*" style="display: none;" onchange="handleModalFileSelect(this)">
+                        <label for="modalVideoInput" style="cursor: pointer; display: block;">
+                            <div style="font-size: 40px; margin-bottom: 10px;">📹</div>
+                            <span style="color: #4A5568; font-weight: 500;">${hasVideo ? 'Upload New Video' : 'Upload Video Evidence'}</span>
                             <div id="modalFileName" style="margin-top: 10px; color: #3182CE; font-size: 0.9em; font-weight: bold; overflow-wrap: break-word;"></div>
-                        </div>
-
-                        <!-- CAMERA OVERLAY -->
-                        <div id="cameraOverlay" style="display: none; position: fixed; top: 0; left: 0; w: 100%; h: 100%; background: black; z-index: 2000; flex-direction: column; align-items: center; justify-content: center;">
-                             <video id="cameraPreview" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
-                             <div style="position: absolute; bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%;">
-                                 <div id="recordingTimer" style="color: white; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; display: none;">00:00</div>
-                                 <div style="display: flex; gap: 30px; align-items: center;">
-                                     <button onclick="closeCamera()" style="background: white; color: black; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold;">Cancel</button>
-                                     <button id="recordBtn" onclick="toggleRecording()" style="width: 70px; height: 70px; border-radius: 50%; background: #ff3b30; border: 4px solid white; cursor: pointer;"></button>
-                                 </div>
-                             </div>
-                        </div>
-
-                        <div id="modalProgressContainer" style="display: none; margin-bottom: 20px;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #4A5568; font-size: 0.9em;">
-                                <span id="modalUploadStatus">Uploading...</span>
-                                <span id="modalUploadPercent">0%</span>
-                            </div>
-                            <div style="width: 100%; height: 10px; background: #EDF2F7; border-radius: 5px; overflow: hidden;">
-                                <div id="modalProgressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
-                            </div>
-                        </div>
-
-                        <div style="margin-top: 20px; text-align: left; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <div style="margin-bottom: 15px;">
-                                <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Project Status</label>
-                                <select id="modalStatusSelect" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e0; background: white; font-size: 16px;">
-                                    <option value="Completed" ${(!currentStatus || currentStatus === 'Completed') ? 'selected' : ''}>Completed</option>
-                                    <option value="In Progress" ${(currentStatus === 'In Progress') ? 'selected' : ''}>Working On</option>
-                                    <option value="Assigned" ${(currentStatus === 'Assigned') ? 'selected' : ''}>Assigned (Not Started)</option>
-                                </select>
-                            </div>
-                            
-                            <div>
-                                <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Completion Date</label>
-                                <input type="date" id="modalDatePicker" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 16px;">
-                            </div>
-                        </div>
-
-                        <button id="completeBtn" onclick="submitCompletion('${studentId}', '${projectCode}', '${studentName.replace(/'/g, "\\'")}', '${headshotUrl}', '${safeStr(existingVideo)}')" 
-                            style="width: 100%; background: #db3236; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; opacity: 0.5; cursor: not-allowed; margin-top: 20px;" disabled>
-                            ${isViewMode ? 'Update Project' : 'UPLOAD & Mark Complete'}
-                        </button>
+                        </label>
                     </div>
 
+                    <div id="modalProgressContainer" style="display: none; margin-bottom: 20px;">
+                         <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #4A5568; font-size: 0.9em;">
+                            <span id="modalUploadStatus">Uploading...</span>
+                            <span id="modalUploadPercent">0%</span>
+                        </div>
+                        <div style="width: 100%; height: 10px; background: #EDF2F7; border-radius: 5px; overflow: hidden;">
+                             <div id="modalProgressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
+                        </div>
+                    </div>
+
+                    <button id="completeBtn" onclick="submitCompletion('${studentId}', '${projectCode}', '${studentName.replace(/'/g, "\\'")}', '${headshotUrl}', '${videoLink}')" 
+                        style="width: 100%; background: #db3236; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; opacity: ${hasVideo ? '1' : '0.5'}; cursor: ${hasVideo ? 'pointer' : 'not-allowed'};" ${hasVideo ? '' : 'disabled'}>
+                        ${btnText}
+                    </button>
                     <div id="completionResult" style="text-align: center; margin-top: 15px; display: none;"></div>
                 </div>
             `;
 
             document.body.appendChild(modal);
 
-            // Set default date
-            setTimeout(() => {
-                const dateInput = document.getElementById('modalDatePicker');
-                if (dateInput) {
-                    let d = new Date();
-                    if (successfulDate) {
-                        d = new Date(successfulDate);
-                    }
-                    // Format YYYY-MM-DD
-                    const year = d.getFullYear();
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
-                    dateInput.value = `${year}-${month}-${day}`;
-                }
-            }, 100);
-
-            // Logic to switch modes
-            window.switchToEditMode = () => {
-                document.getElementById('viewMode').style.display = 'none';
-                document.getElementById('editMode').style.display = 'block';
-                // Pre-fill rating stars if existing
-                if (initialRating > 0) {
-                    window.setRating(initialRating);
-                }
-            };
-
-            window.setRating = (val) => {
-                document.getElementById('selectedRating').value = val;
-                const stars = document.querySelectorAll('.star-rating span');
-                stars.forEach((s, idx) => {
-                    s.style.color = (idx < val) ? '#F59E0B' : '#ddd';
-                });
-                checkSubmitReady();
-            };
-
-            window.handleModalFileSelect = (input) => {
-                if (input.files && input.files[0]) {
-                    document.getElementById('modalFileName').innerText = input.files[0].name;
-                    checkSubmitReady();
-                }
-            };
-
-            window.checkSubmitReady = () => {
-                const rating = document.getElementById('selectedRating').value;
-                const file = document.getElementById('modalVideoInput').files[0];
-                const btn = document.getElementById('completeBtn');
-                const hasExistingVideo = document.querySelector('#videoSection iframe') !== null; // Rough check, but we pass existingVideo to submit anyway
-
-                // In edit mode, we need: Rating > 0 AND (File selected OR Existing Video present)
-                if (rating > 0 && (file || existingVideo)) {
-                    btn.disabled = false;
-                    btn.style.opacity = '1';
-                    btn.style.cursor = 'pointer';
-                } else {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.5';
-                    btn.style.cursor = 'not-allowed';
-                }
-            };
-
-            window.submitCompletion = async (sid, pCode, sName, sHeadshot, existingLink) => {
-                const btn = document.getElementById('completeBtn');
-                const resultDiv = document.getElementById('completionResult');
-                const file = document.getElementById('modalVideoInput').files[0];
-                const rating = document.getElementById('selectedRating').value;
-
-                // Check if we have an auto-uploaded link from Camera
-                const preUploadedLink = document.getElementById('hiddenUploadedLink') ? document.getElementById('hiddenUploadedLink').value : null;
-
-                const statusStr = document.getElementById('modalStatusSelect').value;
-                const dateStr = document.getElementById('modalDatePicker').value;
-
-                btn.disabled = true;
-                btn.innerText = (file && !preUploadedLink) ? 'Uploading video...' : 'Updating...';
-
-                try {
-                    let videoLink = existingLink; // Default to existing
-
-                    // Priority 1: Pre-uploaded Link (Camera)
-                    if (preUploadedLink) {
-                        videoLink = preUploadedLink;
-                    }
-                    // Priority 2: File Input (Manual Upload)
-                    else if (file) {
-                        videoLink = await uploadVideoFile(file);
-                        btn.innerText = 'Saving...';
-                    }
-
-                    const response = await fetch('/api/complete-project', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            studentId: sid,
-                            projectCode: pCode,
-                            videoLink: videoLink,
-                            rating: rating,
-                            instructorName: localStorage.getItem('instructorName') || 'Unknown',
-                            status: statusStr,
-                            date: dateStr
-                        })
-                    });
-
-                    const data = await response.json();
-                    if (!data.success) throw new Error(data.error);
-
-                    btn.innerText = 'Success!';
-                    resultDiv.style.display = 'block';
-                    resultDiv.innerHTML = '<span style="color: green; font-weight: bold;">✅ Project Updated!</span>';
-
-                    setTimeout(() => {
-                        document.getElementById('completionModal').remove();
-                        openStudentDetail(sid, sName, sHeadshot);
-                    }, 1500);
-
-                } catch (e) {
-                    console.error(e);
-                    btn.disabled = false;
-                    btn.innerText = 'Try Again';
-                    alert('Error: ' + e.message);
-                }
-            };
-
-            // ============================================================================
-            // HELPER: Screen Wake Lock (Prevent Sleep during Upload)
-            // ============================================================================
-            let wakeLock = null;
-            let isUploading = false; // Global flag for navigation protection
-
-            // Navigation Guard
-            window.addEventListener('beforeunload', (e) => {
-                if (isUploading) {
-                    const msg = 'Upload in progress. Are you sure you want to leave?';
-                    e.returnValue = msg;
-                    return msg;
-                }
+            // Initialize stars
+            const stars = document.querySelectorAll('.star-rating span');
+            stars.forEach((s, idx) => {
+                s.style.color = (idx < currentRating) ? '#F59E0B' : '#ddd';
             });
 
-            async function requestWakeLock() {
-                if ('wakeLock' in navigator) {
-                    try {
-                        wakeLock = await navigator.wakeLock.request('screen');
-                        console.log('Wake Lock active: Screen will stay on.');
-                    } catch (err) {
-                        console.error('Wake Lock error:', err);
-                    }
-                }
+            // Make helpers global for this instance
+            window.toggleUploadForm = () => {
+                const form = document.getElementById('uploadFormContainer');
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            };
+        }
+
+        // Legacy wrapper to maintain compatibility if called elsewhere
+        function openCompletionModal(studentId, projectCode, projectName, headshotUrl, studentName) {
+            openEditCompletionModal(studentId, projectCode, projectName, headshotUrl, studentName, '', 0);
+        }
+
+        window.setRating = (val) => {
+            document.getElementById('selectedRating').value = val;
+            const stars = document.querySelectorAll('.star-rating span');
+            stars.forEach((s, idx) => {
+                s.style.color = (idx < val) ? '#F59E0B' : '#ddd';
+            });
+            checkSubmitReady();
+        };
+
+        window.handleModalFileSelect = (input) => {
+            if (input.files && input.files[0]) {
+                document.getElementById('modalFileName').innerText = input.files[0].name;
+                checkSubmitReady();
             }
+        };
 
-            async function releaseWakeLock() {
-                if (wakeLock !== null) {
-                    try {
-                        await wakeLock.release();
-                        wakeLock = null;
-                        console.log('Wake Lock released.');
-                    } catch (err) {
-                        console.error('Wake Lock release error:', err);
-                    }
-                }
+        window.checkSubmitReady = () => {
+            const rating = document.getElementById('selectedRating').value;
+            const file = document.getElementById('modalVideoInput').files[0];
+            const btn = document.getElementById('completeBtn');
+            const hasExistingVideo = document.querySelector('#videoSection iframe') !== null;
+
+            if (rating > 0 && (file || hasExistingVideo)) {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            } else {
+                btn.disabled = true;
+                btn.style.opacity = '0.5';
+                btn.style.cursor = 'not-allowed';
             }
+        };
 
-            async function uploadVideoFile(file) {
-                // Request Wake Lock
-                await requestWakeLock();
+        window.submitCompletion = async (sid, pCode, sName, sHeadshot, existingLink) => {
+            const btn = document.getElementById('completeBtn');
+            const resultDiv = document.getElementById('completionResult');
+            const file = document.getElementById('modalVideoInput').files[0];
+            const rating = document.getElementById('selectedRating').value;
 
-                return new Promise((resolve, reject) => {
-                    const formData = new FormData();
-                    formData.append('video', file);
+            btn.disabled = true;
+            btn.innerText = file ? 'Uploading video...' : 'Updating...';
 
-                    const xhr = new XMLHttpRequest();
-                    const progressContainer = document.getElementById('modalProgressContainer');
-                    const progressBar = document.getElementById('modalProgressBar');
-                    const percentText = document.getElementById('modalUploadPercent');
+            try {
+                let videoLink = existingLink; // Default to existing
 
-                    progressContainer.style.display = 'block';
+                // If new file chosen, upload it
+                if (file) {
+                    videoLink = await uploadVideoFile(file);
+                    btn.innerText = 'Saving...';
+                }
 
-                    xhr.upload.addEventListener('progress', (e) => {
-                        if (e.lengthComputable) {
-                            const percent = (e.loaded / e.total) * 100;
-                            progressBar.style.width = percent + '%';
-                            percentText.innerText = Math.round(percent) + '%';
-                        }
-                    });
-
-                    xhr.onreadystatechange = async function () {
-                        if (xhr.readyState === 4) {
-                            // Release Wake Lock & Reset Flag
-                            await releaseWakeLock();
-                            isUploading = false;
-
-                            if (xhr.status === 200) {
-                                try {
-                                    const resp = JSON.parse(xhr.responseText);
-                                    if (resp.success) {
-                                        resolve(resp.webViewLink);
-                                    } else {
-                                        reject(new Error(resp.error));
-                                    }
-                                } catch (e) {
-                                    reject(e);
-                                }
-                            } else {
-                                reject(new Error('Upload failed: ' + xhr.statusText));
-                            }
-                        }
-                    };
-
-                    xhr.open('POST', '/api/upload-video', true);
-                    xhr.send(formData);
+                const response = await fetch('/api/complete-project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: sid,
+                        projectCode: pCode,
+                        videoLink: videoLink,
+                        rating: rating
+                    })
                 });
+
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error);
+
+                btn.innerText = 'Success!';
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = '<span style="color: green; font-weight: bold;">✅ Project Updated!</span>';
+
+                setTimeout(() => {
+                    document.getElementById('completionModal').remove();
+                    openStudentDetail(sid, sName, sHeadshot);
+                }, 1500);
+
+            } catch (e) {
+                console.error(e);
+                btn.disabled = false;
+                btn.innerText = 'Try Again';
+                alert('Error: ' + e.message);
             }
+        };
+
+        async function uploadVideoFile(file) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('video', file);
+
+                const xhr = new XMLHttpRequest();
+                const progressContainer = document.getElementById('modalProgressContainer');
+                const progressBar = document.getElementById('modalProgressBar');
+                const percentText = document.getElementById('modalUploadPercent');
+
+                progressContainer.style.display = 'block';
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percent + '%';
+                        percentText.innerText = Math.round(percent) + '%';
+                    }
+                });
+
+                xhr.onreadystatechange = function () {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            try {
+                                const resp = JSON.parse(xhr.responseText);
+                                if (resp.success) {
+                                    resolve(resp.webViewLink);
+                                } else {
+                                    reject(new Error(resp.error));
+                                }
+                            } catch (e) {
+                                reject(e);
+                            }
+                        } else {
+                            reject(new Error('Upload failed: ' + xhr.statusText));
+                        }
+                    }
+                };
+
+                xhr.open('POST', '/api/upload-video', true);
+                xhr.send(formData);
+            });
         }
     </script>
 </body>
 
 </html>
-```
