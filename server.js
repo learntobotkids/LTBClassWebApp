@@ -1516,6 +1516,18 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
 
         console.log(`Upload complete! File ID: ${response.data.id}`);
 
+        // 4. Set Permissions to "Anyone with the link"
+        // This ensures the video can be played in the dashboard without sign-in
+        await drive.permissions.create({
+            fileId: response.data.id,
+            supportsAllDrives: true, // Required for Shared Drives
+            requestBody: {
+                role: 'reader',
+                type: 'anyone',
+            },
+        });
+        console.log(`Permissions set to Public for File ID: ${response.data.id}`);
+
         // 3. Cleanup temp file
         fs.unlink(filePath, (err) => {
             if (err) console.error('Error deleting temp file:', err);
@@ -1528,12 +1540,13 @@ app.post('/api/upload-video', upload.single('video'), async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Upload error:', error);
+        console.error('Upload error DETAILS:', error);
+        console.error('Full stack:', error.stack);
         // Cleanup on error too
-        if (fs.existsSync(filePath)) {
+        if (filePath && fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
-        next(error);
+        res.status(500).json({ success: false, error: 'Server Failure: ' + error.message });
     }
 });
 
@@ -1571,15 +1584,15 @@ app.get('/api/student-projects/:studentId', async (req, res) => {
 // ============================================================================
 app.post('/api/complete-project', async (req, res) => {
     try {
-        const { studentId, projectCode, videoLink, rating } = req.body;
+        const { studentId, projectCode, videoLink, rating, instructorName, status, date } = req.body;
 
-        if (!studentId || !projectCode || !rating) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        if (!studentId || !projectCode) {
+            return res.status(400).json({ error: 'Missing required fields' });
         }
 
         console.log(`Completing project: ${projectCode} for Student ${studentId}`);
 
-        await googleSheetsService.markProjectComplete(studentId, projectCode, videoLink || '', rating);
+        const result = await googleSheetsService.markProjectComplete(studentId, projectCode, videoLink, rating, instructorName, status, date);
 
         res.json({ success: true, message: 'Project marked as complete' });
 

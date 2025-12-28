@@ -893,7 +893,7 @@
 
                     ${renderSectionWithAction('Assigned Projects', projects.assignedProjects, '📌', '#db3236', studentData.studentId, studentData.studentName, headshotUrl)}
                     ${renderSectionWithAction('Working On', projects.inProgressProjects, '🚧', '#3182ce', studentData.studentId, studentData.studentName, headshotUrl)}
-                    ${renderSection('Completed', projects.completedProjects, '✅', '#38a169')}
+                    ${renderSectionWithAction('Completed', projects.completedProjects, '✅', '#38a169', studentData.studentId, studentData.studentName, headshotUrl)}
                 </div>
             `;
             container.innerHTML = html;
@@ -945,10 +945,19 @@
                 return '📄';
             };
 
-            const safeStr = (str) => (str || '').toString().replace(/'/g, "\\'");
+            // Helper to escape for HTML attribute (double quotes)
+            const safeAttr = (str) => (str || '').toString().replace(/"/g, '&quot;');
 
             let listHtml = items.map(p => `
-                <div style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; position: relative;">
+                <div class="project-item-row"
+                     data-sid="${safeAttr(studentId)}"
+                     data-pcode="${safeAttr(p.originalCode)}"
+                     data-pname="${safeAttr(p.name)}"
+                     data-headshot="${safeAttr(headshotUrl)}"
+                     data-sname="${safeAttr(studentName)}"
+                     data-video="${safeAttr(p.videoLink)}"
+                     data-rating="${safeAttr(p.rating)}"
+                     style="background: white; padding: 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; position: relative; cursor: pointer; transition: background 0.2s;">
                     <div style="font-size: 24px; margin-right: 15px;">${getIcon(p.type)}</div>
                     <div style="flex-grow: 1; padding-right: 40px;">
                         <div style="font-weight: 600; color: #333; font-size: 15px;">${p.name}</div>
@@ -956,9 +965,8 @@
                             ${p.type || 'Project'} • ${p.date || 'Assigned'}
                         </div>
                     </div>
-                    <div onclick="openCompletionModal('${safeStr(studentId)}', '${safeStr(p.originalCode)}', '${safeStr(p.name)}', '${safeStr(headshotUrl)}', '${safeStr(studentName)}')" 
-                         style="position: absolute; right: 10px; bottom: 10px; background: #ECFDF5; color: #047857; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 2px rgba(0,0,0,0.1); cursor: pointer; border: 1px solid #6EE7B7;">
-                        <span style="font-size: 16px;">✓</span>
+                    <div style="position: absolute; right: 10px; bottom: 10px; background: #ECFDF5; color: #047857; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; border: 1px solid #6EE7B7; z-index: 10;">
+                        <span style="font-size: 20px; pointer-events: none;">${p.videoLink ? '👁️' : '✓'}</span>
                     </div>
                 </div>
             `).join('');
@@ -973,7 +981,34 @@
             `;
         }
 
-        function openCompletionModal(studentId, projectCode, projectName, headshotUrl, studentName) {
+        // Global Event Delegation for robustness
+        // Handles clicks on dynamic elements without needing inline onclicks
+        document.addEventListener('click', function (e) {
+            // Check if clicked element or parent is a project-item-row
+            const row = e.target.closest('.project-item-row');
+            if (row) {
+                e.stopPropagation(); // Stop bubbling
+                console.log('Row Click Detected:', row.dataset);
+                try {
+                    const d = row.dataset;
+                    // Ensure modal function exists
+                    if (window.openCompletionModal) {
+                        window.openCompletionModal(d.sid, d.pcode, d.pname, d.headshot, d.sname, d.video, d.rating, d.status, d.date);
+                    } else {
+                        console.error('Modal function not found!');
+                        alert('System Error: Modal function missing. Please refresh.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('Action Failed: ' + err.message);
+                }
+            }
+        });
+
+        window.openCompletionModal = function (studentId, projectCode, projectName, headshotUrl, studentName, existingVideo, existingRating, currentStatus, successfulDate) {
+            // Helper for inline onclick strings
+            const safeStr = (str) => (str || '').toString().replace(/'/g, "\\'").replace(/\n/g, ' ').replace(/\r/g, '');
+
             const modalId = 'completionModal';
             const existing = document.getElementById(modalId);
             if (existing) existing.remove();
@@ -982,54 +1017,136 @@
             modal.id = modalId;
             modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 1000; overflow-y: auto; padding-bottom: 50px;';
 
+            // Convert Drive link to Preview link for iframe
+            let embedUrl = '';
+            if (existingVideo && existingVideo.includes('drive.google.com')) {
+                embedUrl = existingVideo.replace('/view', '/preview');
+            }
+
+            const isViewMode = !!(existingVideo && existingRating);
+            const initialRating = existingRating ? parseInt(existingRating) : 0;
+
             modal.innerHTML = `
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="display: flex; align-items: center; margin-bottom: 30px;">
                         <button onclick="document.getElementById('${modalId}').remove()" style="background: none; border: none; font-size: 24px; padding: 0; margin-right: 15px;">✕</button>
-                        <h2 style="margin: 0; font-size: 18px;">Complete Project</h2>
+                        <h2 style="margin: 0; font-size: 18px;">${isViewMode ? 'Project Evidence' : 'Complete Project'}</h2>
                     </div>
                     <div style="text-align: center; margin-bottom: 30px;">
                          <img src="${headshotUrl}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; margin-bottom: 10px;">
                          <h3 style="margin: 0; color: #333;">${studentName}</h3>
                          <div style="color: #666; margin-top: 5px; font-weight: 500;">${projectName}</div>
                     </div>
-                    <div style="margin-bottom: 40px; text-align: center;">
-                        <div style="margin-bottom: 10px; font-weight: 600; color: #444;">Ask the kid how they would rate this project?</div>
-                        <div class="star-rating" style="font-size: 40px; color: #ddd; cursor: pointer;">
-                            <span onclick="setRating(1)" data-val="1">★</span>
-                            <span onclick="setRating(2)" data-val="2">★</span>
-                            <span onclick="setRating(3)" data-val="3">★</span>
-                            <span onclick="setRating(4)" data-val="4">★</span>
-                            <span onclick="setRating(5)" data-val="5">★</span>
+
+                    <!-- VIEW MODE -->
+                    <div id="viewMode" style="display: ${isViewMode ? 'block' : 'none'};">
+                        <div style="margin-bottom: 30px; text-align: center;">
+                            <div style="margin-bottom: 10px; font-weight: 600; color: #444;">Rated by Student</div>
+                            <div class="star-rating-static" style="font-size: 40px; color: #ddd;">
+                                ${[1, 2, 3, 4, 5].map(i => `<span style="color: ${i <= initialRating ? '#F59E0B' : '#ddd'};">★</span>`).join('')}
+                            </div>
                         </div>
-                        <input type="hidden" id="selectedRating" value="0">
-                    </div>
-                    <div style="border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
-                        <input type="file" id="modalVideoInput" accept="video/*" style="display: none;" onchange="handleModalFileSelect(this)">
-                        <label for="modalVideoInput" style="cursor: pointer; display: block;">
-                            <div style="font-size: 40px; margin-bottom: 10px;">📹</div>
-                            <span style="color: #4A5568; font-weight: 500;">Upload Video Evidence</span>
-                            <div id="modalFileName" style="margin-top: 10px; color: #3182CE; font-size: 0.9em; font-weight: bold; overflow-wrap: break-word;"></div>
-                        </label>
-                    </div>
-                    <div id="modalProgressContainer" style="display: none; margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #4A5568; font-size: 0.9em;">
-                            <span id="modalUploadStatus">Uploading...</span>
-                            <span id="modalUploadPercent">0%</span>
+                        
+                        ${embedUrl ? `
+                        <div style="margin-bottom: 30px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            <iframe src="${embedUrl}" width="100%" height="320" style="border:none;"></iframe>
                         </div>
-                        <div style="width: 100%; height: 10px; background: #EDF2F7; border-radius: 5px; overflow: hidden;">
-                            <div id="modalProgressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
-                        </div>
+                        ` : ''}
+
+                        <button onclick="switchToEditMode()" 
+                             style="width: 100%; border: 2px solid #db3236; color: #db3236; background: white; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                            🔄 Update / Redo
+                        </button>
                     </div>
-                    <button id="completeBtn" onclick="submitCompletion('${studentId}', '${projectCode}', '${studentName.replace(/'/g, "\\'")}', '${headshotUrl}')" 
-                        style="width: 100%; background: #db3236; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; opacity: 0.5; cursor: not-allowed;" disabled>
-                        Mark as Complete
-                    </button>
+
+                    <!-- EDIT MODE (For new or updating) -->
+                    <div id="editMode" style="display: ${isViewMode ? 'none' : 'block'};">
+                        <div style="margin-bottom: 40px; text-align: center;">
+                            <div style="margin-bottom: 10px; font-weight: 600; color: #444;">Ask the kid how they would rate this project?</div>
+                            <div class="star-rating" style="font-size: 40px; color: #ddd; cursor: pointer;">
+                                <span onclick="setRating(1)" data-val="1">★</span>
+                                <span onclick="setRating(2)" data-val="2">★</span>
+                                <span onclick="setRating(3)" data-val="3">★</span>
+                                <span onclick="setRating(4)" data-val="4">★</span>
+                                <span onclick="setRating(5)" data-val="5">★</span>
+                            </div>
+                            <input type="hidden" id="selectedRating" value="${initialRating}">
+                        </div>
+
+                        <div style="border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
+                            <input type="file" id="modalVideoInput" accept="video/*" style="display: none;" onchange="handleModalFileSelect(this)">
+                            <label for="modalVideoInput" style="cursor: pointer; display: block;">
+                                <div style="font-size: 40px; margin-bottom: 10px;">📹</div>
+                                <span style="color: #4A5568; font-weight: 500;">
+                                    ${isViewMode ? 'Upload New Video' : 'Upload Video Evidence'}
+                                </span>
+                                <div id="modalFileName" style="margin-top: 10px; color: #3182CE; font-size: 0.9em; font-weight: bold; overflow-wrap: break-word;"></div>
+                            </label>
+                        </div>
+
+                        <div id="modalProgressContainer" style="display: none; margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #4A5568; font-size: 0.9em;">
+                                <span id="modalUploadStatus">Uploading...</span>
+                                <span id="modalUploadPercent">0%</span>
+                            </div>
+                            <div style="width: 100%; height: 10px; background: #EDF2F7; border-radius: 5px; overflow: hidden;">
+                                <div id="modalProgressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px; text-align: left; background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <div style="margin-bottom: 15px;">
+                                <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Project Status</label>
+                                <select id="modalStatusSelect" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e0; background: white; font-size: 16px;">
+                                    <option value="Completed" ${(!currentStatus || currentStatus === 'Completed') ? 'selected' : ''}>Completed</option>
+                                    <option value="In Progress" ${(currentStatus === 'In Progress') ? 'selected' : ''}>Working On</option>
+                                    <option value="Assigned" ${(currentStatus === 'Assigned') ? 'selected' : ''}>Assigned (Not Started)</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label style="display: block; font-weight: 600; color: #4a5568; margin-bottom: 5px;">Completion Date</label>
+                                <input type="date" id="modalDatePicker" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e0; font-size: 16px;">
+                            </div>
+                        </div>
+
+                        <button id="completeBtn" onclick="submitCompletion('${studentId}', '${projectCode}', '${studentName.replace(/'/g, "\\'")}', '${headshotUrl}', '${safeStr(existingVideo)}')" 
+                            style="width: 100%; background: #db3236; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; opacity: 0.5; cursor: not-allowed; margin-top: 20px;" disabled>
+                            ${isViewMode ? 'Update Project' : 'Mark as Complete'}
+                        </button>
+                    </div>
+
                     <div id="completionResult" style="text-align: center; margin-top: 15px; display: none;"></div>
                 </div>
             `;
 
             document.body.appendChild(modal);
+
+            // Set default date
+            setTimeout(() => {
+                const dateInput = document.getElementById('modalDatePicker');
+                if (dateInput) {
+                    let d = new Date();
+                    if (successfulDate) {
+                        d = new Date(successfulDate);
+                    }
+                    // Format YYYY-MM-DD
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    dateInput.value = `${year}-${month}-${day}`;
+                }
+            }, 100);
+
+            // Logic to switch modes
+            window.switchToEditMode = () => {
+                document.getElementById('viewMode').style.display = 'none';
+                document.getElementById('editMode').style.display = 'block';
+                // Pre-fill rating stars if existing
+                if (initialRating > 0) {
+                    window.setRating(initialRating);
+                }
+            };
 
             window.setRating = (val) => {
                 document.getElementById('selectedRating').value = val;
@@ -1051,8 +1168,10 @@
                 const rating = document.getElementById('selectedRating').value;
                 const file = document.getElementById('modalVideoInput').files[0];
                 const btn = document.getElementById('completeBtn');
+                const hasExistingVideo = document.querySelector('#videoSection iframe') !== null; // Rough check, but we pass existingVideo to submit anyway
 
-                if (rating > 0 && file) {
+                // In edit mode, we need: Rating > 0 AND (File selected OR Existing Video present)
+                if (rating > 0 && (file || existingVideo)) {
                     btn.disabled = false;
                     btn.style.opacity = '1';
                     btn.style.cursor = 'pointer';
@@ -1063,19 +1182,26 @@
                 }
             };
 
-            window.submitCompletion = async (sid, pCode, sName, sHeadshot) => {
+            window.submitCompletion = async (sid, pCode, sName, sHeadshot, existingLink) => {
                 const btn = document.getElementById('completeBtn');
                 const resultDiv = document.getElementById('completionResult');
                 const file = document.getElementById('modalVideoInput').files[0];
                 const rating = document.getElementById('selectedRating').value;
 
+                const statusStr = document.getElementById('modalStatusSelect').value;
+                const dateStr = document.getElementById('modalDatePicker').value;
+
                 btn.disabled = true;
-                btn.innerText = 'Uploading video...';
+                btn.innerText = file ? 'Uploading video...' : 'Updating...';
 
                 try {
-                    const videoLink = await uploadVideoFile(file);
+                    let videoLink = existingLink; // Default to existing
 
-                    btn.innerText = 'Saving...';
+                    // If new file chosen, upload it
+                    if (file) {
+                        videoLink = await uploadVideoFile(file);
+                        btn.innerText = 'Saving...';
+                    }
 
                     const response = await fetch('/api/complete-project', {
                         method: 'POST',
@@ -1084,7 +1210,10 @@
                             studentId: sid,
                             projectCode: pCode,
                             videoLink: videoLink,
-                            rating: rating
+                            rating: rating,
+                            instructorName: localStorage.getItem('instructorName') || 'Unknown',
+                            status: statusStr,
+                            date: dateStr
                         })
                     });
 
@@ -1093,12 +1222,10 @@
 
                     btn.innerText = 'Success!';
                     resultDiv.style.display = 'block';
-                    resultDiv.innerHTML = '<span style="color: green; font-weight: bold;">✅ Project Marked Complete!</span>';
+                    resultDiv.innerHTML = '<span style="color: green; font-weight: bold;">✅ Project Updated!</span>';
 
                     setTimeout(() => {
                         document.getElementById('completionModal').remove();
-                        // Correctly call the detail opener with ID, Name, and Headshot
-                        // We must decode/unescape if they were passed safely
                         openStudentDetail(sid, sName, sHeadshot);
                     }, 1500);
 

@@ -139,6 +139,7 @@ module.exports = {
         ASSIGN_TYPE: 7,     // Column H: Assignment type (Required, Optional, etc.)
         PROJECT_NAME: 8,    // Column I: Name of the project
         PROJECT_STATUS: 9,  // Column J: Status (Assigned, In Progress, Completed, etc.)
+        LAST_EDITED_BY: 21, // Column V: Name of instructor who last edited
 
         // Completion information columns
         COMPLETED_DATE: 25, // Column Z: Date project was completed

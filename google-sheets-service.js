@@ -410,7 +410,10 @@ async function fetchProjectLog(forceRefresh = false) {
                 completedDate: row[config.PROGRESS_COLUMNS.COMPLETED_DATE] || '',
                 projectType: row[config.PROGRESS_COLUMNS.PROJECT_TYPE] || '',
                 rating: row[config.PROGRESS_COLUMNS.RATING] || '',
-                points: row[config.PROGRESS_COLUMNS.POINTS] || ''
+                projectType: row[config.PROGRESS_COLUMNS.PROJECT_TYPE] || '',
+                rating: row[config.PROGRESS_COLUMNS.RATING] || '',
+                points: row[config.PROGRESS_COLUMNS.POINTS] || '',
+                videoLink: row[config.PROGRESS_COLUMNS.VIDEO_LINK] || ''
             }));
 
         // Update cache
@@ -426,6 +429,36 @@ async function fetchProjectLog(forceRefresh = false) {
         if (progressCache) {
             console.log('Returning stale cached progress data due to error');
             return progressCache;
+        }
+
+        // Try Offline Master DB
+        console.warn('⚠️ Google API failed. Trying local Master DB...');
+        const localDB = getLocalMasterDB();
+        if (localDB && localDB.sheets && localDB.sheets[config.PROGRESS_SHEET]) {
+            const rows = localDB.sheets[config.PROGRESS_SHEET] || [];
+
+            // Re-process rows same as above
+            const projects = rows.slice(1)
+                .filter(row => row.length > 0)
+                .map(row => ({
+                    id: row[config.PROGRESS_COLUMNS.ID] || '',
+                    date: row[config.PROGRESS_COLUMNS.DATE] || '',
+                    studentId: row[config.PROGRESS_COLUMNS.SID] || '',
+                    studentEmail: row[config.PROGRESS_COLUMNS.STUDENT_EMAIL] || '',
+                    studentName: row[config.PROGRESS_COLUMNS.STUDENT_NAME] || '',
+                    parentsName: row[config.PROGRESS_COLUMNS.PARENTS_NAME] || '',
+                    track: row[config.PROGRESS_COLUMNS.TRACK] || '',
+                    assignType: row[config.PROGRESS_COLUMNS.ASSIGN_TYPE] || '',
+                    projectName: row[config.PROGRESS_COLUMNS.PROJECT_NAME] || '',
+                    projectStatus: row[config.PROGRESS_COLUMNS.PROJECT_STATUS] || '',
+                    completedDate: row[config.PROGRESS_COLUMNS.COMPLETED_DATE] || '',
+                    projectType: row[config.PROGRESS_COLUMNS.PROJECT_TYPE] || '',
+                    rating: row[config.PROGRESS_COLUMNS.RATING] || '',
+                    points: row[config.PROGRESS_COLUMNS.POINTS] || ''
+                }));
+
+            console.log(`✅ Loaded ${projects.length} project log entries from Local Master DB.`);
+            return projects;
         }
 
         throw error;
@@ -592,6 +625,27 @@ async function fetchProjectList(forceRefresh = false) {
     } catch (error) {
         console.error('Error fetching project list:', error.message);
         if (projectListCache) return projectListCache;
+
+        // Try Offline Master DB
+        console.warn('⚠️ Google API failed. Trying local Master DB...');
+        const localDB = getLocalMasterDB();
+        if (localDB && localDB.sheets && localDB.sheets[config.PROJECT_LIST_SHEET]) {
+            const rows = localDB.sheets[config.PROJECT_LIST_SHEET] || [];
+            const projectMap = new Map();
+
+            rows.slice(1).forEach(row => {
+                const code = row[config.PROJECT_LIST_COLUMNS.CODE];
+                const name = row[config.PROJECT_LIST_COLUMNS.NAME];
+
+                if (code) {
+                    projectMap.set(code.trim().toUpperCase(), name ? name.trim() : '');
+                }
+            });
+
+            console.log(`✅ Loaded ${projectMap.size} project definitions from Local Master DB.`);
+            return projectMap;
+        }
+
         // Return empty map on failure if no cache
         return new Map();
     }
@@ -752,7 +806,11 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     completedDate: project.completedDate,
                     type: project.projectType,
                     rating: project.rating,
-                    points: project.points
+                    completedDate: project.completedDate,
+                    type: project.projectType,
+                    rating: project.rating,
+                    points: project.points,
+                    videoLink: project.videoLink // Includes public link if available
                 });
             } else if (statusLower.includes('progress') || statusLower.includes('working')) {
                 // In-progress project
@@ -880,6 +938,42 @@ async function fetchBookingInfo(forceRefresh = false) {
     } catch (error) {
         console.error('Error fetching bookings:', error.message);
         if (bookingCache) return bookingCache;
+
+        // Try Offline Master DB
+        console.warn('⚠️ Google API failed. Trying local Master DB...');
+        const localDB = getLocalMasterDB();
+        if (localDB && localDB.sheets && localDB.sheets[config.BOOKING_SHEET]) {
+            const rows = localDB.sheets[config.BOOKING_SHEET] || [];
+
+            // Re-apply filtering logic locally
+            const today = new Date();
+            const options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
+            const todayStr = today.toLocaleDateString('en-US', options);
+            console.log(`[Offline] Filtering for date: ${todayStr}`);
+
+            const bookings = rows
+                .map((row, index) => ({ rowData: row, rowIndex: index + 1 }))
+                .slice(1)
+                .filter(({ rowData }) => {
+                    const dateStr = rowData[config.BOOKING_COLUMNS.CLASS_DATE];
+                    if (dateStr === todayStr) return true;
+                    const rowDate = new Date(dateStr);
+                    return rowDate.toDateString() === today.toDateString();
+                })
+                .map(({ rowData, rowIndex }) => ({
+                    studentName: rowData[config.BOOKING_COLUMNS.STUDENT_NAME],
+                    serviceTitle: rowData[config.BOOKING_COLUMNS.SERVICE_TITLE],
+                    classDate: rowData[config.BOOKING_COLUMNS.CLASS_DATE],
+                    checkedIn: (rowData[config.BOOKING_COLUMNS.CHECKED_IN] || '').toString().toUpperCase() === 'TRUE',
+                    studentId: rowData[config.BOOKING_COLUMNS.STUDENT_ID],
+                    rowIndex: rowIndex
+                }))
+                .filter(b => b.studentName && b.serviceTitle);
+
+            console.log(`✅ Loaded ${bookings.length} bookings from Local Master DB.`);
+            return bookings;
+        }
+
         throw error;
     }
 }
@@ -1275,34 +1369,43 @@ module.exports = {
     syncMasterDatabase,             // Download full sheet to local JSON
     getLocalMasterDB,               // Get local offline data
     clearCache,                     // Clear all cached data
-    markStudentAttendance,          // Mark student present/absent
-
-    /**
-     * Marks a project as complete, saves rating and video link.
-     *
-     * @param {string} studentId - The Student ID (Column C in Project Log)
-     * @param {string} projectCode - The Project Name (Column I in Project Log)
-     * @param {string} videoLink - The Shareable Video Link (Column Q)
-     * @param {number} rating - The Star Rating (1-5) (Column AB)
-     */
-    async markProjectComplete(studentId, projectCode, videoLink, rating) {
+    markStudentAttendance, async markProjectComplete(studentId, projectCode, videoLink, rating, instructorName, status, date) {
         try {
-            console.log(`Marking project complete: Student ${studentId}, Project ${projectCode}`);
+            console.log(`Marking project complete: SID=${studentId}, Code=${projectCode}, Video=${!!videoLink}, Rating=${rating}, Installer=${instructorName}, Status=${status}, Date=${date}`);
 
-            const sheets = await getGoogleSheetsClient();
+            // 1. Find the Row Index
+            // We need to scan the PROJEC_LIST_SHEET (Project Log) to find the entry matching Student ID + Project Code
+            // This is inefficient but necessary without a better DB.
+            // We can optimize by fetching only relevant columns (A, C, I) -> (ID, SID, ProjectName/Code)
 
-            // 1. Fetch entire Project Log to find the row
-            // We need columns C (SID), I (Project Name), J (Status)
-            // Range A:AB (to include Rating)
-            // Ideally we should cache this but for now we fetch fresh to be safe
+            // Actually, we load the whole log usually. Let's fetch it fresh to be safe?
+            // Or use the cached version if available? For writing, we usually want fresh data to get the right row index.
+            // But since rows are immutable (append only usually?), the index might be stable.
+            // CAUTION: If rows are deleted, index shifts. Safer to fetch.
+
+            const sheetName = config.PROJECT_LOG_SHEET || 'Project Log'; // Fallback
+            const sheets = await getGoogleSheetsClient(); // Use existing getGoogleSheetsClient
+            // const auth = await this.getAuth(); // This line is not needed if getGoogleSheetsClient handles auth
+            // const sheets = google.sheets({ version: 'v4', auth }); // This line is not needed
+
+            // Fetch columns C (SID) and I (Project Name) to find the row
+            // Range: Project Log!C:I
+            // Note: C is index 2, I is index 8 relative to A=0.
+            // If we fetch C:I, response values[0] is Column C.
+            // C = 0, D = 1, E = 2, F = 3, G = 4, H = 5, I = 6
+            // We need to fetch enough columns to identify the row.
+            // Let's fetch local cached log if possible or just fetch A:J from sheet.
+            // Fetching whole sheet is safer for implementation speed.
+
             const response = await sheets.spreadsheets.values.get({
                 spreadsheetId: config.SPREADSHEET_ID,
-                range: `${config.PROGRESS_SHEET}!A:AB`,
+                range: `${sheetName}!A:AB`, // Fetch up to AB to include all relevant columns for update
             });
 
-            const rows = response.data.values || [];
+            const rows = response.data.values;
+            if (!rows || rows.length === 0) throw new Error('Project Log is empty');
 
-            // Find the matching row
+            // Find matching row
             // Column C is Index 2 (SID)
             // Column I is Index 8 (Project Name)
 
@@ -1343,47 +1446,64 @@ module.exports = {
             console.log(`Found matching project at row ${targetRowIndex}`);
 
             // 2. Prepare Updates
-            // We need to update multiple non-contiguous columns: Status (J), Video (Q), Date (Z), Rating (AB)
-            // Actually, we can just do individual updates or one batch update if ranges are close.
-            // Status (Col J, index 9)
-            // Video (Col Q, index 16)
-            // Date (Col Z, index 25)
-            // Rating (Col AB, index 27)
+            // We need to update multiple non-contiguous columns: Status (J), Video (Q), Date (Z), Rating (AB), LastEditedBy (V)
 
-            // Let's use batchUpdate for efficiency
+            // Map column indices (0-indexed)
+            const J_INDEX = config.PROGRESS_COLUMNS.PROJECT_STATUS; // 9
+            const Q_INDEX = 16; // Video Link (Hardcoded based on typical sheet, verify in config if generic)
+            const V_INDEX = config.PROGRESS_COLUMNS.LAST_EDITED_BY; // 21
+            const Z_INDEX = config.PROGRESS_COLUMNS.COMPLETED_DATE; // 25
+            const AB_INDEX = config.PROGRESS_COLUMNS.RATING; // 27
 
-            const today = new Date();
-            const options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
-            const todayStr = today.toLocaleDateString('en-US', options);
-
-            const requests = [
-                {   // Status -> Completed (Col J / 9)
-                    range: `${config.PROGRESS_SHEET}!J${targetRowIndex}`,
-                    values: [['Completed']]
-                },
-                {   // Video Link (Col Q / 16)
-                    range: `${config.PROGRESS_SHEET}!Q${targetRowIndex}`,
-                    values: [[videoLink]]
-                },
-                {   // Completed Date (Col Z / 25)
-                    range: `${config.PROGRESS_SHEET}!Z${targetRowIndex}`,
-                    values: [[todayStr]]
-                },
-                {   // Rating (Col AB / 27)
-                    range: `${config.PROGRESS_SHEET}!AB${targetRowIndex}`,
-                    values: [[rating.toString()]]
+            // Helper to get A1 notation
+            const getA1 = (colIndex, row) => {
+                const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                let colLetter = '';
+                let tempColIndex = colIndex;
+                while (tempColIndex >= 0) {
+                    colLetter = letters[tempColIndex % 26] + colLetter;
+                    tempColIndex = Math.floor(tempColIndex / 26) - 1;
                 }
+                return `${sheetName}!${colLetter}${row}`;
+            };
+
+            // Date Formatting
+            let dateStr = '';
+            if (date) {
+                // If date comes from input=date (YYYY-MM-DD), format it nicely
+                // Create date object treating input as local date (append time to avoid UTC shift)
+                const d = new Date(date + 'T12:00:00');
+                const options = { year: 'numeric', month: 'short', day: 'numeric' };
+                dateStr = d.toLocaleDateString('en-US', options);
+            } else {
+                const today = new Date();
+                const options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
+                dateStr = today.toLocaleDateString('en-US', options);
+            }
+
+            const updates = [
+                { range: getA1(J_INDEX, targetRowIndex), values: [[status || 'Completed']] },
+                { range: getA1(Z_INDEX, targetRowIndex), values: [[dateStr]] }
             ];
 
-            // Execute updates sequentially or Promise.all
-            // Google Sheets API batchUpdate is strictly for formatting/structure usually.
-            // values.batchUpdate is better for data.
+            if (videoLink !== undefined) { // Allow clearing if empty string passed? Assuming mostly setting.
+                if (videoLink) updates.push({ range: getA1(Q_INDEX, targetRowIndex), values: [[videoLink]] });
+            }
 
+            if (rating) {
+                updates.push({ range: getA1(AB_INDEX, targetRowIndex), values: [[rating]] });
+            }
+
+            if (instructorName) {
+                updates.push({ range: getA1(V_INDEX, targetRowIndex), values: [[instructorName]] });
+            }
+
+            // Execute Batch Update
             await sheets.spreadsheets.values.batchUpdate({
                 spreadsheetId: config.SPREADSHEET_ID,
                 resource: {
-                    data: requests,
-                    valueInputOption: 'USER_ENTERED'
+                    valueInputOption: 'USER_ENTERED',
+                    data: updates
                 }
             });
 
