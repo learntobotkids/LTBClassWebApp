@@ -1287,7 +1287,7 @@
                     <button class="close-modal" onclick="toggleLoginModal()">×</button>
                 </div>
 
-                <!-- VIEW 1: CLASS VIEW (Default) -->
+                <!-- VIEW 1: CLASS VIEW (Default for Offline) -->
                 <div id="classLoginView">
                     <div class="date-header" id="modalDateDisplay"></div>
                     <div id="classGridContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
@@ -1314,9 +1314,38 @@
                     <div id="studentList" class="student-list" style="max-height: 50vh;"></div>
                 </div>
 
-                <div class="login-footer"
+                <!-- VIEW 3: ONLINE PARENT LOGIN (New) -->
+                <div id="onlineParentView" style="display: none;">
+                    <p style="color: #9CA3AF; text-align: center; margin-bottom: 20px;">
+                        Please enter your parent email to find your student account.
+                    </p>
+
+                    <div style="margin-bottom: 20px;">
+                        <input type="email" id="parentEmailInput" class="search-box"
+                            placeholder="Enter parent email address..."
+                            style="width: 100%; border: 2px solid #374151; background: #111827; color: white;"
+                            autocomplete="email">
+                    </div>
+
+                    <button id="findKidsBtn" onclick="checkParentEmail()"
+                        style="width: 100%; padding: 15px; background: #3B82F6; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 1.1em; cursor: pointer; transition: background 0.2s;">
+                        Find My Kids
+                    </button>
+
+                    <div id="parentCheckError"
+                        style="color: #EF4444; margin-top: 15px; text-align: center; display: none;"></div>
+
+                    <div id="foundKidsList" style="margin-top: 25px; display: none;">
+                        <h4 style="color: #E5E7EB; margin-bottom: 10px; text-align: center;">Select Student:</h4>
+                        <div id="kidsButtonsContainer" style="display: flex; flex-direction: column; gap: 10px;">
+                            <!-- Kid buttons injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="login-footer" id="loginModalFooter"
                     style="margin-top: 20px; border-top: 1px solid #374151; padding-top: 15px; text-align: center;">
-                    <button onclick="toggleLoginModal()"
+                    <button id="skipLoginBtn" onclick="toggleLoginModal()"
                         style="background: none; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer; font-size: 0.9em;">
                         Continue without logging in
                     </button>
@@ -1541,6 +1570,43 @@
             // Fetch projects from API
             async function loadProjects() {
                 try {
+                    // In ONLINE mode, fetch from Google Sheets API
+                    if (DEPLOYMENT_MODE === 'online') {
+                        console.log('Loading projects from Google Sheets API...');
+                        const response = await fetch('/api/all-projects');
+                        const data = await response.json();
+
+                        if (!data.success) {
+                            showError(data.error || 'Failed to load projects');
+                            return;
+                        }
+
+                        // Transform Google Sheets data to match expected format
+                        allProjects = data.projects.map(p => ({
+                            id: p.id,
+                            name: `${p.id} - ${p.name}`,
+                            category: p.category || 'Uncategorized',
+                            categoryArray: [p.category || 'Uncategorized'],
+                            description: p.description || '',
+                            videos: [],
+                            videoCount: 0,
+                            icon: null,
+                            pdf: null
+                        }));
+
+                        // Extract unique categories
+                        const categorySet = new Set(allProjects.map(p => p.category));
+                        topLevelCategories = Array.from(categorySet).filter(c => c);
+                        categories = {};
+                        categoryHierarchy = {};
+
+                        console.log(`Loaded ${allProjects.length} projects from Google Sheets.`);
+                        createTopLevelTabs();
+                        showTopLevel('All');
+                        return;
+                    }
+
+                    // OFFLINE mode: fetch from local folders
                     const response = await fetch('/api/projects');
                     const data = await response.json();
 
@@ -1706,33 +1772,32 @@
                 const html = `
                 <div class="category-header">
                     <h2>${searchActive ? 'Search Results' : categoryTitle}</h2>
-                    ${currentStudent && studentProgress ? `
-                        <div style="font-size: 0.9em; color: #9CA3AF; margin-top: 10px;">
-                            ✅ ${completedProjects.length} completed • 📝 ${availableProjects.length} remaining
-                        </div>
-                    ` : ''}
                 </div>
 
-                ${currentStudent && studentProgress && availableProjects.length > 0 ? `
-                    <div class="section-header">
-                        <h3 style="color: #F59E0B;">📝 Projects to Complete (${availableProjects.length})</h3>
-                        <p style="color: #9CA3AF; font-size: 0.9em; margin-top: 5px;">These are the projects you can work on next!</p>
-                    </div>
-                    <div class="projects-container">
-                        ${availableProjects.map(project => {
+                <div class="projects-container">
+                    ${(DEPLOYMENT_MODE === 'online' ? projects : availableProjects).map(project => {
                     const inProgress = currentStudent && studentProgress && isProjectInProgress(project.name);
+                    const isCompleted = currentStudent && studentProgress && isProjectCompleted(project.name);
 
                     // Find demo video (case-insensitive check for 'demo' in filename)
                     const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
                     const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
 
+                    // Determine badge based on status
+                    let badgeHTML = '';
+                    if (isCompleted) {
+                        badgeHTML = '<div class="completion-badge">✓ COMPLETED</div>';
+                    } else if (inProgress) {
+                        badgeHTML = '<div class="in-progress-badge">⏳ IN PROGRESS</div>';
+                    }
+
                     return `
-                                <div class="project-card ${inProgress ? 'in-progress-project' : 'remaining-project'}" 
+                                <div class="project-card ${isCompleted ? 'completed-project' : (inProgress ? 'in-progress-project' : '')}" 
                                      onclick="openProject('${project.id}')"
                                      data-demo-url="${demoUrl}"
                                      onmouseenter="playDemoVideo(this)"
                                      onmouseleave="stopDemoVideo(this)">
-                                    ${inProgress ? '<div class="in-progress-badge">⏳ IN PROGRESS</div>' : '<div class="remaining-badge">NEW</div>'}
+                                    ${badgeHTML}
                                     <div class="project-icon">
                                         ${project.icon
                             ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
@@ -1741,6 +1806,7 @@
                                     </div>
                                     <div class="project-info">
                                         <div class="project-name">${project.name}</div>
+                                        ${project.description ? `<div class="project-description" style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">${project.description.substring(0, 60)}${project.description.length > 60 ? '...' : ''}</div>` : ''}
                                         ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
                                         <div class="project-meta">
                                             <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
@@ -1751,81 +1817,6 @@
                             `;
                 }).join('')}
                     </div>
-                ` : ''}
-
-                ${!currentStudent || !studentProgress ? `
-                    <div class="projects-container">
-                        ${availableProjects.map(project => {
-                    const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
-                    const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
-                    return `
-                            <div class="project-card" 
-                                 onclick="openProject('${project.id}')"
-                                 data-demo-url="${demoUrl}"
-                                 onmouseenter="playDemoVideo(this)"
-                                 onmouseleave="stopDemoVideo(this)">
-                                <div class="project-icon">
-                                    ${project.icon
-                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
-                            : '🎮'
-                        }
-                                </div>
-                                <div class="project-info">
-                                    <div class="project-name">${project.name}</div>
-                                    ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
-                                    <div class="project-meta">
-                                        <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
-                                        ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
-                                    </div>
-                                    </div>
-                                </div>
-                            `;
-                }).join('')}
-                    </div>
-                ` : ''}
-
-                ${currentStudent && studentProgress && completedProjects.length > 0 ? `
-                    <div class="collapsible-section">
-                        <div class="collapsible-header collapsed" onclick="toggleCollapsible(this)">
-                            <h3>✅ Already Completed (${completedProjects.length})</h3>
-                            <span class="collapsible-arrow">▼</span>
-                        </div>
-                        <div class="collapsible-content collapsed">
-                            <div style="padding: 10px 0; color: #9CA3AF; font-size: 0.9em;">
-                                Great job! You've finished these projects.
-                            </div>
-                            <div class="projects-container">
-                                ${completedProjects.map(project => {
-                    const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
-                    const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
-                    return `
-                                    <div class="project-card completed-project" 
-                                         onclick="openProject('${project.id}')"
-                                         data-demo-url="${demoUrl}"
-                                         onmouseenter="playDemoVideo(this)"
-                                         onmouseleave="stopDemoVideo(this)">
-                                        <div class="completion-badge">✓ COMPLETED</div>
-                                        <div class="project-icon">
-                                            ${project.icon
-                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
-                            : '🎮'
-                        }
-                                        </div>
-                                        <div class="project-info">
-                                            <div class="project-name">${project.name}</div>
-                                            ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
-                                            <div class="project-meta">
-                                                <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
-                                                ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    `;
-                }).join('')}
-                            </div>
-                        </div>
-                    </div>
-                ` : ''}
             `;
 
                 content.innerHTML = html;
@@ -1834,7 +1825,7 @@
             // Show error message
             function showError(message) {
                 const content = document.getElementById('content');
-                content.innerHTML = `<div class="error">${message}</div>`;
+                content.innerHTML = `< div class="error" > ${message}</div > `;
             }
 
             // Toggle collapsible section
@@ -1845,15 +1836,16 @@
             }
 
             // Render assigned projects section
-            function renderAssignedProjects(assignedProjects) {
+            // Render multiple project sections
+            function renderAssignedProjects(assigned, next, completed) {
+                console.log('renderAssignedProjects called with:', { assigned: assigned?.length, next: next?.length, completed: completed?.length });
+
                 const container = document.getElementById('assignedProjectsContainer');
 
-                console.log('renderAssignedProjects called with:', assignedProjects);
-                console.log('currentStudent:', currentStudent);
-                console.log('allProjects count:', allProjects.length);
-
-                if (!currentStudent || !assignedProjects || assignedProjects.length === 0) {
-                    console.log('Hiding assigned projects - no student or no assigned projects');
+                // If nothing at all
+                if ((!assigned || assigned.length === 0) && (!next || next.length === 0) && (!completed || completed.length === 0)) {
+                    // Check if we really have no content or just invalid data
+                    console.log('Hiding assigned projects - no projects found in any category');
                     container.innerHTML = '';
                     container.style.display = 'none';
                     return;
@@ -1861,79 +1853,79 @@
 
                 container.style.display = 'block';
 
-                // Try to match assigned project names to actual project data
-                const matchedProjects = assignedProjects.map(assigned => {
-                    // Find matching project in allProjects by name (case-insensitive, flexible matching)
-                    const match = allProjects.find(proj => {
-                        const projName = proj.name.toLowerCase().trim();
-                        const assignedName = assigned.name.toLowerCase().trim();
-                        return projName.includes(assignedName) ||
-                            assignedName.includes(projName) ||
-                            projName === assignedName;
-                    });
+                // Helper to create a section
+                function createSection(title, projects, icon, badgeClass, badgeText, headerColor = 'white') {
+                    if (!projects || projects.length === 0) return '';
 
-                    if (match) {
-                        console.log(`Matched assigned project "${assigned.name}" to "${match.name}"`);
-                        return { ...match, assignedStatus: assigned.status };
-                    } else {
-                        console.log(`Could not match assigned project "${assigned.name}" to any folder`);
-                        // Return a placeholder project with just the name
-                        return {
-                            id: null,
-                            name: assigned.name,
-                            category: 'Assigned Project',
-                            categoryArray: [],
-                            videos: [],
-                            icon: null,
-                            pdf: null,
-                            videoCount: 0,
-                            assignedStatus: assigned.status,
-                            notFound: true
-                        };
-                    }
-                });
+                    const projectsHTML = projects.map(project => {
+                        const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
+                        const demoUrl = demoVideo ? `/ projects / ${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
 
-                console.log('Matched projects:', matchedProjects.length);
+                        const iconHTML = project.icon
+                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                            : '🎮';
 
-                const projectsHTML = matchedProjects.map(project => {
-                    const iconHTML = project.icon
-                        ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
-                        : '🎮';
+                        const clickHandler = project.notFound ? '' : `onclick="openProject('${project.id}')"`;
+                        const notFoundStyle = project.notFound ? 'style="opacity: 0.6; cursor: not-allowed;"' : '';
 
-                    const clickHandler = project.notFound ? '' : `onclick="openProject('${project.id}')"`;
-                    const notFoundStyle = project.notFound ? 'style="opacity: 0.6; cursor: not-allowed;"' : '';
-
-                    return `
-                    <div class="assigned-project-card" ${clickHandler} ${notFoundStyle}>
-                        <div class="assigned-badge">🎯 ASSIGNED</div>
-                        <div class="project-icon">${iconHTML}</div>
-                        <div class="project-info">
-                            <div class="project-name">${project.name}</div>
-                            ${project.notFound ? '<div class="project-category" style="color: #F59E0B;">⚠️ Project folder not found</div>' :
-                            (project.category ? `<div class="project-category">${project.category}</div>` : '')}
-                            <div class="project-meta">
-                                <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
-                                ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
+                        return `
+                        <div class="assigned-project-card" ${clickHandler} ${notFoundStyle}>
+                            <div class="${badgeClass}">${badgeText}</div>
+                            <div class="project-icon">${iconHTML}</div>
+                            <div class="project-info">
+                                <div class="project-name">${project.name}</div>
+                                ${project.notFound ? '<div class="project-category" style="color: #F59E0B;">⚠️ Project folder not found</div>' :
+                                (project.category ? `<div class="project-category">${project.category}</div>` : '')}
+                                <div class="project-meta">
+                                    <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                    ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-                }).join('');
+                        `;
+                    }).join('');
 
-                container.innerHTML = `
-                <div class="assigned-projects-section">
-                    <div class="assigned-header">
-                        <span class="assigned-icon">🎯</span>
-                        <h2>Your Assigned Projects (${matchedProjects.length})</h2>
-                    </div>
-                    <p style="color: white; margin-bottom: 20px; font-size: 1.1em;">
-                        Click on a project to get started!
-                    </p>
-                    <div class="assigned-projects-container">
-                        ${projectsHTML}
-                    </div>
-                </div>
-            `;
+                    return `
+                        <div style="margin-bottom: 30px;">
+                            <div class="assigned-header" style="justify-content: flex-start; gap:10px;">
+                                <span class="assigned-icon">${icon}</span>
+                                <h2 style="color:${headerColor}">${title} (${projects.length})</h2>
+                            </div>
+                            <div class="assigned-projects-container">
+                                ${projectsHTML}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // If nothing at all
+                if ((!assigned || assigned.length === 0) && (!next || next.length === 0) && (!completed || completed.length === 0)) {
+                    container.innerHTML = '';
+                    container.style.display = 'none';
+                    return;
+                }
+
+                let html = '<div class="assigned-projects-section">';
+
+                // 1. Assigned (Primary)
+                if (assigned && assigned.length > 0) {
+                    html += createSection('Assigned Projects', assigned, '🎯', 'assigned-badge', '🎯 ASSIGNED');
+                }
+
+                // 2. Next Projects
+                if (next && next.length > 0) {
+                    html += createSection('Next Projects', next, '🔮', 'assigned-badge', '🔮 NEXT PROJECT', '#c084fc');
+                }
+
+                // 3. Completed
+                if (completed && completed.length > 0) {
+                    html += createSection('Completed Projects', completed, '✅', 'completion-badge', '✓ COMPLETED', '#4ade80');
+                }
+
+                html += '</div>';
+
+                container.innerHTML = html;
+                container.style.display = 'block';
             }
 
             // Render search results in dropdown
@@ -2107,8 +2099,23 @@
                         const source = data.fromCache ? 'local cache (offline)' : 'Google Sheets (online)';
                         console.log(`Loaded progress for ${studentName} from ${source}:`, studentProgress);
 
-                        // Display assigned projects
-                        renderAssignedProjects(studentProgress.assignedProjects || []);
+                        // SELF-HEAL: If we have a fileLink, save it to localStorage to ensure "Open My Folder" works
+                        if (studentProgress.fileLink) {
+                            console.log('Caching File Link:', studentProgress.fileLink);
+                            localStorage.setItem('currentStudentFileLink', studentProgress.fileLink);
+                        } else {
+                            // Only remove if we are in online mode and expected it? 
+                            // Better safe: don't remove if missing unless we are sure. 
+                            // Actually, if it's missing from fresh data, we should probably remove stale data.
+                            // But let's assume if it's not there, we just don't update it to avoid breaking offline cache.
+                        }
+
+                        // 3 DISTINCT LISTS
+                        renderAssignedProjects(
+                            studentProgress.assignedProjects || [],
+                            studentProgress.nextProjects || [],
+                            studentProgress.completedProjects || []
+                        );
 
                         // Refresh the current display to show completion status
                         if (allProjects.length > 0) {
@@ -2183,9 +2190,17 @@
             });
 
             // Select a student
-            function selectStudent(studentName) {
+            function selectStudent(studentName, fileLink = null) {
                 currentStudent = studentName;
                 localStorage.setItem('currentStudent', studentName);
+
+                // Save file link if provided
+                if (fileLink) {
+                    localStorage.setItem('currentStudentFileLink', fileLink);
+                } else {
+                    localStorage.removeItem('currentStudentFileLink');
+                }
+
                 updateLoginButton();
 
                 // Hide modal
@@ -2246,6 +2261,20 @@
             // Fetch student files (Logged In)
             async function fetchStudentFiles(studentName) {
                 const list = document.getElementById('sidebar-list');
+
+                // If we have a Google Drive Link, we skip local fetching and just show a message
+                const fileLink = localStorage.getItem('currentStudentFileLink');
+                if (fileLink) {
+                    list.innerHTML = `
+                        <li style="padding:15px; color:#60A5FA; text-align:center;">
+                            <div style="font-size: 2em; margin-bottom: 10px;">☁️</div>
+                            <div>Files available on Google Drive</div>
+                            <div style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">Click "Open My Folder" above</div>
+                        </li>
+                     `;
+                    return;
+                }
+
                 list.innerHTML = '<li style="padding:10px; color:#9CA3AF;">Loading files...</li>';
 
                 try {
@@ -2258,7 +2287,7 @@
                         window.currentStudentFolder = data.resolvedFolderName || studentName;
                         renderSidebarList(data.files, 'file');
                     } else {
-                        list.innerHTML = `<li style="padding:10px; color:#EF4444;">${data.error || 'Failed to load files'}</li>`;
+                        list.innerHTML = `<li style="padding:10px; color:#EF4444;">${data.error || 'Failed to load folders'}</li>`;
                     }
                 } catch (err) {
                     console.error('Error fetching files:', err);
@@ -2368,6 +2397,14 @@
 
             // "Open My Folder" Button Action
             function openCurrentStudentFolder() {
+                // Check if we have a direct file link (Online Mode)
+                const fileLink = localStorage.getItem('currentStudentFileLink');
+
+                if (fileLink) {
+                    window.open(fileLink, '_blank');
+                    return;
+                }
+
                 const folderName = window.currentStudentFolder || currentStudent;
                 if (folderName) {
                     openFolder(folderName);
@@ -2424,8 +2461,167 @@
                 }
             }
 
-            // Toggle login modal
+            // ========================================================================
+            // ONLINE MODE LOGIN LOGIC (Parent Email Check)
+            // ========================================================================
+
+            let isBlockingModal = false;
+
+            // Check configuration on load to determine mode
+            async function checkOnlineMode() {
+                try {
+                    const response = await fetch('/api/config');
+                    const config = await response.json();
+
+                    if (config.isOnline) {
+                        console.log('Online Mode detected. Checking login status...');
+                        const student = localStorage.getItem('currentStudent');
+
+                        // If no student is logged in, force the blocking modal
+                        if (!student) {
+                            forceBlockingLogin();
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to check online config:', e);
+                }
+            }
+
+            // Trigger the blocking modal
+            function forceBlockingLogin() {
+                isBlockingModal = true;
+                const modal = document.getElementById('loginModal');
+
+                // Show modal
+                modal.classList.add('active');
+
+                // Switch to Online View
+                document.getElementById('classLoginView').style.display = 'none';
+                document.getElementById('allStudentsView').style.display = 'none';
+                document.getElementById('onlineParentView').style.display = 'block';
+
+                // HIDE ESCAPE ROUTES
+                // Hide Close Button
+                const closeBtn = modal.querySelector('.close-modal');
+                if (closeBtn) closeBtn.style.display = 'none';
+
+                // Hide "Continue without logging in"
+                const skipBtn = document.getElementById('skipLoginBtn');
+                if (skipBtn) skipBtn.style.display = 'none';
+
+                // Disable clicking outside to close
+                modal.removeAttribute('onclick');
+            }
+
+            // Function call for parent email check
+            async function checkParentEmail() {
+                const emailInput = document.getElementById('parentEmailInput');
+                const email = emailInput.value.trim();
+                const btn = document.getElementById('findKidsBtn');
+                const errorDiv = document.getElementById('parentCheckError');
+                const resultsContainer = document.getElementById('foundKidsList');
+                const buttonsContainer = document.getElementById('kidsButtonsContainer');
+
+                if (!email) {
+                    errorDiv.textContent = 'Please enter an email address.';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
+                // UI Loading State
+                btn.textContent = 'Checking...';
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+                errorDiv.style.display = 'none';
+                resultsContainer.style.display = 'none';
+
+                try {
+                    const response = await fetch('/api/check-parent-email', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // Success! Show children
+                        renderFoundChildren(data.children);
+                    } else {
+                        // Failed
+                        errorDiv.textContent = data.message || 'No account found for this email.';
+                        errorDiv.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error checking email:', error);
+                    errorDiv.textContent = 'Server error. Please try again.';
+                    errorDiv.style.display = 'block';
+                } finally {
+                    btn.textContent = 'Find My Kids';
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                }
+            }
+
+            function renderFoundChildren(children) {
+                const resultsContainer = document.getElementById('foundKidsList');
+                const buttonsContainer = document.getElementById('kidsButtonsContainer');
+
+                buttonsContainer.innerHTML = ''; // Clear previous
+
+                children.forEach(child => {
+                    const btn = document.createElement('div');
+                    // Style looking like a student card
+                    btn.style.cssText = `
+                        background: #1F2937;
+                        border: 1px solid #374151;
+                        padding: 15px;
+                        border-radius: 12px;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                        transition: all 0.2s;
+                    `;
+                    btn.onmouseover = () => { btn.style.background = '#374151'; btn.style.borderColor = '#3B82F6'; };
+                    btn.onmouseout = () => { btn.style.background = '#1F2937'; btn.style.borderColor = '#374151'; };
+
+                    btn.innerHTML = `
+                        <div style="width: 40px; height: 40px; background: #3B82F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em;">
+                            ${child.name.charAt(0)}
+                        </div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 1.1em;">${child.name}</div>
+                            <div style="color: #9CA3AF; font-size: 0.9em;">Parent: ${child.parentName}</div>
+                        </div>
+                    `;
+
+                    btn.onclick = () => {
+                        // Login Logic
+                        // Pass the fileLink if available
+                        selectStudent(child.name, child.fileLink);
+
+                        // We might want to unlock screen first
+                        isBlockingModal = false;
+                    };
+
+                    buttonsContainer.appendChild(btn);
+                });
+
+                resultsContainer.style.display = 'block';
+            }
+
+            // Init Check
+            checkOnlineMode();
+
+
+            // Toggle login modal (Modified to respect blocking)
             function toggleLoginModal() {
+                if (isBlockingModal) {
+                    // Do nothing if in blocking mode
+                    return;
+                }
+
                 const modal = document.getElementById('loginModal');
                 const isOpen = modal.classList.contains('active');
 
@@ -2433,31 +2629,53 @@
                     modal.classList.remove('active');
                     // Reset to default view when closing
                     setTimeout(() => {
-                        toggleLoginView('class');
+                        // Reset views
+                        document.getElementById('classLoginView').style.display = 'block';
+                        document.getElementById('allStudentsView').style.display = 'none';
+                        document.getElementById('onlineParentView').style.display = 'none';
                         document.getElementById('studentSearch').value = '';
                     }, 300);
                 } else {
                     modal.classList.add('active');
 
-                    // Initial Load
-                    loadClassView();
-                    loadStudents(); // Background load full list
+                    // Check config to decide which view to show
+                    fetch('/api/config')
+                        .then(r => r.json())
+                        .then(config => {
+                            if (config.isOnline) {
+                                document.getElementById('classLoginView').style.display = 'none';
+                                document.getElementById('onlineParentView').style.display = 'block';
+                            } else {
+                                // Default offline behavior
+                                loadClassView();
+                                loadStudents();
+                            }
+                        })
+                        .catch(() => {
+                            // Fallback
+                            loadClassView();
+                            loadStudents();
+                        });
                 }
             }
 
-            // Switch between Class View and All Students View
+            // Switch between Class View, All Students View, and back
             function toggleLoginView(view) {
                 const classView = document.getElementById('classLoginView');
                 const searchView = document.getElementById('allStudentsView');
+                const onlineView = document.getElementById('onlineParentView');
                 const searchInput = document.getElementById('studentSearch');
+
+                // Reset all
+                classView.style.display = 'none';
+                searchView.style.display = 'none';
+                if (onlineView) onlineView.style.display = 'none';
 
                 if (view === 'class') {
                     classView.style.display = 'block';
-                    searchView.style.display = 'none';
-                } else {
-                    classView.style.display = 'none';
+                } else if (view === 'search') {
                     searchView.style.display = 'block';
-                    renderStudentList(allStudents); // Ensure list is rendered
+                    renderStudentList(allStudents);
                     setTimeout(() => searchInput.focus(), 100);
                 }
             }
@@ -2768,6 +2986,7 @@
             text-overflow: ellipsis;
             display: -webkit-box;
             -webkit-line-clamp: 2;
+            line-clamp: 2;
             -webkit-box-orient: vertical;
         }
 

@@ -115,8 +115,22 @@ module.exports = {
         KEY: 'A',           // Column A: Unique key/ID for each student
         NAME: 'B',          // Column B: Child's full name
         LOGIN_NAME: 'C',    // Column C: Name shown in login dropdown
+        FILE_LINK: 'G',     // Column G: Google Drive folder link
         HEADSHOT: 'I',      // Column I: Headshot image URL
         NOTE: 'X'           // Column X: Note for child
+    },
+
+    // ========================================================================
+    // ONLINE MODE LOGIN CONFIGURATION (SAFE ADDITION)
+    // ========================================================================
+    // Independent configuration for the "Parent Email Login" feature
+    // Used only when DEPLOYMENT_MODE=cloud (Online Version)
+    // Separation ensures we do NOT break offline functionality
+
+    ONLINE_LOGIN_COLUMNS: {
+        PARENT_EMAIL: 1,    // Column B: Parent Email (Index 1)
+        CHILD_NAME: 2,      // Column C: Child Name (Index 2)
+        PARENT_FIRST_NAME: 4 // Column E: Parent First Name (Index 4)
     },
 
     // ========================================================================
@@ -180,7 +194,9 @@ module.exports = {
     // ========================================================================
     PROJECT_LIST_COLUMNS: {
         CODE: 0,            // Column A: Project Code (e.g., PROJ101)
-        NAME: 1             // Column B: Full Project Name
+        NAME: 1,            // Column B: Full Project Name
+        DESCRIPTION: 2,     // Column C: What kids Learn in this project
+        CATEGORY: 57        // Column BF: Type of Project (0-indexed, A=0, BF=57)
     },
 
     /**

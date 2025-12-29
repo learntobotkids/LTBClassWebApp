@@ -765,6 +765,25 @@ function formatDuration(ms) {
     }
 }
 
+// ============================================================================
+// STEP 11.5: API ENDPOINT - SERVER CONFIGURATION
+// ============================================================================
+// Returns public configuration to help frontend decide logic
+// (e.g., Should I show the Online Login Modal?)
+app.get('/api/config', (req, res) => {
+
+    // Determine mode based on PROJECT_FOLDER existence or explicit env var
+    // If PROJECT_FOLDER is missing, we are definitely ONLINE
+    // If DEPLOYMENT_MODE is 'cloud', we are ONLINE
+    const isOnline = !fs.existsSync(PROJECT_FOLDER) || process.env.DEPLOYMENT_MODE === 'cloud';
+
+    res.json({
+        mode: isOnline ? 'online' : 'offline',
+        isOnline: isOnline,
+        projectFolderExists: fs.existsSync(PROJECT_FOLDER)
+    });
+});
+
 /**
  * Gets the server's local network IP address
  * This is the IP address students use to connect
@@ -794,11 +813,99 @@ function getLocalIPAddress() {
     return 'localhost';
 }
 
-// ============================================================================
-// STEP 12: API ENDPOINT - GET STUDENT NAMES FROM LOCAL FILE
-// ============================================================================
 // Returns list of student names from local JSON cache
-// Used for login dropdown
+// Used by frontend to populate login dropdown (OFFLINE/LOCAL MODE)
+app.get('/api/student-names', async (req, res) => {
+    try {
+        const studentNames = await googleSheetsService.fetchStudentNamesForLogin();
+        res.json({ names: studentNames });
+    } catch (error) {
+        console.error('Error fetching student names:', error);
+        res.status(500).json({ error: 'Failed to fetch student names' });
+    }
+});
+
+// ============================================================================
+// STEP 13: API ENDPOINT - CHECK PARENT EMAIL (ONLINE MODE ONLY)
+// ============================================================================
+// Validates parent email against Google Sheet and returns matching children
+// Uses server-side filtering for security (full email list never sent to client)
+
+app.post('/api/check-parent-email', async (req, res) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Email is required' });
+        }
+
+        // Clean up input email (trim and lowercase)
+        const cleanEmail = email.trim().toLowerCase();
+
+        // Get authenticated Sheets API client
+        const sheets = await googleSheetsService.getGoogleSheetsClient();
+
+        // Fetch just the columns we need using the SAFE configuration
+        // Using config.STUDENT_NAMES_SHEET which is "Child Names"
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.STUDENT_NAMES_SHEET}!B:G` // Fetch Columns B through G (G is Index 6 / 5 in result)
+        });
+
+        const rows = response.data.values || [];
+
+        // Filter rows to find matches
+        // Config indices are 0-based relative to the sheet
+        // But our fetch range starts at B (Column 1)
+
+        // Response array indices:
+        // 0 -> Column B (Email)
+        // 1 -> Column C (Child Name)
+        // 2 -> Column D (Child Age)
+        // 3 -> Column E (Parent Name)
+        // 4 -> Column F (Last Name?)
+        // 5 -> Column G (Child File Link)
+
+        const matchedChildren = rows
+            .slice(1) // Skip header
+            .filter(row => {
+                // Check Column B (Index 0 in our result)
+                const rowEmail = row[0] ? row[0].trim().toLowerCase() : '';
+                return rowEmail === cleanEmail;
+            })
+            .map(row => ({
+                name: row[1] ? row[1].trim() : 'Unknown Name', // Column C
+                parentName: row[3] ? row[3].trim() : 'Parent',  // Column E
+                fileLink: row[5] ? row[5].trim() : ''           // Column G
+            }));
+
+        if (matchedChildren.length > 0) {
+            console.log(`Parent Email Match: ${cleanEmail} -> Found ${matchedChildren.length} kids`);
+            res.json({
+                success: true,
+                children: matchedChildren
+            });
+        } else {
+            console.log(`Parent Email Failed: ${cleanEmail} -> No match found`);
+            // Add a polite message (maybe suggest contacting support)
+            res.json({
+                success: false,
+                message: 'No student accounts found for this email. Please check for typos or use the email you registered with.'
+            });
+        }
+
+    } catch (error) {
+        console.error('Error checking parent email:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Server error while checking email. Please try again.'
+        });
+    }
+});
+
+// ============================================================================
+// STEP 14: API ENDPOINT - SYNC STUDENTS
+// ============================================================================// Used for login dropdown
 
 /**
  * GET /api/students
@@ -1088,6 +1195,28 @@ app.get('/api/google-sheets/student-projects/:studentName', async (req, res) => 
             error: 'Failed to fetch student projects',
             message: error.message,
             offline: error.message.includes('getaddrinfo') || error.message.includes('ENOTFOUND')
+        });
+    }
+});
+
+/**
+ * GET /api/all-projects
+ *
+ * Fetches ALL projects from Google Sheets "Projects List" tab.
+ * Used for displaying the full project catalog in Online mode.
+ *
+ * Returns array of {id, name, description, category} objects
+ */
+app.get('/api/all-projects', async (req, res) => {
+    try {
+        const projects = await googleSheetsService.fetchAllProjectsDetailed();
+        res.json({ success: true, projects: projects });
+    } catch (error) {
+        console.error('Error fetching all projects:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch projects',
+            message: error.message
         });
     }
 });

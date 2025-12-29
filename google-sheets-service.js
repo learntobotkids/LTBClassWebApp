@@ -320,6 +320,8 @@ async function fetchStudents(forceRefresh = false) {
                 return {
                     id: row[0].trim(),    // Column A: Student ID
                     name: row[1] ? row[1].trim() : 'Unknown',  // Column B: Student Name
+                    loginName: row[2] ? row[2].trim() : '',   // Column C: Login Name
+                    fileLink: row[6] ? row[6].trim() : '',    // Column G: Drive Link
                     headshot: headshot,
                     note: row[23] ? row[23].trim() : '' // Column X
                 };
@@ -651,6 +653,82 @@ async function fetchProjectList(forceRefresh = false) {
     }
 }
 
+// ============================================================================
+// FUNCTION: Fetch All Projects with Detailed Info (for Online UI)
+// ============================================================================
+
+// Cache for detailed projects
+let projectDetailedCache = null;
+let lastProjectDetailedFetch = 0;
+
+/**
+ * Fetches all projects from "Projects List" tab with full details for UI display.
+ * Returns an array of project objects, not a map.
+ *
+ * @param {boolean} forceRefresh - If true, ignore cache and refetch
+ * @returns {Promise<Array>} - Array of {id, name, description, category} objects
+ */
+async function fetchAllProjectsDetailed(forceRefresh = false) {
+    const now = Date.now();
+
+    // Check cache
+    const cacheAge = now - lastProjectDetailedFetch;
+    if (!forceRefresh && projectDetailedCache && cacheAge < config.CACHE_DURATION) {
+        console.log('Returning cached detailed project list');
+        return projectDetailedCache;
+    }
+
+    try {
+        console.log('Fetching detailed project list from Google Sheets...');
+
+        // Get authenticated Sheets API client
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch columns A through BF (1-58) to get all required data
+        // BF is the 58th column (0-indexed = 57)
+        // Using A:BF range to get Code, Name, Description, and Category
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.PROJECT_LIST_SHEET}!A:BF`,
+        });
+
+        const rows = response.data.values || [];
+        const projects = [];
+
+        // Skip header, process rows
+        rows.slice(1).forEach(row => {
+            const code = row[config.PROJECT_LIST_COLUMNS.CODE]; // Column A
+            const name = row[config.PROJECT_LIST_COLUMNS.NAME]; // Column B
+            const description = row[config.PROJECT_LIST_COLUMNS.DESCRIPTION]; // Column C
+            const category = row[config.PROJECT_LIST_COLUMNS.CATEGORY]; // Column BF (index 57)
+
+            if (code && code.trim()) {
+                projects.push({
+                    id: code.trim().toUpperCase(),
+                    name: name ? name.trim() : code.trim(),
+                    description: description ? description.trim() : '',
+                    category: category ? category.trim() : 'Uncategorized'
+                });
+            }
+        });
+
+        // Update cache
+        projectDetailedCache = projects;
+        lastProjectDetailedFetch = now;
+
+        console.log(`Fetched ${projects.length} detailed projects`);
+        return projects;
+
+    } catch (error) {
+        console.error('Error fetching detailed project list:', error.message);
+        if (projectDetailedCache) return projectDetailedCache;
+
+        // Return empty array on failure if no cache
+        console.warn('⚠️ Could not fetch detailed projects. Returning empty array.');
+        return [];
+    }
+}
+
 
 
 // ============================================================================
@@ -735,6 +813,47 @@ async function getStudentProgress() {
 }
 
 // ============================================================================
+// FUNCTION: Get Projects for a Specific Student (ByName Wrapper)
+// ============================================================================
+
+/**
+ * Wrapper to get projects by Name instead of ID
+ * Resolves name to ID then calls getStudentProjects
+ */
+async function getStudentProjectsByName(studentName, forceRefresh = false) {
+    try {
+        console.log(`Getting projects for Name: ${studentName}`);
+
+        // 1. Fetch all students to find the ID
+        const students = await fetchStudents(false);
+        const student = students.find(s =>
+            (s.name && s.name.trim().toLowerCase() === studentName.trim().toLowerCase()) ||
+            (s.loginName && s.loginName.trim().toLowerCase() === studentName.trim().toLowerCase())
+        );
+
+        if (!student) {
+            console.error(`Student not found with name: "${studentName}". Available: ${students.length}`);
+            throw new Error(`Student not found with name: ${studentName}`);
+        }
+
+        console.log(`Resolved Name "${studentName}" to ID "${student.id}"`);
+
+        // 2. Reuse existing function with the found ID
+        const result = await getStudentProjects(student.id, forceRefresh);
+
+        // 3. Add studentName and fileLink to result for UI consistency
+        result.studentName = student.name;
+        result.fileLink = student.fileLink; // Pass the Drive Link to the frontend
+
+        return result;
+
+    } catch (error) {
+        console.error(`Error resolving project by name ${studentName}:`, error);
+        throw error;
+    }
+}
+
+// ============================================================================
 // FUNCTION: Get Projects for a Specific Student
 // ============================================================================
 
@@ -788,6 +907,7 @@ async function getStudentProjects(studentId, forceRefresh = false) {
         const completedProjects = [];
         const inProgressProjects = [];
         const assignedProjects = [];
+        const nextProjects = [];
 
         studentProjects.forEach(project => {
             const statusLower = project.projectStatus ? project.projectStatus.toLowerCase() : '';
@@ -800,12 +920,11 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                 // Completed project - include completion details
                 completedProjects.push({
                     studentId: project.studentId, // Crucial: specific ID for this entry
+                    id: project.projectName, // Frontend expects 'id'
                     name: displayName,
                     originalCode: project.projectName,
                     status: project.projectStatus,
-                    completedDate: project.completedDate,
-                    type: project.projectType,
-                    rating: project.rating,
+                    email: project.studentEmail,
                     completedDate: project.completedDate,
                     type: project.projectType,
                     rating: project.rating,
@@ -813,19 +932,37 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     videoLink: project.videoLink // Includes public link if available
                 });
             } else if (statusLower.includes('progress') || statusLower.includes('working')) {
-                // In-progress project
+                // In-progress project (treat as assigned for now or separate?)
+                // User didn't specify, but "In Progress" is usually active. 
+                // Let's keep it in "Assigned" or distinct. 
+                // User said: "Assigned", "Next Project", "Completed".
+                // "In Progress" fits best with "Assigned" (Active).
                 inProgressProjects.push({
                     studentId: project.studentId, // Crucial: specific ID for this entry
+                    id: project.projectName, // Frontend expects 'id'
                     name: displayName,
                     originalCode: project.projectName,
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType
                 });
+            } else if (statusLower.includes('next project')) {
+                // Next Project
+                nextProjects.push({
+                    studentId: project.studentId,
+                    id: project.projectName,
+                    name: displayName,
+                    originalCode: project.projectName,
+                    status: project.projectStatus,
+                    type: project.projectType,
+                    assignType: project.assignType,
+                    date: project.date
+                });
             } else if (statusLower.includes('assigned') || statusLower.includes('assign')) {
                 // Newly assigned project
                 assignedProjects.push({
                     studentId: project.studentId, // Crucial: specific ID for this entry
+                    id: project.projectName, // Frontend expects 'id'
                     name: displayName,
                     originalCode: project.projectName,
                     status: project.projectStatus,
@@ -848,9 +985,11 @@ async function getStudentProjects(studentId, forceRefresh = false) {
             assignedProjects: assignedProjects,
             completedProjects: completedProjects,
             inProgressProjects: inProgressProjects,
+            nextProjects: nextProjects, // NEW
             totalAssigned: assignedProjects.length,
             totalCompleted: completedProjects.length,
             totalInProgress: inProgressProjects.length,
+            totalNext: nextProjects.length,
             totalPoints: totalPoints
         };
     } catch (error) {
@@ -1349,6 +1488,7 @@ async function markStudentAttendance(rowIndex, status) {
 
 module.exports = {
     // Core Fetchers
+    getGoogleSheetsClient,          // Expose authentication client
     fetchStudents,                  // Get student list
     fetchProjectLog,                // Get all project log entries
     fetchProjectList,               // Get project code->name map
@@ -1357,12 +1497,12 @@ module.exports = {
 
     // Aggregators & Helpers
     getStudentProgress,             // Get progress summary for all students
-    getStudentProgress,             // Get progress summary for all students
     getStudentProjects,             // Get projects for one specific student
-    fetchBookingInfo,               // Get today's classes
+    getStudentProjectsByName,       // Get projects by Name (resolves to ID)
     fetchBookingInfo,               // Get today's classes
     fetchEnrichedBookingInfo,       // Get enriched data for dashboard
     fetchAllKids,                   // Get all kids detailed data
+    fetchAllProjectsDetailed,       // Get all projects with Code, Name, Description, Category
 
     // Sync & Misc
     syncHeadshots,                  // Download headshots from Drive
