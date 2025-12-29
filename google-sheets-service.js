@@ -1518,6 +1518,67 @@ module.exports = {
             console.error('Error marking project complete:', error);
             throw error;
         }
+    },
+
+    /**
+     * Creates and populates the 'Curriculum Tracks' sheet.
+     * Intended for one-time setup or admin usage.
+     */
+    async setupCurriculumTracks() {
+        console.log('Setting up Curriculum Tracks sheet...');
+        const sheets = await getGoogleSheetsClient();
+
+        try {
+            // 1. Get Spreadsheet Metadata to check existing sheets
+            const meta = await sheets.spreadsheets.get({
+                spreadsheetId: config.SPREADSHEET_ID
+            });
+
+            const sheetTitle = 'Curriculum Tracks';
+            const exists = meta.data.sheets.some(s => s.properties.title === sheetTitle);
+
+            if (exists) {
+                console.log(`Sheet "${sheetTitle}" already exists. Skipping creation.`);
+                return { message: 'Sheet already exists' };
+            }
+
+            // 2. Create the Sheet
+            await sheets.spreadsheets.batchUpdate({
+                spreadsheetId: config.SPREADSHEET_ID,
+                resource: {
+                    requests: [{
+                        addSheet: {
+                            properties: { title: sheetTitle }
+                        }
+                    }]
+                }
+            });
+            console.log(`Created sheet "${sheetTitle}".`);
+
+            // 3. Add Headers and Sample Data
+            const sampleData = [
+                ['Track Name', 'Project Code', 'Order', 'Description'],
+                ['Python Level 1', 'GAME201', '1', 'Intro to Variables'],
+                ['Python Level 1', 'GAME202', '2', 'Conditionals'],
+                ['Python Level 1', 'GAME205', '3', 'Loops'],
+                ['Robotics 101', 'BOT101', '1', 'Motors Basics'],
+                ['Robotics 101', 'BOT102', '2', 'Sensors']
+            ];
+
+            await sheets.spreadsheets.values.update({
+                spreadsheetId: config.SPREADSHEET_ID,
+                range: `${sheetTitle}!A1`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: sampleData }
+            });
+
+            console.log('Populated Curriculum Tracks with sample data.');
+            return { success: true, message: 'Sheet created and populated.' };
+
+        } catch (error) {
+            console.error('Error setting up curriculum tracks:', error);
+            throw error;
+        }
     }
 };
 

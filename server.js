@@ -1603,6 +1603,19 @@ app.post('/api/complete-project', async (req, res) => {
 });
 
 // ============================================================================
+// ADMIN: Setup Curriculum Tracks
+// ============================================================================
+app.post('/api/admin/setup-curriculum', async (req, res) => {
+    try {
+        const result = await googleSheetsService.setupCurriculumTracks();
+        res.json(result);
+    } catch (error) {
+        console.error('Setup failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================================
 // STEP 20: API ENDPOINT - LIST STUDENT FOLDERS
 // ============================================================================
 // Returns list of all student folders in FINAL KIDS FILES

@@ -1260,97 +1260,98 @@
                     alert('Error: ' + e.message);
                 }
             };
+        };
 
-            // ============================================================================
-            // HELPER: Screen Wake Lock (Prevent Sleep during Upload)
-            // ============================================================================
-            let wakeLock = null;
-            let isUploading = false; // Global flag for navigation protection
+        // ============================================================================
+        // HELPER: Screen Wake Lock (Prevent Sleep during Upload)
+        // ============================================================================
+        let wakeLock = null;
+        let isUploading = false; // Global flag for navigation protection
 
-            // Navigation Guard
-            window.addEventListener('beforeunload', (e) => {
-                if (isUploading) {
-                    const msg = 'Upload in progress. Are you sure you want to leave?';
-                    e.returnValue = msg;
-                    return msg;
-                }
-            });
-
-            async function requestWakeLock() {
-                if ('wakeLock' in navigator) {
-                    try {
-                        wakeLock = await navigator.wakeLock.request('screen');
-                        console.log('Wake Lock active: Screen will stay on.');
-                    } catch (err) {
-                        console.error('Wake Lock error:', err);
-                    }
-                }
+        // Navigation Guard
+        window.addEventListener('beforeunload', (e) => {
+            if (isUploading) {
+                const msg = 'Upload in progress. Are you sure you want to leave?';
+                e.returnValue = msg;
+                return msg;
             }
+        });
 
-            async function releaseWakeLock() {
-                if (wakeLock !== null) {
-                    try {
-                        await wakeLock.release();
-                        wakeLock = null;
-                        console.log('Wake Lock released.');
-                    } catch (err) {
-                        console.error('Wake Lock release error:', err);
-                    }
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Wake Lock active: Screen will stay on.');
+                } catch (err) {
+                    console.error('Wake Lock error:', err);
                 }
-            }
-
-            async function uploadVideoFile(file) {
-                // Request Wake Lock & Set Flag
-                await requestWakeLock();
-                isUploading = true;
-
-                return new Promise((resolve, reject) => {
-                    const formData = new FormData();
-                    formData.append('video', file);
-
-                    const xhr = new XMLHttpRequest();
-                    const progressContainer = document.getElementById('modalProgressContainer');
-                    const progressBar = document.getElementById('modalProgressBar');
-                    const percentText = document.getElementById('modalUploadPercent');
-
-                    progressContainer.style.display = 'block';
-
-                    xhr.upload.addEventListener('progress', (e) => {
-                        if (e.lengthComputable) {
-                            const percent = (e.loaded / e.total) * 100;
-                            progressBar.style.width = percent + '%';
-                            percentText.innerText = Math.round(percent) + '%';
-                        }
-                    });
-
-                    xhr.onreadystatechange = async function () {
-                        if (xhr.readyState === 4) {
-                            // Release Wake Lock & Reset Flag
-                            await releaseWakeLock();
-                            isUploading = false;
-
-                            if (xhr.status === 200) {
-                                try {
-                                    const resp = JSON.parse(xhr.responseText);
-                                    if (resp.success) {
-                                        resolve(resp.webViewLink);
-                                    } else {
-                                        reject(new Error(resp.error));
-                                    }
-                                } catch (e) {
-                                    reject(e);
-                                }
-                            } else {
-                                reject(new Error('Upload failed: ' + xhr.statusText));
-                            }
-                        }
-                    };
-
-                    xhr.open('POST', '/api/upload-video', true);
-                    xhr.send(formData);
-                });
             }
         }
+
+        async function releaseWakeLock() {
+            if (wakeLock !== null) {
+                try {
+                    await wakeLock.release();
+                    wakeLock = null;
+                    console.log('Wake Lock released.');
+                } catch (err) {
+                    console.error('Wake Lock release error:', err);
+                }
+            }
+        }
+
+        async function uploadVideoFile(file) {
+            // Request Wake Lock & Set Flag
+            await requestWakeLock();
+            isUploading = true;
+
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('video', file);
+
+                const xhr = new XMLHttpRequest();
+                const progressContainer = document.getElementById('modalProgressContainer');
+                const progressBar = document.getElementById('modalProgressBar');
+                const percentText = document.getElementById('modalUploadPercent');
+
+                progressContainer.style.display = 'block';
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = (e.loaded / e.total) * 100;
+                        progressBar.style.width = percent + '%';
+                        percentText.innerText = Math.round(percent) + '%';
+                    }
+                });
+
+                xhr.onreadystatechange = async function () {
+                    if (xhr.readyState === 4) {
+                        // Release Wake Lock & Reset Flag
+                        await releaseWakeLock();
+                        isUploading = false;
+
+                        if (xhr.status === 200) {
+                            try {
+                                const resp = JSON.parse(xhr.responseText);
+                                if (resp.success) {
+                                    resolve(resp.webViewLink);
+                                } else {
+                                    reject(new Error(resp.error));
+                                }
+                            } catch (e) {
+                                reject(e);
+                            }
+                        } else {
+                            reject(new Error('Upload failed: ' + xhr.statusText));
+                        }
+                    }
+                };
+
+                xhr.open('POST', '/api/upload-video', true);
+                xhr.send(formData);
+            });
+        }
+
 
         // ============================================================================
         // HELPER: In-App Camera Logic
