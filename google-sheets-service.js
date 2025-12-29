@@ -1524,132 +1524,80 @@ async function markStudentAttendance(rowIndex, status) {
 // FUNCTION: Fetch and Update Inventory
 // ============================================================================
 
-module.exports = {
-    // Core Fetchers
-    fetchStudents,                  // Get student list
-    fetchProjectLog,                // Get all project log entries
-    fetchProjectList,               // Get project code->name map
-    fetchInstructors,               // Get instructor list
-    fetchStudentNamesForLogin,      // Get student names for login dropdown
+/**
+ * Fetches the entire inventory with dynamic kit detection
+ * 
+ * @param {boolean} forceRefresh 
+ * @returns {Promise<Object>} { items: [], kits: ['KIT1', 'KIT2'] }
+ */
+async function fetchInventory(forceRefresh = false) {
+    try {
+        console.log('Fetching inventory...');
+        const sheets = await getGoogleSheetsClient();
 
-    // Aggregators & Helpers
-    getStudentProgress,             // Get progress summary for all students
-    getStudentProgress,             // Get progress summary for all students
-    getStudentProjects,             // Get projects for one specific student
-    fetchBookingInfo,               // Get today's classes
-    fetchBookingInfo,               // Get today's classes
-    fetchEnrichedBookingInfo,       // Get enriched data for dashboard
-    fetchAllKids,                   // Get all kids detailed data
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.INVENTORY_SHEET}!A:Z`,
+        });
 
-    // Sync & Misc
-    syncHeadshots,                  // Download headshots from Drive
-    syncMasterDatabase,             // Download full sheet to local JSON
-    getLocalMasterDB,               // Get local offline data
-    clearCache,                     // Clear all cached data
-    markStudentAttendance, async markProjectComplete(studentId, projectCode, videoLink, rating, instructorName, status, date) {
-        try {
-            console.log(`Marking project complete: SID=${studentId}, Code=${projectCode}, Video=${!!videoLink}, Rating=${rating}, Installer=${instructorName}, Status=${status}, Date=${date}`);
+        const rows = response.data.values || [];
+        if (rows.length === 0) return { items: [], kits: [] };
 
-            // 1. Find the Row Index
-            // We need to scan the PROJEC_LIST_SHEET (Project Log) to find the entry matching Student ID + Project Code
-            // This is inefficient but necessary without a better DB.
-            // We can optimize by fetching only relevant columns (A, C, I) -> (ID, SID, ProjectName/Code)
+        const headers = rows[0];
+        const kitColumns = {};
 
-            // Actually, we load the whole log usually. Let's fetch it fresh to be safe?
-            // Or use the cached version if available? For writing, we usually want fresh data to get the right row index.
-            // But since rows are immutable (append only usually?), the index might be stable.
-            // CAUTION: If rows are deleted, index shifts. Safer to fetch.
-
-            const sheetName = config.PROJECT_LOG_SHEET || 'Project Log'; // Fallback
-            const sheets = await getGoogleSheetsClient(); // Use existing getGoogleSheetsClient
-            // const auth = await this.getAuth(); // This line is not needed if getGoogleSheetsClient handles auth
-            // const sheets = google.sheets({ version: 'v4', auth }); // This line is not needed
-
-            // Fetch columns C (SID) and I (Project Name) to find the row
-            // Range: Project Log!C:I
-            // Note: C is index 2, I is index 8 relative to A=0.
-            // If we fetch C:I, response values[0] is Column C.
-            // C = 0, D = 1, E = 2, F = 3, G = 4, H = 5, I = 6
-            // We need to fetch enough columns to identify the row.
-            // Let's fetch local cached log if possible or just fetch A:J from sheet.
-            // Fetching whole sheet is safer for implementation speed.
-
-            const response = await sheets.spreadsheets.values.get({
-                spreadsheetId: config.SPREADSHEET_ID,
-                range: `${sheetName}!A:AB`, // Fetch up to AB to include all relevant columns for update
-            });
-
-            const rows = response.data.values || [];
-            if (rows.length === 0) return { items: [], kits: [] };
-
-            // Parse Headers to find Kit Columns
-            // Looking for headers like "Current Stock in KIT1"
-            const headers = rows[0];
-            const kitColumns = {}; // Map 'KIT1' -> ColumnIndex (e.g. 6)
-
-            headers.forEach((header, index) => {
-                if (header && header.toLowerCase().includes('current stock in')) {
-                    // Extract kit name, e.g., "KIT1" from "Current Stock in KIT1"
-                    // Or just use the full header? Let's use the suffix after "in "
-                    const parts = header.split(' in ');
-                    if (parts.length > 1) {
-                        const kitName = parts[1].trim();
-                        kitColumns[kitName] = index;
-                    }
+        headers.forEach((header, index) => {
+            if (header && header.toLowerCase().includes('current stock in')) {
+                const parts = header.split(' in ');
+                if (parts.length > 1) {
+                    const kitName = parts[1].trim();
+                    kitColumns[kitName] = index;
                 }
+            }
+        });
+
+        const kits = Object.keys(kitColumns);
+        console.log('Detected Kits:', kits);
+
+        const items = rows.slice(1).map((row, rowIndex) => {
+            const item = {
+                id: row[config.INVENTORY_COLUMNS.ID],
+                product: row[config.INVENTORY_COLUMNS.PRODUCT],
+                image: row[config.INVENTORY_COLUMNS.IMAGE],
+                stocks: {},
+                rowIndex: rowIndex + 2
+            };
+
+            kits.forEach(kit => {
+                const colIndex = kitColumns[kit];
+                const val = row[colIndex];
+                item.stocks[kit] = val ? parseInt(val) : 0;
             });
 
-            const kits = Object.keys(kitColumns);
-            console.log('Detected Kits:', kits);
+            return item;
+        }).filter(i => i.id);
 
-            // Process Rows
-            const items = rows.slice(1).map((row, rowIndex) => {
-                // Basic Info
-                const item = {
-                    id: row[config.INVENTORY_COLUMNS.ID],
-                    product: row[config.INVENTORY_COLUMNS.PRODUCT],
-                    image: row[config.INVENTORY_COLUMNS.IMAGE],
-                    stocks: {},
-                    rowIndex: rowIndex + 2 // 1-based index, +1 for header
-                };
+        return { items, kits };
 
-                // Add Stock for each Kit
-                kits.forEach(kit => {
-                    const colIndex = kitColumns[kit];
-                    const val = row[colIndex];
-                    item.stocks[kit] = val ? parseInt(val) : 0;
-                });
-
-                return item;
-            }).filter(i => i.id); // Filter empty rows
-
-            return { items, kits };
-
-        } catch (error) {
-            console.error('Error fetching inventory:', error);
-            throw error;
-        }
+    } catch (error) {
+        console.error('Error fetching inventory:', error);
+        throw error;
     }
+}
 
 /**
  * Updates the inventory quantity for a specific item and kit
- * 
- * @param {string} itemId 
- * @param {string} kitName 
- * @param {number} newQuantity 
- * @param {string} userEmail 
  */
 async function updateInventory(itemId, kitName, newQuantity, userEmail) {
     try {
         console.log(`Updating ${itemId} in ${kitName} to ${newQuantity} by ${userEmail}`);
         const sheets = await getGoogleSheetsClient();
 
-        // 1. Fetch Headers to find Kit Column Index again (safest)
         const headerRes = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
             range: `${config.INVENTORY_SHEET}!A1:Z1`,
         });
-        // 1b. Validate we got headers
+
         if (!headerRes.data.values || headerRes.data.values.length === 0) {
             throw new Error("Could not read headers from Inventory sheet.");
         }
@@ -1662,8 +1610,6 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
 
         if (kitColIndex === -1) throw new Error(`Kit '${kitName}' not found in headers`);
 
-        // 2. Fetch IDs to find Row Index
-        // We only fetch Column A to find the row
         const idRes = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
             range: `${config.INVENTORY_SHEET}!A:A`,
@@ -1671,31 +1617,18 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
         const idRows = idRes.data.values || [];
         let targetRowIndex = -1;
 
-        // Find row
         for (let i = 0; i < idRows.length; i++) {
             if (idRows[i][0] === itemId) {
-                targetRowIndex = i + 1; // 1-based index (Sheet rows are 1-based)
+                targetRowIndex = i + 1;
                 break;
             }
         }
 
         if (targetRowIndex === -1) throw new Error('Item ID not found');
 
-        // 3. Perform Updates
-        // Convert Column Index to Letter (6 -> G, 7 -> H)
         const getColLetter = (n) => {
             let letters = '';
             let temp = n;
-            // Simple mapping: 0 -> A, 25 -> Z, 26 -> AA
-            // The loop needs to handle base 26 properly
-            // n is 0-indexed
-
-            // Algorithm:
-            // while n >= 0:
-            //   rem = n % 26
-            //   char = A + rem
-            //   n = n / 26 - 1
-
             while (temp >= 0) {
                 letters = String.fromCharCode(65 + (temp % 26)) + letters;
                 temp = Math.floor(temp / 26) - 1;
@@ -1708,24 +1641,20 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
         const logUserColLetter = getColLetter(config.INVENTORY_COLUMNS.LAST_LOG_USER);
 
         const updates = [
-            // Update Quantity
             {
                 range: `${config.INVENTORY_SHEET}!${kitColLetter}${targetRowIndex}`,
                 values: [[newQuantity]]
             },
-            // Update Log Time
             {
                 range: `${config.INVENTORY_SHEET}!${logTimeColLetter}${targetRowIndex}`,
                 values: [[new Date().toLocaleString()]]
             },
-            // Update Log User
             {
                 range: `${config.INVENTORY_SHEET}!${logUserColLetter}${targetRowIndex}`,
                 values: [[userEmail]]
             }
         ];
 
-        // Execute batch update
         await sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: config.SPREADSHEET_ID,
             resource: {
