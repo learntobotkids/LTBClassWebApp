@@ -338,10 +338,15 @@
             <div class="tab-icon">📁</div>
             <div>PROJECTS</div>
         </div>
-        <div class="tab-item" onclick="switchTab('upload')"> <!-- NEW TAB -->
-            <div class="tab-icon">📤</div>
-            <div style="font-size: 10px;">VIDEO TEST</div>
+        <div class="tab-item" onclick="switchTab('leaderboard')">
+            <div class="tab-icon">🏆</div>
+            <div>LEADERS</div>
         </div>
+        <div class="tab-item" onclick="switchTab('inventory')">
+            <div class="tab-icon">📦</div>
+            <div>INVENTORY</div>
+        </div>
+
     </nav>
 
     <script>
@@ -371,7 +376,7 @@
             // Update UI
             document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
             // Find component based on index or text
-            const index = ['today', 'all', 'report', 'projects', 'upload'].indexOf(tab);
+            const index = ['today', 'all', 'report', 'projects', 'leaderboard', 'inventory'].indexOf(tab);
             if (index >= 0) {
                 document.querySelectorAll('.tab-item')[index].classList.add('active');
             }
@@ -384,9 +389,10 @@
                 'all': 'ALL STUDENTS',
                 'report': 'CLASS REPORT',
                 'projects': 'PROJECTS',
-                'upload': 'VIDEO UPLOAD TEST'
+                'leaderboard': 'LEADERBOARD',
+                'inventory': 'INVENTORY'
             };
-            document.getElementById('pageTitle').innerText = titles[tab];
+            document.getElementById('pageTitle').innerText = titles[tab] || 'LEARNTOBOT';
 
             // Re-render content
             render();
@@ -394,53 +400,76 @@
 
         async function loadData() {
             const container = document.getElementById('mainContent');
-            container.innerHTML = '<div class="loading-container"><div>Loading...</div></div>';
+
+            // Only show full loading if container is empty or we are forcing it? 
+            // Better UX: keep old content while loading? For now, simple.
+            if (!container.innerHTML || container.innerHTML.includes('empty-state')) {
+                container.innerHTML = '<div class="loading-container"><div>Loading...</div></div>';
+            }
 
             try {
                 // Fetch Today's Students
+                console.log('Fetching /api/todays-students...');
                 const response = await fetch('/api/todays-students');
                 const data = await response.json();
+                console.log('API Response:', data);
 
                 if (data.success) {
                     studentsData = data.students;
+                    console.log('Students Data loaded:', studentsData.length, 'records');
+                    // Only re-render if we are on 'today' tab? Or just call render() which checks tab.
                     render();
                 } else {
-                    container.innerHTML = `<div class="empty-state">
-                        <h3>Failed to load data</h3>
-                        <p style="color: red;">${data.error || 'Unknown error'}</p>
-                    </div>`;
+                    console.error('API Error:', data.error);
                 }
             } catch (e) {
                 console.error(e);
-                container.innerHTML = `<div class="empty-state">
-                    <h3>Connection Error</h3>
-                    <p>Could not connect to server.</p>
-                </div>`;
             }
         }
 
         function render() {
             const container = document.getElementById('mainContent');
+            // Don't clear immediately if we want to preserve scroll? 
+            // For simple implementation, clear is fine.
             container.innerHTML = '';
 
             if (currentTab === 'today') {
                 renderToday(container);
             } else if (currentTab === 'all') {
                 renderAllStudents(container);
-            } else if (currentTab === 'upload') {
-                renderUploadTest(container);
+            } else if (currentTab === 'leaderboard') {
+                renderLeaderboard(container);
+            } else if (currentTab === 'inventory') {
+                renderInventory(container);
             } else {
                 container.innerHTML = '<div class="empty-state">This page is empty for now.</div>';
             }
         }
 
-        function renderHeadshot(url, name) {
+        function renderHeadshot(url, name, studentId) {
             const initial = name ? name.charAt(0).toUpperCase() : '?';
-            if (url) {
+
+            // Priority 1: Local File (Safe ID)
+            // Priority 2: Remote URL (Fallback) - handled via src if ID missing
+            // Priority 3: Initials (Fallback)
+
+            let imgSrc = '';
+            if (studentId) {
+                const safeId = studentId.replace(/\//g, '_');
+                imgSrc = `/headshots/${safeId}.jpg`;
+            } else if (url) {
+                imgSrc = url;
+            }
+
+            if (imgSrc) {
+                // Escape URL to be safe in href/src but here we use it in src
+                const safeUrl = imgSrc.replace(/'/g, "%27");
+
                 return `
                     <div style="position: relative; width: 50px; height: 50px; margin-right: 16px;">
-                         <img src="${url}" class="student-headshot" style="position: absolute; top:0; left:0; width:100%; height:100%; margin:0;" 
-                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+                         <img src="${safeUrl}" class="student-headshot" 
+                              style="position: absolute; top:0; left:0; width:100%; height:100%; margin:0;" 
+                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                          <div class="student-initial-fallback" style="display:none; width:100%; height:100%; margin:0;">${initial}</div>
                     </div>
                 `;
@@ -448,58 +477,123 @@
             return `<div class="student-initial-fallback">${initial}</div>`;
         }
 
+        let todaySearchTerm = '';
+
         function renderToday(container) {
-            if (!studentsData || studentsData.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <h3>No classes found for today</h3>
-                        <p>Check the scheduled bookings.</p>
-                    </div>`;
-                return;
-            }
-
-            let html = '<div style="background: white; border-top: 1px solid #e5e7eb;">';
-
-            studentsData.forEach(student => {
-                const isCheckedIn = student.checkedIn === true;
-                const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
-                const checkContent = isCheckedIn ? '✓' : '';
-
-                const safeName = student.studentName.replace(/'/g, "\\'");
-                const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
-
-                html += `
-                <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
-                    ${renderHeadshot(student.headshot, student.studentName)}
-                    
-                    <div class="student-info">
-                        <div class="student-name">${student.studentName}</div>
-                        <div class="student-project">${student.currentProject || 'No Active Project'}</div>
-                        ${student.note ? `
-                            <div class="student-note" style="
-                                font-size: 0.85rem; 
-                                color: #d9534f; 
-                                margin-top: 4px; 
-                                font-style: italic; 
-                                font-weight: 500;
-                            ">
-                                Note: ${student.note}
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    <div class="attendance-actions">
-                        <!-- Attendance Checkbox -->
-                        <button class="${checkBtnClass}" onclick="event.stopPropagation(); toggleAttendance(${student.rowIndex}, ${!isCheckedIn})">
-                             ${checkContent}
-                        </button>
-                    </div>
+            // Setup Structure if not exists
+            const wrapperId = 'today-view-wrapper';
+            if (!document.getElementById(wrapperId)) {
+                // Search Bar HTML
+                const searchBarHtml = `
+                <div style="padding: 10px 15px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10;">
+                    <input type="text" 
+                           id="todaySearchInput"
+                           placeholder="Search Today's Students..." 
+                           value="${todaySearchTerm}"
+                           oninput="handleTodaySearch(this.value)"
+                           style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none;">
                 </div>
                 `;
-            });
-            html += '</div>';
 
-            container.innerHTML = html;
+                container.innerHTML = `
+                    <div id="${wrapperId}">
+                        ${searchBarHtml}
+                        <div id="today-list-container"></div>
+                    </div>
+                `;
+            } else {
+                // Ensure input value matches state (in case of tab switch back)
+                const input = document.getElementById('todaySearchInput');
+                if (input && input.value !== todaySearchTerm) {
+                    input.value = todaySearchTerm;
+                }
+            }
+
+            renderTodayList();
+
+            // Expose Search Handler
+            window.handleTodaySearch = (val) => {
+                todaySearchTerm = val;
+                renderTodayList();
+            };
+        }
+
+        function renderTodayList() {
+            const container = document.getElementById('today-list-container');
+            if (!container) return;
+
+            try {
+                if (!studentsData || studentsData.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No classes found for today</h3>
+                            <p>Check the scheduled bookings.</p>
+                        </div>`;
+                    return;
+                }
+
+                // Filter Data
+                const term = todaySearchTerm.toLowerCase();
+                const filtered = studentsData.filter(s => {
+                    const name = (s.studentName || '').toLowerCase();
+                    const note = (s.note || '').toLowerCase();
+                    const project = (s.currentProject || '').toLowerCase();
+                    return name.includes(term) || note.includes(term) || project.includes(term);
+                });
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div class="empty-state">No students found matching "${todaySearchTerm}"</div>`;
+                    return;
+                }
+
+                let html = '<div style="background: white; border-top: 1px solid #e5e7eb; padding-bottom: 80px;">';
+
+                filtered.forEach(student => {
+                    const isCheckedIn = student.checkedIn === true;
+                    const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
+                    const checkContent = isCheckedIn ? '✓' : '';
+
+                    const rawName = student.studentName || 'Unknown Student';
+                    const safeName = rawName.replace(/'/g, "\\'");
+                    const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
+                    const currentProject = student.currentProject || 'No Active Project';
+
+                    html += `
+                    <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
+                        ${renderHeadshot(student.headshot, rawName, student.studentId)}
+                        
+                        <div class="student-info">
+                            <div class="student-name">${rawName}</div>
+                            <div class="student-project">${currentProject}</div>
+                            ${student.note ? `
+                                <div class="student-note" style="
+                                    font-size: 0.85rem; 
+                                    color: #d9534f; 
+                                    margin-top: 4px; 
+                                    font-style: italic; 
+                                    font-weight: 500;
+                                ">
+                                    Note: ${student.note}
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="attendance-actions">
+                            <!-- Attendance Checkbox -->
+                            <button class="${checkBtnClass}" onclick="event.stopPropagation(); toggleAttendance(${student.rowIndex}, ${!isCheckedIn})">
+                                 ${checkContent}
+                            </button>
+                        </div>
+                    </div>
+                    `;
+                });
+                html += '</div>';
+
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Render Error:', e);
+                container.innerHTML = `<div class="empty-state" style="color:red">Render Error: ${e.message}</div>`;
+            }
         }
 
         async function toggleAttendance(rowIndex, newStatus) {
@@ -557,7 +651,6 @@
         async function renderAllStudents(container) {
             container.innerHTML = '<div class="loading-container">Loading all students...</div>';
 
-            // Filter/Search State
             let searchTerm = '';
 
             try {
@@ -568,7 +661,6 @@
 
                 const students = data.kids;
 
-                // Render function to handle re-rendering on search
                 const renderList = () => {
                     const filtered = students.filter(s =>
                         s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -580,237 +672,162 @@
                     }
 
                     return filtered.map(s => {
-                        // Icons (SVGs mimicking the screenshot)
-                        const iconUser = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`;
-                        const iconEdit = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
-                        const iconCamera = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>`;
+                        const safeName = s.name.replace(/'/g, "\\'");
+                        const safeId = (s.id || '').toString().replace(/'/g, "\\'");
 
                         return `
-                        <div class="student-card">
-                            ${renderHeadshot(s.headshot, s.name)}
+                        <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${s.headshot || ''}')" style="cursor: pointer;">
+                            ${renderHeadshot(s.headshot, s.name, s.id)}
                             <div class="student-info">
                                 <div class="student-name">${s.name}</div>
-                                <div class="student-project">${s.email || ''}</div>
+                                <div class="student-project" style="color: #6B7280;">${s.email || 'No email'}</div>
                             </div>
-                            <div class="attendance-actions">
-                                <button class="icon-btn">${iconUser}<span style="font-size:10px; font-weight:bold; margin-left:-2px;">+</span></button>
-                                <button class="icon-btn">${iconEdit}</button>
-                                <button class="icon-btn">${iconCamera}</button>
+                            <div class="attendance-actions" style="opacity: 0.3;">
+                                <!-- Placeholder for Edit Actions -->
+                                ⚙️
                             </div>
                         </div>
                         `;
                     }).join('');
                 };
 
-                // Search Bar HTML
-                const searchHtml = `
-                    <div style="background: #db3236; padding: 10px 16px; color: white; display: flex; align-items: center; position: sticky; top: 60px; z-index: 99;">
-                         <div style="flex-grow: 1; position: relative;">
-                             <input type="text" id="studentSearch" placeholder="Search students..." 
-                                    style="width: 100%; padding: 8px 35px 8px 12px; border-radius: 4px; border: none; font-size: 14px; outline: none;"
-                                    value="${searchTerm}">
-                             <div style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #999;">🔍</div>
-                         </div>
-                         <div style="margin-left: 15px; font-size: 24px;">☑️</div>
-                         <div style="margin-left: 15px; font-size: 24px;">🔄</div>
+                const updateView = () => {
+                    const searchBar = `
+                        <div style="background: white; padding: 10px 15px; border-bottom: 1px solid #E5E7EB; position: sticky; top: 0; z-index: 10;">
+                            <input type="text" id="studentSearch" placeholder="Search students..." 
+                                value="${searchTerm}"
+                                oninput="this.focus()"
+                                style="width: 100%; padding: 10px 15px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 16px; outline: none;">
+                        </div>
+                    `;
+                    container.innerHTML = searchBar + '<div id="allStudentsList" style="background: white;">' + renderList() + '</div>';
+
+                    // Attach Logic
+                    const input = document.getElementById('studentSearch');
+                    input.addEventListener('input', (e) => {
+                        searchTerm = e.target.value;
+                        const list = document.getElementById('allStudentsList');
+                        if (list) list.innerHTML = renderList();
+                    });
+                    // Restore focus (simple hack: value is set in HTML but input replaces DOM. actually we replace innerHTML so focus lost. 
+                    // Better: Only replace list part. logic above handles that by `list.innerHTML = renderList()`)
+                };
+
+                updateView();
+
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state"><h3>Failed to load students</h3><p>${e.message}</p></div>`;
+            }
+        }
+
+        // ============================================================================
+        // LEADERBOARD RENDERER
+        // ============================================================================
+        let leaderboardScope = 'all'; // all, monthly, weekly
+
+        async function renderLeaderboard(container) {
+            container.innerHTML = '<div class="loading-container">Loading Rankings...</div>';
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (!data.success) throw new Error(data.error);
+
+                const stats = data.leaderboard;
+
+                // Sort function
+                const sortData = (scope) => {
+                    return [...stats].sort((a, b) => {
+                        const valA = scope === 'weekly' ? a.weeklyPoints : (scope === 'monthly' ? a.monthlyPoints : a.totalPoints);
+                        const valB = scope === 'weekly' ? b.weeklyPoints : (scope === 'monthly' ? b.monthlyPoints : b.totalPoints);
+                        return valB - valA; // Descending
+                    }).filter(s => {
+                        // Filter out zero points for weekly/monthly views to keep list clean? 
+                        // Or show everyone? User said "Leaderboard". Usually implies top scorers.
+                        // Let's show everyone who has > 0 points in that category.
+                        const val = scope === 'weekly' ? s.weeklyPoints : (scope === 'monthly' ? s.monthlyPoints : s.totalPoints);
+                        return val > 0;
+                    });
+                };
+
+                const renderList = () => {
+                    const sorted = sortData(leaderboardScope);
+
+                    if (sorted.length === 0) {
+                        return '<div class="empty-state">No points recorded for this period yet!</div>';
+                    }
+
+                    return sorted.map((s, idx) => {
+                        const rank = idx + 1;
+                        let rankIcon = `<span style="font-weight:bold; color:#666; width:24px; display:inline-block; text-align:center;">${rank}</span>`;
+                        if (rank === 1) rankIcon = '🥇';
+                        if (rank === 2) rankIcon = '🥈';
+                        if (rank === 3) rankIcon = '🥉';
+
+                        const score = leaderboardScope === 'weekly' ? s.weeklyPoints : (leaderboardScope === 'monthly' ? s.monthlyPoints : s.totalPoints);
+
+                        // Safe ID for headshot
+                        const safeId = s.id ? s.id.toString().replace(/\//g, '_') : '';
+                        const headshotSrc = safeId ? `/headshots/${safeId}.jpg` : s.headshot;
+
+                        return `
+                       <div style="display:flex; align-items:center; background:white; padding:15px; border-bottom:1px solid #eee; min-height:72px;">
+                           <div style="font-size:24px; margin-right:15px; width:40px; text-align:center;">${rankIcon}</div>
+                           
+                           <div style="position: relative; width: 44px; height: 44px; margin-right: 15px;">
+                                <img src="${headshotSrc || '/api/placeholder/44/44'}" 
+                                     style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 1px solid #eee;"
+                                     onerror="this.onerror=null; this.src='${s.headshot || '/api/placeholder/44/44'}';">
+                           </div>
+
+                           <div style="flex-grow:1;">
+                               <div style="font-weight:600; color:#333; font-size:16px;">${s.name}</div>
+                               <div style="font-size:12px; color:#888;">${s.email || ''}</div>
+                           </div>
+                           
+                           <div style="font-weight:bold; font-size:18px; color:#db3236;">
+                                ${score} <span style="font-size:10px; color:#666; text-transform:uppercase;">pts</span>
+                           </div>
+                       </div>
+                       `;
+                    }).join('');
+                };
+
+                // Header with Toggles
+                const headerHtml = `
+                    <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; justify-content: center; gap: 10px; position: sticky; top: 0; z-index: 10;">
+                        <button onclick="changeLeaderboardScope('all')" 
+                            style="padding: 8px 16px; border-radius: 20px; border: 1px solid ${leaderboardScope === 'all' ? '#db3236' : '#ccc'}; background: ${leaderboardScope === 'all' ? '#db3236' : 'white'}; color: ${leaderboardScope === 'all' ? 'white' : '#666'}; font-weight: 500;">
+                            All Time
+                        </button>
+                        <button onclick="changeLeaderboardScope('monthly')" 
+                            style="padding: 8px 16px; border-radius: 20px; border: 1px solid ${leaderboardScope === 'monthly' ? '#db3236' : '#ccc'}; background: ${leaderboardScope === 'monthly' ? '#db3236' : 'white'}; color: ${leaderboardScope === 'monthly' ? 'white' : '#666'}; font-weight: 500;">
+                            This Month
+                        </button>
+                        <button onclick="changeLeaderboardScope('weekly')" 
+                            style="padding: 8px 16px; border-radius: 20px; border: 1px solid ${leaderboardScope === 'weekly' ? '#db3236' : '#ccc'}; background: ${leaderboardScope === 'weekly' ? '#db3236' : 'white'}; color: ${leaderboardScope === 'weekly' ? 'white' : '#666'}; font-weight: 500;">
+                            This Week
+                        </button>
                     </div>
                 `;
 
-                // Override the main header? Or just place below?
-                // The main header is fixed. "All Students" view usually has its own sub-header or replaces functionality.
-                // The screenshot shows a red header "ALL STUDENTS" with specific icons.
-                // My APP header is already present. I'll modify the Page Title to "ALL STUDENTS" in switchTab.
-                // The search bar in screenshot is inside the red header.
-                // My header structure is: [Back] [Logo] [Title] ... [Search] [Check] [Refresh]
-                // I can reuse the main header actions! Just need to wire up the search icon to show a search bar.
-                // For simplicity/speed, I'll render the list directly.
+                container.innerHTML = headerHtml + '<div>' + renderList() + '</div>';
 
-                // Let's attach the search event listener after rendering
-                const updateView = () => {
-                    container.innerHTML = `
-                        <div style="background: white; border-top: 1px solid #e5e7eb; padding-bottom: 80px;">
-                            ${renderList()}
-                        </div>
-                     `;
-                }
+                // Expose scope changer globally
+                window.changeLeaderboardScope = (scope) => {
+                    leaderboardScope = scope;
+                    renderLeaderboard(container);
+                };
 
-                // Initial Render
-                updateView();
-
-                // Setup Search Logic (Hooks into existing header search icon or add one)
-                // Actually, let's keep it simple: List only for now as per "lists out ALL the kids" requirement.
-                // Screenshot has search icon in header. 
-
-            } catch (e) {
-                console.error(e);
-                container.innerHTML = `<div class="empty-state">
-                    <h3>Failed to load students</h3>
-                    <p>${e.message}</p>
-                    <button onclick="renderAllStudents(document.getElementById('mainContent'))" style="margin-top:10px;">Retry</button>
-                </div>`;
+            } catch (err) {
+                container.innerHTML = `<div class="empty-state"><h3>Error loading leaderboard</h3><p>${err.message}</p></div>`;
             }
         }
 
-        function renderUploadTest(container) {
-            container.innerHTML = `
-                <div style="padding: 24px; max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: 20px;">
-                    <h2 style="color: #2D3748; margin-bottom: 20px; font-size: 1.5em; text-align: center;">📹 Video Upload Test</h2>
-                    
-                    <div style="border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
-                        <input type="file" id="videoInput" accept="video/*" style="display: none;" onchange="handleFileSelect(this)">
-                        <label for="videoInput" style="cursor: pointer; display: block;">
-                            <div style="font-size: 40px; margin-bottom: 10px;">☁️</div>
-                            <span style="color: #4A5568; font-weight: 500;">Click to select video</span>
-                            <div id="fileName" style="margin-top: 10px; color: #3182CE; font-size: 0.9em; font-weight: bold; overflow-wrap: break-word;"></div>
-                        </label>
-                    </div>
 
-                    <div id="progressContainer" style="display: none; margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #4A5568; font-size: 0.9em;">
-                            <span id="uploadStatus">Uploading...</span>
-                            <span id="uploadPercent">0%</span>
-                        </div>
-                        <div style="width: 100%; height: 10px; background: #EDF2F7; border-radius: 5px; overflow: hidden;">
-                            <div id="progressBar" style="width: 0%; height: 100%; background: #48BB78; transition: width 0.3s ease;"></div>
-                        </div>
-                        <p id="timeRemaining" style="font-size: 0.8em; color: #718096; text-align: right; margin-top: 5px;">Estimating time...</p>
-                    </div>
 
-                    <div id="uploadResult" style="display: none; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;"></div>
 
-                    <button id="uploadBtn" onclick="uploadVideo()" disabled 
-                            style="width: 100%; padding: 12px; background: #CBD5E0; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: not-allowed; transition: all 0.2s;">
-                        Start Upload
-                    </button>
-                    
-                    <p style="text-align: center; color: #718096; font-size: 0.8em; margin-top: 15px;">
-                        Videos will be uploaded to the test Google Drive folder.
-                    </p>
-                </div>
-            `;
-        }
-
-        let selectedFile = null;
-
-        function handleFileSelect(input) {
-            if (input.files && input.files[0]) {
-                selectedFile = input.files[0];
-                document.getElementById('fileName').innerText = selectedFile.name;
-
-                const btn = document.getElementById('uploadBtn');
-                btn.disabled = false;
-                btn.style.background = '#3182CE'; // Blue
-                btn.style.cursor = 'pointer';
-
-                // Hide previous results
-                document.getElementById('uploadResult').style.display = 'none';
-                document.getElementById('progressContainer').style.display = 'none';
-            }
-        }
-
-        function uploadVideo() {
-            if (!selectedFile) return;
-
-            const btn = document.getElementById('uploadBtn');
-            btn.disabled = true;
-            btn.style.background = '#CBD5E0';
-            btn.innerText = 'Uploading...';
-
-            const progressContainer = document.getElementById('progressContainer');
-            const progressBar = document.getElementById('progressBar');
-            const percentText = document.getElementById('uploadPercent');
-            const statusText = document.getElementById('uploadStatus');
-            const timeText = document.getElementById('timeRemaining');
-            const resultDiv = document.getElementById('uploadResult');
-
-            progressContainer.style.display = 'block';
-            resultDiv.style.display = 'none';
-
-            const formData = new FormData();
-            formData.append('video', selectedFile);
-
-            const xhr = new XMLHttpRequest();
-            const startTime = Date.now();
-
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percent = (e.loaded / e.total) * 100;
-                    progressBar.style.width = percent + '%';
-                    percentText.innerText = Math.round(percent) + '%';
-
-                    // Calculate remaining time
-                    const elapsedTime = (Date.now() - startTime) / 1000; // seconds
-                    const uploadSpeed = e.loaded / elapsedTime; // bytes per second
-                    const remainingBytes = e.total - e.loaded;
-                    const remainingSeconds = remainingBytes / uploadSpeed;
-
-                    if (remainingSeconds < 60) {
-                        timeText.innerText = `~${Math.round(remainingSeconds)}s remaining`;
-                    } else {
-                        timeText.innerText = `~${Math.round(remainingSeconds / 60)}m remaining`;
-                    }
-                }
-            });
-
-            xhr.onreadystatechange = function () {
-                if (xhr.readyState === 4) {
-                    btn.innerText = 'Start Upload';
-                    btn.disabled = false;
-                    btn.style.background = '#3182CE';
-
-                    if (xhr.status === 200) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                statusText.innerText = 'Complete!';
-                                timeText.innerText = '';
-
-                                resultDiv.className = 'success-box';
-                                resultDiv.style.background = '#C6F6D5';
-                                resultDiv.style.color = '#22543D';
-                                resultDiv.style.display = 'block';
-                                resultDiv.innerHTML = `
-                                    <strong>✅ Upload Successful!</strong><br>
-                                    <span style="font-size: 0.9em">File ID: ${response.fileId}</span>
-                                `;
-
-                                // Reset file input
-                                document.getElementById('videoInput').value = '';
-                                selectedFile = null;
-                                document.getElementById('fileName').innerText = '';
-                            } else {
-                                throw new Error(response.error);
-                            }
-                        } catch (e) {
-                            showError(e.message || 'Unknown server error');
-                        }
-                    } else {
-                        // Try to parse error message from server
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            showError(response.error || 'Server error ' + xhr.status);
-                        } catch (e) {
-                            console.error('Failed to parse error response:', xhr.responseText);
-                            // Alert the user with the raw text so they can tell us what it says
-                            alert('CRITICAL SERVER ERROR (See Console for details):\n\n' + xhr.responseText.substring(0, 200));
-                            showError('Server Code ' + xhr.status + '. Raw response alerted.');
-                        }
-                    }
-                }
-            };
-
-            xhr.open('POST', '/api/upload-video', true);
-            xhr.send(formData);
-
-            function showError(msg) {
-                statusText.innerText = 'Failed';
-                progressBar.style.background = '#FC8181'; // Red
-                resultDiv.style.background = '#FED7D7';
-                resultDiv.style.color = '#742A2A';
-                resultDiv.style.display = 'block';
-                resultDiv.innerHTML = `<strong>❌ Error:</strong> ${msg}`;
-            }
-        }
 
         // ============================================================================
         // STUDENT DETAIL VIEW
@@ -876,7 +893,8 @@
                     </button>
 
                     <div style="background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;">
-                        <img src="${headshotUrl || '/api/placeholder/150/150'}" 
+                        <img src="${studentData.studentId ? `/headshots/${studentData.studentId.toString().replace(/\//g, '_')}.jpg` : (headshotUrl || '/api/placeholder/150/150')}"
+                             onerror="this.onerror=null; this.src='${headshotUrl || '/api/placeholder/150/150'}';" 
                              style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px;">
                         <h2 style="margin: 0; color: #333;">${studentData.studentName}</h2>
                         <div style="display: flex; justify-content: center; gap: 20px; margin-top: 15px;">
@@ -1033,7 +1051,9 @@
                         <h2 style="margin: 0; font-size: 18px;">${isViewMode ? 'Project Evidence' : 'Complete Project'}</h2>
                     </div>
                     <div style="text-align: center; margin-bottom: 30px;">
-                         <img src="${headshotUrl}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; margin-bottom: 10px;">
+                         <img src="${studentId ? `/headshots/${studentId.toString().replace(/\//g, '_')}.jpg` : headshotUrl}"
+                              onerror="this.onerror=null; this.src='${headshotUrl || '/api/placeholder/80/80'}';" 
+                              style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; margin-bottom: 10px;">
                          <h3 style="margin: 0; color: #333;">${studentName}</h3>
                          <div style="color: #666; margin-top: 5px; font-weight: 500;">${projectName}</div>
                     </div>
@@ -1091,7 +1111,7 @@
 
                         <!-- CAMERA OVERLAY -->
                         <div id="cameraOverlay" style="display: none; position: fixed; top: 0; left: 0; w: 100%; h: 100%; background: black; z-index: 2000; flex-direction: column; align-items: center; justify-content: center;">
-                             <video id="cameraPreview" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                             <video id="cameraPreview" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover;"></video>
                              <div style="position: absolute; bottom: 30px; display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%;">
                                  <div id="recordingTimer" style="color: white; font-size: 20px; font-weight: bold; background: rgba(0,0,0,0.5); padding: 5px 10px; border-radius: 4px; display: none;">00:00</div>
                                  <div style="display: flex; gap: 30px; align-items: center;">
@@ -1512,6 +1532,207 @@
                 console.error('Auto Upload Failed:', err);
                 alert('Auto-Upload Failed: ' + err.message);
                 btn.innerText = "Upload Failed";
+            }
+        }
+        // ============================================================================
+        // INVENTORY RENDERER
+        // ============================================================================
+
+        let inventoryItems = [];
+        let inventoryKits = [];
+        let currentKit = '';
+
+        async function renderInventory(container) {
+            container.innerHTML = '<div class="loading-container">Loading Inventory...</div>';
+
+            try {
+                const response = await fetch('/api/inventory');
+                const data = await response.json();
+
+                if (!data.success) throw new Error(data.error);
+
+                inventoryItems = data.items;
+                inventoryKits = data.kits;
+
+                // Set default kit if not set
+                if (!currentKit && inventoryKits.length > 0) {
+                    currentKit = inventoryKits[0];
+                }
+
+                renderInventoryUI(container);
+
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state"><h3>Error loading inventory</h3><p>${e.message}</p></div>`;
+            }
+        }
+
+        let inventorySearchTerm = '';
+
+        function renderInventoryUI(container) {
+            if (inventoryKits.length === 0) {
+                container.innerHTML = '<div class="empty-state">No inventory kits detected. Check Google Sheet headers.</div>';
+                return;
+            }
+
+            // 1. Kit Selector HTML
+            let kitButtons = inventoryKits.map(kit => {
+                const isActive = kit === currentKit;
+                return `
+                <button onclick="switchKit('${kit}')" 
+                    style="padding: 8px 16px; border-radius: 20px; border: 1px solid ${isActive ? '#db3236' : '#ccc'}; background: ${isActive ? '#db3236' : 'white'}; color: ${isActive ? 'white' : '#666'}; font-weight: 500; margin-right: 8px; cursor: pointer;">
+                    ${kit}
+                </button>`;
+            }).join('');
+
+            // 2. Search Bar HTML
+            const searchBarHtml = `
+            <div style="padding: 10px 15px; background: white; border-bottom: 1px solid #eee;">
+                <input type="text" 
+                       id="inventorySearchInput"
+                       placeholder="Search ${currentKit} Items..." 
+                       value="${inventorySearchTerm}"
+                       oninput="handleInventorySearch(this.value)"
+                       style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none;">
+            </div>
+            `;
+
+            // Combine Header
+            const headerHtml = `
+            <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; overflow-x: auto; white-space: nowrap; position: sticky; top: 0; z-index: 10;">
+                ${kitButtons}
+            </div>
+            ${searchBarHtml}
+            `;
+
+            // 3. Container Structure
+            // We set the structure once if we are just switching kits? 
+            // Actually, keep it simple: Full render, then populate list.
+            // But wait, if we re-render full UI on every keystroke, we lose focus.
+            // So we need to separate "Setup" from "Update List".
+
+            // Check if we are already in inventory view structure
+            // Use a specific ID for the inventory wrapper
+            const wrapperId = 'inventory-view-wrapper';
+            if (!document.getElementById(wrapperId)) {
+                container.innerHTML = `
+                    <div id="${wrapperId}">
+                        <div id="inventory-header-container">${headerHtml}</div>
+                        <div id="inventory-list-container" style="background: white; padding-bottom: 80px;"></div>
+                    </div>
+                `;
+            } else {
+                // If wrapper exists, just update header (for kit switch) but maybe preserve input?
+                // If we switch kit, we do want to update header.
+                // If we search, we don't want to update header (lose focus).
+                // Let's decide based on context. 
+                // For simplicity: Always update header if Kit changes.
+                // But handleInventorySearch will ONLY update list.
+                document.getElementById('inventory-header-container').innerHTML = headerHtml;
+
+                // Restore Focus if we just re-rendered header and input was focused?
+                // Actually, handleInventorySearch won't call this function. It will call renderInventoryItems directly.
+                // switchKit WILL call this.
+            }
+
+            renderInventoryItems();
+
+            // Expose Switcher
+            window.switchKit = (kit) => {
+                currentKit = kit;
+                // Full re-render of UI
+                renderInventoryUI(container);
+            };
+
+            // Expose Search Handler
+            window.handleInventorySearch = (val) => {
+                inventorySearchTerm = val;
+                renderInventoryItems();
+            };
+        }
+
+        function renderInventoryItems() {
+            const listContainer = document.getElementById('inventory-list-container');
+            if (!listContainer) return;
+
+            // Filter Items
+            const term = inventorySearchTerm.toLowerCase();
+            const filtered = inventoryItems.filter(item => {
+                const name = (item.product || '').toLowerCase();
+                const id = (item.id || '').toString().toLowerCase();
+                return name.includes(term) || id.includes(term);
+            });
+
+            if (filtered.length === 0) {
+                listContainer.innerHTML = '<div class="empty-state">No matching items found.</div>';
+                return;
+            }
+
+            const itemsHtml = filtered.map(item => {
+                const stock = item.stocks[currentKit] || 0;
+                const safeId = item.id;
+                const safeName = item.product || 'Unknown Item';
+
+                return `
+                <div class="student-card" style="padding: 10px 20px;">
+                    <!-- Image -->
+                    <div style="width: 50px; height: 50px; margin-right: 16px; flex-shrink: 0; background: #eee; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                        <img src="${item.image || ''}" style="width: 100%; height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.innerText='📦';">
+                         <div style="font-size: 20px;"></div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="student-info">
+                        <div class="student-name" style="font-size: 15px;">${safeName}</div>
+                        <div class="student-project" style="font-size: 12px; color: #888;">ID: ${safeId}</div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button onclick="updateStock('${safeId}', -1)" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ccc; background: white; font-weight: bold; font-size: 16px; color: #db3236; cursor: pointer;">-</button>
+                        <div style="width: 40px; text-align: center; font-weight: bold; font-size: 16px;">${stock}</div>
+                        <button onclick="updateStock('${safeId}', 1)" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ccc; background: white; font-weight: bold; font-size: 16px; color: #047857; cursor: pointer;">+</button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            listContainer.innerHTML = itemsHtml;
+        }
+
+        async function updateStock(itemId, change) {
+            // Find item
+            const item = inventoryItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            const currentVal = item.stocks[currentKit] || 0;
+            const newVal = currentVal + change;
+            if (newVal < 0) return;
+
+            // Optimistic Update
+            item.stocks[currentKit] = newVal;
+            renderInventoryUI(document.getElementById('mainContent'));
+
+            try {
+                const response = await fetch('/api/inventory/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        itemId: itemId,
+                        kitName: currentKit,
+                        newQuantity: newVal,
+                        userEmail: 'Instructor'
+                    })
+                });
+
+                const res = await response.json();
+                if (!res.success) throw new Error(res.error);
+
+            } catch (e) {
+                console.error('Stock Update Error:', e);
+                alert('Failed to update stock: ' + e.message);
+                // Revert
+                item.stocks[currentKit] = currentVal;
+                renderInventoryUI(document.getElementById('mainContent'));
             }
         }
     </script>

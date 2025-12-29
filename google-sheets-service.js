@@ -279,10 +279,10 @@ async function fetchStudents(forceRefresh = false) {
         const sheets = await getGoogleSheetsClient();
 
         // Fetch data from Google Sheets
-        // Range "A:Z" to include Notes (Column X is index 23)
+        // Range "A:AH" to include Total Points (Column AH)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!A:Z`,
+            range: `${config.STUDENT_NAMES_SHEET}!A:AH`,
         });
 
         // Extract rows from response
@@ -300,7 +300,7 @@ async function fetchStudents(forceRefresh = false) {
         }
 
         const students = rows.slice(1)
-            .filter(row => row[0])  // Must have ID (Name logic relaxed as ID is key)
+            .filter(row => row[0])  // Must have ID
             .map(row => {
                 const headshotRaw = row[8] ? row[8].trim() : ''; // Column I (Index 8)
                 let headshot = headshotRaw;
@@ -317,11 +317,24 @@ async function fetchStudents(forceRefresh = false) {
                     }
                 }
 
+                // NAME LOGIC: Prefer Column C (Login Name/Index 2) as it's cleaner. 
+                // Fallback to Column B (Name/Index 1), then ID.
+                // Also clean up if it looks like an email.
+                let rawName = (row[2] && row[2].trim().length > 0) ? row[2].trim() : (row[1] ? row[1].trim() : 'Unknown');
+
+                // Extra safety: if it's still an email, strip domain
+                if (rawName.includes('@')) {
+                    rawName = rawName.split('@')[0];
+                    // Capitalize first letter
+                    rawName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+                }
+
                 return {
                     id: row[0].trim(),    // Column A: Student ID
-                    name: row[1] ? row[1].trim() : 'Unknown',  // Column B: Student Name
+                    name: rawName,
                     headshot: headshot,
-                    note: row[23] ? row[23].trim() : '' // Column X
+                    note: row[23] ? row[23].trim() : '', // Column X
+                    totalPoints: row[33] ? parseInt(row[33].replace(/\D/g, '') || '0', 10) : 0 // Column AH (Total Points)
                 };
             });
 
@@ -911,12 +924,31 @@ async function fetchBookingInfo(forceRefresh = false) {
             .slice(1) // Skip header
             .filter(({ rowData }) => {
                 const dateStr = rowData[config.BOOKING_COLUMNS.CLASS_DATE];
-                // Simple string match first (fastest)
+                if (!dateStr) return false;
+
+                // Normalize strings for comparison (remove leading zeros, trim)
+                // E.g. "01/02/2025" vs "1/2/2025"
+                const normalizeDate = (d) => {
+                    try {
+                        return new Date(d).toDateString();
+                    } catch (e) {
+                        return d;
+                    }
+                };
+
+                // 1. Direct String Match
                 if (dateStr === todayStr) return true;
 
-                // Fallback: Parse date just in case format varies slightly
+                // 2. Date Object Match
                 const rowDate = new Date(dateStr);
-                return rowDate.toDateString() === today.toDateString();
+                const isMatch = rowDate.toDateString() === today.toDateString();
+
+                if (!isMatch) {
+                    // Debug log for close misses
+                    console.log(`[DEBUG] Skipping date: "${dateStr}" (Parsed: "${rowDate.toDateString()}") vs Target: "${today.toDateString()}"`);
+                }
+
+                return isMatch;
             })
             .map(({ rowData, rowIndex }) => ({
                 studentName: rowData[config.BOOKING_COLUMNS.STUDENT_NAME],
@@ -933,7 +965,7 @@ async function fetchBookingInfo(forceRefresh = false) {
         lastBookingFetch = now;
 
 
-        console.log(`Found ${bookings.length} bookings for today`);
+        console.log(`Found ${bookings.length} bookings for today (${todayStr})`);
         return bookings;
     } catch (error) {
         console.error('Error fetching bookings:', error.message);
@@ -1195,10 +1227,15 @@ async function fetchAllKids(forceRefresh = false) {
     const kids = rows.slice(1)
         .filter(row => row[config.ALL_KIDS_COLUMNS.NAME]) // Must have name
         .map(row => ({
+            id: row[config.ALL_KIDS_COLUMNS.ID] || '',
+            id: row[config.ALL_KIDS_COLUMNS.ID] || '',
             name: row[config.ALL_KIDS_COLUMNS.NAME] || '',
             parentName: row[config.ALL_KIDS_COLUMNS.PARENT_NAME] || '',
             email: row[config.ALL_KIDS_COLUMNS.EMAIL] || '',
-            headshot: row[config.ALL_KIDS_COLUMNS.HEADSHOT] || ''
+            headshot: row[config.ALL_KIDS_COLUMNS.HEADSHOT] || '',
+            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10),
+            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10),
+            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10)
         }));
 
     console.log(`Fetched ${kids.length} kids for All Kids page (${source})`);
@@ -1343,247 +1380,214 @@ async function markStudentAttendance(rowIndex, status) {
     }
 }
 
+
+// ============================================================================
+// FUNCTION: Fetch and Update Inventory
+// ============================================================================
+
+/**
+ * Fetches the entire inventory with dynamic kit detection
+ * 
+ * @param {boolean} forceRefresh 
+ * @returns {Promise<Object>} { items: [], kits: ['KIT1', 'KIT2'] }
+ */
+async function fetchInventory(forceRefresh = false) {
+    try {
+        console.log('Fetching inventory...');
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch A:Z to cover everything
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.INVENTORY_SHEET}!A:Z`,
+        });
+
+        const rows = response.data.values || [];
+        if (rows.length === 0) return { items: [], kits: [] };
+
+        // Parse Headers to find Kit Columns
+        // Looking for headers like "Current Stock in KIT1"
+        const headers = rows[0];
+        const kitColumns = {}; // Map 'KIT1' -> ColumnIndex (e.g. 6)
+
+        headers.forEach((header, index) => {
+            if (header && header.toLowerCase().includes('current stock in')) {
+                // Extract kit name, e.g., "KIT1" from "Current Stock in KIT1"
+                // Or just use the full header? Let's use the suffix after "in "
+                const parts = header.split(' in ');
+                if (parts.length > 1) {
+                    const kitName = parts[1].trim();
+                    kitColumns[kitName] = index;
+                }
+            }
+        });
+
+        const kits = Object.keys(kitColumns);
+        console.log('Detected Kits:', kits);
+
+        // Process Rows
+        const items = rows.slice(1).map((row, rowIndex) => {
+            // Basic Info
+            const item = {
+                id: row[config.INVENTORY_COLUMNS.ID],
+                product: row[config.INVENTORY_COLUMNS.PRODUCT],
+                image: row[config.INVENTORY_COLUMNS.IMAGE],
+                stocks: {},
+                rowIndex: rowIndex + 2 // 1-based index, +1 for header
+            };
+
+            // Add Stock for each Kit
+            kits.forEach(kit => {
+                const colIndex = kitColumns[kit];
+                const val = row[colIndex];
+                item.stocks[kit] = val ? parseInt(val) : 0;
+            });
+
+            return item;
+        }).filter(i => i.id); // Filter empty rows
+
+        return { items, kits };
+
+    } catch (error) {
+        console.error('Error fetching inventory:', error);
+        throw error;
+    }
+}
+
+/**
+ * Updates the inventory quantity for a specific item and kit
+ * 
+ * @param {string} itemId 
+ * @param {string} kitName 
+ * @param {number} newQuantity 
+ * @param {string} userEmail 
+ */
+async function updateInventory(itemId, kitName, newQuantity, userEmail) {
+    try {
+        console.log(`Updating ${itemId} in ${kitName} to ${newQuantity} by ${userEmail}`);
+        const sheets = await getGoogleSheetsClient();
+
+        // 1. Fetch Headers to find Kit Column Index again (safest)
+        const headerRes = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.INVENTORY_SHEET}!A1:Z1`,
+        });
+        // 1b. Validate we got headers
+        if (!headerRes.data.values || headerRes.data.values.length === 0) {
+            throw new Error("Could not read headers from Inventory sheet.");
+        }
+        const headers = headerRes.data.values[0];
+        let kitColIndex = -1;
+
+        headers.forEach((h, i) => {
+            if (h && h.includes(`in ${kitName}`)) kitColIndex = i;
+        });
+
+        if (kitColIndex === -1) throw new Error(`Kit '${kitName}' not found in headers`);
+
+        // 2. Fetch IDs to find Row Index
+        // We only fetch Column A to find the row
+        const idRes = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.INVENTORY_SHEET}!A:A`,
+        });
+        const idRows = idRes.data.values || [];
+        let targetRowIndex = -1;
+
+        // Find row
+        for (let i = 0; i < idRows.length; i++) {
+            if (idRows[i][0] === itemId) {
+                targetRowIndex = i + 1; // 1-based index (Sheet rows are 1-based)
+                break;
+            }
+        }
+
+        if (targetRowIndex === -1) throw new Error('Item ID not found');
+
+        // 3. Perform Updates
+        // Convert Column Index to Letter (6 -> G, 7 -> H)
+        const getColLetter = (n) => {
+            let letters = '';
+            let temp = n;
+            // Simple mapping: 0 -> A, 25 -> Z, 26 -> AA
+            // The loop needs to handle base 26 properly
+            // n is 0-indexed
+
+            // Algorithm:
+            // while n >= 0:
+            //   rem = n % 26
+            //   char = A + rem
+            //   n = n / 26 - 1
+
+            while (temp >= 0) {
+                letters = String.fromCharCode(65 + (temp % 26)) + letters;
+                temp = Math.floor(temp / 26) - 1;
+            }
+            return letters;
+        };
+
+        const kitColLetter = getColLetter(kitColIndex);
+        const logTimeColLetter = getColLetter(config.INVENTORY_COLUMNS.LAST_LOG_TIME);
+        const logUserColLetter = getColLetter(config.INVENTORY_COLUMNS.LAST_LOG_USER);
+
+        const updates = [
+            // Update Quantity
+            {
+                range: `${config.INVENTORY_SHEET}!${kitColLetter}${targetRowIndex}`,
+                values: [[newQuantity]]
+            },
+            // Update Log Time
+            {
+                range: `${config.INVENTORY_SHEET}!${logTimeColLetter}${targetRowIndex}`,
+                values: [[new Date().toLocaleString()]]
+            },
+            // Update Log User
+            {
+                range: `${config.INVENTORY_SHEET}!${logUserColLetter}${targetRowIndex}`,
+                values: [[userEmail]]
+            }
+        ];
+
+        // Execute batch update
+        await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: config.SPREADSHEET_ID,
+            resource: {
+                data: updates,
+                valueInputOption: 'USER_ENTERED'
+            }
+        });
+
+        console.log('Inventory update successful');
+        return { success: true };
+
+    } catch (error) {
+        console.error('Inventory update failed:', error);
+        throw error;
+    }
+}
+
 // ============================================================================
 // EXPORTS
 // ============================================================================
 
 module.exports = {
-    // Core Fetchers
-    fetchStudents,                  // Get student list
-    fetchProjectLog,                // Get all project log entries
-    fetchProjectList,               // Get project code->name map
-    fetchInstructors,               // Get instructor list
-    fetchStudentNamesForLogin,      // Get student names for login dropdown
-
-    // Aggregators & Helpers
-    getStudentProgress,             // Get progress summary for all students
-    getStudentProgress,             // Get progress summary for all students
-    getStudentProjects,             // Get projects for one specific student
-    fetchBookingInfo,               // Get today's classes
-    fetchBookingInfo,               // Get today's classes
-    fetchEnrichedBookingInfo,       // Get enriched data for dashboard
-    fetchAllKids,                   // Get all kids detailed data
-
-    // Sync & Misc
-    syncHeadshots,                  // Download headshots from Drive
-    syncMasterDatabase,             // Download full sheet to local JSON
-    getLocalMasterDB,               // Get local offline data
-    clearCache,                     // Clear all cached data
-    markStudentAttendance, async markProjectComplete(studentId, projectCode, videoLink, rating, instructorName, status, date) {
-        try {
-            console.log(`Marking project complete: SID=${studentId}, Code=${projectCode}, Video=${!!videoLink}, Rating=${rating}, Installer=${instructorName}, Status=${status}, Date=${date}`);
-
-            // 1. Find the Row Index
-            // We need to scan the PROJEC_LIST_SHEET (Project Log) to find the entry matching Student ID + Project Code
-            // This is inefficient but necessary without a better DB.
-            // We can optimize by fetching only relevant columns (A, C, I) -> (ID, SID, ProjectName/Code)
-
-            // Actually, we load the whole log usually. Let's fetch it fresh to be safe?
-            // Or use the cached version if available? For writing, we usually want fresh data to get the right row index.
-            // But since rows are immutable (append only usually?), the index might be stable.
-            // CAUTION: If rows are deleted, index shifts. Safer to fetch.
-
-            const sheetName = config.PROJECT_LOG_SHEET || 'Project Log'; // Fallback
-            const sheets = await getGoogleSheetsClient(); // Use existing getGoogleSheetsClient
-            // const auth = await this.getAuth(); // This line is not needed if getGoogleSheetsClient handles auth
-            // const sheets = google.sheets({ version: 'v4', auth }); // This line is not needed
-
-            // Fetch columns C (SID) and I (Project Name) to find the row
-            // Range: Project Log!C:I
-            // Note: C is index 2, I is index 8 relative to A=0.
-            // If we fetch C:I, response values[0] is Column C.
-            // C = 0, D = 1, E = 2, F = 3, G = 4, H = 5, I = 6
-            // We need to fetch enough columns to identify the row.
-            // Let's fetch local cached log if possible or just fetch A:J from sheet.
-            // Fetching whole sheet is safer for implementation speed.
-
-            const response = await sheets.spreadsheets.values.get({
-                spreadsheetId: config.SPREADSHEET_ID,
-                range: `${sheetName}!A:AB`, // Fetch up to AB to include all relevant columns for update
-            });
-
-            const rows = response.data.values;
-            if (!rows || rows.length === 0) throw new Error('Project Log is empty');
-
-            // Find matching row
-            // Column C is Index 2 (SID)
-            // Column I is Index 8 (Project Name)
-
-            let targetRowIndex = -1;
-            console.log(`Searching ${rows.length} rows for: SID="${studentId}", Proj="${projectCode}"`);
-
-            // Log first 3 rows to understand data format
-            for (let k = 1; k < Math.min(rows.length, 4); k++) {
-                console.log(`Sample Row ${k}: SID="${rows[k][2]}", Name="${rows[k][4]}", Proj="${rows[k][8]}"`);
-            }
-
-            for (let i = rows.length - 1; i >= 1; i--) {
-                const row = rows[i];
-                if (!row[2] || !row[8]) continue;
-
-                const sid = row[2];
-                const pCode = row[8].trim();
-
-                // Debug log for potential matches (same student)
-                if (sid === studentId) {
-                    console.log(`Checking Row ${i + 1}: SID matched. Project in sheet: "${pCode}" vs Requested: "${projectCode}"`);
-                }
-
-                // Normalize for comparison: remove all spaces, lowercase
-                const normalize = (str) => str.replace(/\s+/g, '').toLowerCase();
-
-                if (sid === studentId && normalize(pCode) === normalize(projectCode)) {
-                    targetRowIndex = i + 1;
-                    break;
-                }
-            }
-
-            if (targetRowIndex === -1) {
-                // Throw informative error
-                throw new Error(`Project entry not found. Searched for SID="${studentId}" & Proj="${projectCode}". Data format mismatch likely.`);
-            }
-
-            console.log(`Found matching project at row ${targetRowIndex}`);
-
-            // 2. Prepare Updates
-            // We need to update multiple non-contiguous columns: Status (J), Video (Q), Date (Z), Rating (AB), LastEditedBy (V)
-
-            // Map column indices (0-indexed)
-            const J_INDEX = config.PROGRESS_COLUMNS.PROJECT_STATUS; // 9
-            const Q_INDEX = 16; // Video Link (Hardcoded based on typical sheet, verify in config if generic)
-            const V_INDEX = config.PROGRESS_COLUMNS.LAST_EDITED_BY; // 21
-            const Z_INDEX = config.PROGRESS_COLUMNS.COMPLETED_DATE; // 25
-            const AB_INDEX = config.PROGRESS_COLUMNS.RATING; // 27
-
-            // Helper to get A1 notation
-            const getA1 = (colIndex, row) => {
-                const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-                let colLetter = '';
-                let tempColIndex = colIndex;
-                while (tempColIndex >= 0) {
-                    colLetter = letters[tempColIndex % 26] + colLetter;
-                    tempColIndex = Math.floor(tempColIndex / 26) - 1;
-                }
-                return `${sheetName}!${colLetter}${row}`;
-            };
-
-            // Date Formatting
-            let dateStr = '';
-            if (date) {
-                // If date comes from input=date (YYYY-MM-DD), format it nicely
-                // Create date object treating input as local date (append time to avoid UTC shift)
-                const d = new Date(date + 'T12:00:00');
-                const options = { year: 'numeric', month: 'short', day: 'numeric' };
-                dateStr = d.toLocaleDateString('en-US', options);
-            } else {
-                const today = new Date();
-                const options = { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'America/Chicago' };
-                dateStr = today.toLocaleDateString('en-US', options);
-            }
-
-            const updates = [
-                { range: getA1(J_INDEX, targetRowIndex), values: [[status || 'Completed']] },
-                { range: getA1(Z_INDEX, targetRowIndex), values: [[dateStr]] }
-            ];
-
-            if (videoLink !== undefined) { // Allow clearing if empty string passed? Assuming mostly setting.
-                if (videoLink) updates.push({ range: getA1(Q_INDEX, targetRowIndex), values: [[videoLink]] });
-            }
-
-            if (rating) {
-                updates.push({ range: getA1(AB_INDEX, targetRowIndex), values: [[rating]] });
-            }
-
-            if (instructorName) {
-                updates.push({ range: getA1(V_INDEX, targetRowIndex), values: [[instructorName]] });
-            }
-
-            // Execute Batch Update
-            await sheets.spreadsheets.values.batchUpdate({
-                spreadsheetId: config.SPREADSHEET_ID,
-                resource: {
-                    valueInputOption: 'USER_ENTERED',
-                    data: updates
-                }
-            });
-
-            console.log('Project marked as complete successfully.');
-
-            // Invalidate Caches
-            projectLogCache = null;
-
-            return { success: true };
-
-        } catch (error) {
-            console.error('Error marking project complete:', error);
-            throw error;
-        }
-    },
-
-    /**
-     * Creates and populates the 'Curriculum Tracks' sheet.
-     * Intended for one-time setup or admin usage.
-     */
-    async setupCurriculumTracks() {
-        console.log('Setting up Curriculum Tracks sheet...');
-        const sheets = await getGoogleSheetsClient();
-
-        try {
-            // 1. Get Spreadsheet Metadata to check existing sheets
-            const meta = await sheets.spreadsheets.get({
-                spreadsheetId: config.SPREADSHEET_ID
-            });
-
-            const sheetTitle = 'Curriculum Tracks';
-            const exists = meta.data.sheets.some(s => s.properties.title === sheetTitle);
-
-            if (exists) {
-                console.log(`Sheet "${sheetTitle}" already exists. Skipping creation.`);
-                return { message: 'Sheet already exists' };
-            }
-
-            // 2. Create the Sheet
-            await sheets.spreadsheets.batchUpdate({
-                spreadsheetId: config.SPREADSHEET_ID,
-                resource: {
-                    requests: [{
-                        addSheet: {
-                            properties: { title: sheetTitle }
-                        }
-                    }]
-                }
-            });
-            console.log(`Created sheet "${sheetTitle}".`);
-
-            // 3. Add Headers and Sample Data
-            const sampleData = [
-                ['Track Name', 'Project Code', 'Order', 'Description'],
-                ['Python Level 1', 'GAME201', '1', 'Intro to Variables'],
-                ['Python Level 1', 'GAME202', '2', 'Conditionals'],
-                ['Python Level 1', 'GAME205', '3', 'Loops'],
-                ['Robotics 101', 'BOT101', '1', 'Motors Basics'],
-                ['Robotics 101', 'BOT102', '2', 'Sensors']
-            ];
-
-            await sheets.spreadsheets.values.update({
-                spreadsheetId: config.SPREADSHEET_ID,
-                range: `${sheetTitle}!A1`,
-                valueInputOption: 'USER_ENTERED',
-                resource: { values: sampleData }
-            });
-
-            console.log('Populated Curriculum Tracks with sample data.');
-            return { success: true, message: 'Sheet created and populated.' };
-
-        } catch (error) {
-            console.error('Error setting up curriculum tracks:', error);
-            throw error;
-        }
-    }
+    getGoogleSheetsClient,
+    getGoogleDriveClient,
+    syncHeadshots,
+    fetchStudents,
+    fetchProjectLog,
+    fetchStudentNamesForLogin,
+    getStudentProgress,
+    getStudentProjects,
+    fetchProjectList,
+    fetchBookingInfo,
+    fetchEnrichedBookingInfo,
+    syncMasterDatabase,
+    fetchAllKids,
+    fetchInstructors,
+    markStudentAttendance,
+    getLocalMasterDB,
+    clearCache,
+    fetchInventory,
+    updateInventory
 };
-
-/*
- * ============================================================================
- * END OF GOOGLE-SHEETS-SERVICE.JS
- * ============================================================================
- */

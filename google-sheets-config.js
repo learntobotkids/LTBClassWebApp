@@ -106,6 +106,18 @@ module.exports = {
      */
     PROJECT_LIST_SHEET: 'Projects List',
 
+    /**
+     * Name of the sheet (tab) containing project logs/progress
+     * Default: 'Project Log'
+     */
+    PROJECT_LOG_SHEET: 'Project Log',
+
+    /**
+     * Name of the sheet (tab) containing inventory data
+     * Default: 'Inventory'
+     */
+    INVENTORY_SHEET: 'Inventory',
+
     // ========================================================================
     // COLUMN MAPPINGS FOR STUDENT NAMES SHEET
     // ========================================================================
@@ -183,6 +195,18 @@ module.exports = {
         NAME: 1             // Column B: Full Project Name
     },
 
+    // ========================================================================
+    // COLUMN MAPPINGS FOR INVENTORY SHEET
+    // ========================================================================
+    INVENTORY_COLUMNS: {
+        ID: 0,              // Column A: Product Barcode/ID
+        PRODUCT: 1,         // Column B: Product Name
+        IMAGE: 5,           // Column F: Image URL
+        KIT_START: 6,       // Column G: Start of Kit Stock columns
+        LAST_LOG_TIME: 11,  // Column L: Last Log Time
+        LAST_LOG_USER: 12   // Column M: Last Log User
+    },
+
     /**
      * Name of the sheet (tab) containing project list
      * Default: 'Project List'
@@ -193,10 +217,12 @@ module.exports = {
     // COLUMN MAPPINGS FOR ALL KIDS PAGE (Relative to 'Child Names!A:Z')
     // ========================================================================
     ALL_KIDS_COLUMNS: {
+        ID: 0,              // Column A: Unique Student ID
         NAME: 2,            // Column C: Child names
         PARENT_NAME: 4,     // Column E: Parent First Name (or F for Last)
         EMAIL: 1,           // Column B: Parent Email
-        HEADSHOT: 8         // Column I: Headshot
+        HEADSHOT: 8,        // Column I: Headshot
+        TOTAL_POINTS: 33    // Column AH: Total Points (All Time)
     },
 
     // ========================================================================

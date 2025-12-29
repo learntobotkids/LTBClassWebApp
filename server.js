@@ -1616,6 +1616,19 @@ app.post('/api/admin/setup-curriculum', async (req, res) => {
 });
 
 // ============================================================================
+// LEADERBOARD API
+// ============================================================================
+app.get('/api/leaderboard', async (req, res) => {
+    try {
+        const data = await googleSheetsService.getLeaderboard();
+        res.json({ success: true, leaderboard: data });
+    } catch (error) {
+        console.error('Leaderboard fetch failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch leaderboard' });
+    }
+});
+
+// ============================================================================
 // STEP 20: API ENDPOINT - LIST STUDENT FOLDERS
 // ============================================================================
 // Returns list of all student folders in FINAL KIDS FILES
@@ -2164,6 +2177,37 @@ app.use((err, req, res, next) => {
 });
 
 
+
+
+// ============================================================================
+// STEP 18.5: API ENDPOINTS - INVENTORY Management
+// ============================================================================
+
+app.get('/api/inventory', async (req, res) => {
+    try {
+        const inventory = await googleSheetsService.fetchInventory();
+        res.json({ success: true, ...inventory });
+    } catch (error) {
+        console.error('API Error: /api/inventory', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+app.post('/api/inventory/update', async (req, res) => {
+    try {
+        const { itemId, kitName, newQuantity, userEmail } = req.body;
+
+        if (!itemId || !kitName || newQuantity === undefined) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        const result = await googleSheetsService.updateInventory(itemId, kitName, newQuantity, userEmail || 'Unknown');
+        res.json(result);
+    } catch (error) {
+        console.error('API Error: /api/inventory/update', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // ============================================================================
 // STEP 19: START THE SERVER

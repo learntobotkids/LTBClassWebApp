@@ -68,7 +68,7 @@
         .navbar-menu {
             display: flex;
             align-items: center;
-            gap: 30px;
+            gap: 15px;
             list-style: none;
         }
 
@@ -77,7 +77,7 @@
             text-decoration: none;
             font-weight: 600;
             font-size: 1em;
-            padding: 8px 16px;
+            padding: 8px 10px;
             border-radius: 8px;
             transition: all 0.3s ease;
             position: relative;
@@ -440,156 +440,154 @@
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
                 <li><a href="/student-progress.html" class="navbar-link active">Student Progress</a></li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
                 <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
-                <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
                 <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
             </ul>
-
-            <div class="navbar-auth">
-                <a href="/" class="navbar-btn">Back to Home</a>
-            </div>
+            <a href="/" class="navbar-btn">Back to Home</a>
+        </div>
         </div>
     </nav>
 
-    <div class="page-content">
-        <div class="header">
-            <h1>📊 Student Progress Dashboard</h1>
-            <p>Track completed projects and student achievements</p>
+    <div class="header">
+        <h1>📊 Student Progress Dashboard</h1>
+        <p>Track completed projects and student achievements</p>
+    </div>
+
+    <div class="container">
+        <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
+
+        <div class="search-container">
+            <input type="text" id="studentSearch" class="search-input" placeholder="🔍 Search for a student by name..."
+                oninput="filterStudents()" />
+            <button class="clear-search-btn" onclick="clearSearch()">Clear</button>
+        </div>
+        <div id="searchInfo" class="search-results-info"></div>
+
+        <div id="offlineNotice" style="display: none;" class="offline-notice">
+            ⚠️ No internet connection. Showing cached data (may be outdated).
         </div>
 
-        <div class="container">
-            <button class="refresh-btn" onclick="refreshData()">🔄 Refresh Data</button>
-
-            <div class="search-container">
-                <input type="text" id="studentSearch" class="search-input"
-                    placeholder="🔍 Search for a student by name..." oninput="filterStudents()" />
-                <button class="clear-search-btn" onclick="clearSearch()">Clear</button>
+        <div id="statsBar" style="display: none;" class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-number" id="totalStudents">0</div>
+                <div class="stat-label">Total Students</div>
             </div>
-            <div id="searchInfo" class="search-results-info"></div>
-
-            <div id="offlineNotice" style="display: none;" class="offline-notice">
-                ⚠️ No internet connection. Showing cached data (may be outdated).
+            <div class="stat-item">
+                <div class="stat-number" id="totalProjects">0</div>
+                <div class="stat-label">Total Projects</div>
             </div>
-
-            <div id="statsBar" style="display: none;" class="stats-bar">
-                <div class="stat-item">
-                    <div class="stat-number" id="totalStudents">0</div>
-                    <div class="stat-label">Total Students</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="totalProjects">0</div>
-                    <div class="stat-label">Total Projects</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="averageProjects">0</div>
-                    <div class="stat-label">Avg per Student</div>
-                </div>
-            </div>
-
-            <div id="content">
-                <div class="loading">Loading student progress...</div>
+            <div class="stat-item">
+                <div class="stat-number" id="averageProjects">0</div>
+                <div class="stat-label">Avg per Student</div>
             </div>
         </div>
 
-        <script src="/socket.io/socket.io.js"></script>
-        <script>
-            let allStudents = [];
-            let filteredStudents = [];
+        <div id="content">
+            <div class="loading">Loading student progress...</div>
+        </div>
+    </div>
 
-            // WebSocket connection
-            const socket = io();
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let allStudents = [];
+        let filteredStudents = [];
 
-            socket.on('connect', () => {
-                console.log('Connected to server via WebSocket');
-                socket.emit('page-change', { page: 'Student Progress Dashboard' });
-            });
+        // WebSocket connection
+        const socket = io();
 
-            socket.on('navigate', (data) => {
-                window.location.href = data.url;
-            });
+        socket.on('connect', () => {
+            console.log('Connected to server via WebSocket');
+            socket.emit('page-change', { page: 'Student Progress Dashboard' });
+        });
 
-            async function loadStudentProgress() {
-                try {
-                    const response = await fetch('/api/google-sheets/student-progress');
-                    const data = await response.json();
+        socket.on('navigate', (data) => {
+            window.location.href = data.url;
+        });
 
-                    if (!data.success) {
-                        if (data.offline) {
-                            document.getElementById('offlineNotice').style.display = 'block';
-                        }
-                        showError(data.error + ': ' + data.message);
-                        return;
+        async function loadStudentProgress() {
+            try {
+                const response = await fetch('/api/google-sheets/student-progress');
+                const data = await response.json();
+
+                if (!data.success) {
+                    if (data.offline) {
+                        document.getElementById('offlineNotice').style.display = 'block';
                     }
-
-                    allStudents = data.students;
-                    filteredStudents = allStudents;
-                    displayStudentProgress();
-                    updateSearchInfo();
-                } catch (error) {
-                    showError('Failed to load student progress: ' + error.message);
-                }
-            }
-
-            function filterStudents() {
-                const searchTerm = document.getElementById('studentSearch').value.toLowerCase().trim();
-
-                if (searchTerm === '') {
-                    filteredStudents = allStudents;
-                } else {
-                    filteredStudents = allStudents.filter(student =>
-                        student.name.toLowerCase().includes(searchTerm)
-                    );
+                    showError(data.error + ': ' + data.message);
+                    return;
                 }
 
-                displayStudentProgress();
-                updateSearchInfo();
-            }
-
-            function clearSearch() {
-                document.getElementById('studentSearch').value = '';
+                allStudents = data.students;
                 filteredStudents = allStudents;
                 displayStudentProgress();
                 updateSearchInfo();
+            } catch (error) {
+                showError('Failed to load student progress: ' + error.message);
+            }
+        }
+
+        function filterStudents() {
+            const searchTerm = document.getElementById('studentSearch').value.toLowerCase().trim();
+
+            if (searchTerm === '') {
+                filteredStudents = allStudents;
+            } else {
+                filteredStudents = allStudents.filter(student =>
+                    student.name.toLowerCase().includes(searchTerm)
+                );
             }
 
-            function updateSearchInfo() {
-                const searchInfo = document.getElementById('searchInfo');
-                const searchTerm = document.getElementById('studentSearch').value.trim();
+            displayStudentProgress();
+            updateSearchInfo();
+        }
 
-                if (searchTerm && filteredStudents.length < allStudents.length) {
-                    searchInfo.textContent = `Showing ${filteredStudents.length} of ${allStudents.length} students`;
-                    searchInfo.style.display = 'block';
-                } else {
-                    searchInfo.style.display = 'none';
-                }
+        function clearSearch() {
+            document.getElementById('studentSearch').value = '';
+            filteredStudents = allStudents;
+            displayStudentProgress();
+            updateSearchInfo();
+        }
+
+        function updateSearchInfo() {
+            const searchInfo = document.getElementById('searchInfo');
+            const searchTerm = document.getElementById('studentSearch').value.trim();
+
+            if (searchTerm && filteredStudents.length < allStudents.length) {
+                searchInfo.textContent = `Showing ${filteredStudents.length} of ${allStudents.length} students`;
+                searchInfo.style.display = 'block';
+            } else {
+                searchInfo.style.display = 'none';
+            }
+        }
+
+        function displayStudentProgress() {
+            const content = document.getElementById('content');
+
+            if (allStudents.length === 0) {
+                content.innerHTML = '<div class="no-students">No students found</div>';
+                return;
             }
 
-            function displayStudentProgress() {
-                const content = document.getElementById('content');
+            if (filteredStudents.length === 0) {
+                content.innerHTML = '<div class="no-students">No students match your search</div>';
+                return;
+            }
 
-                if (allStudents.length === 0) {
-                    content.innerHTML = '<div class="no-students">No students found</div>';
-                    return;
-                }
+            // Calculate overall stats based on filtered students
+            const totalStudents = filteredStudents.length;
+            const totalProjects = filteredStudents.reduce((sum, s) => sum + s.completedCount, 0);
+            const averageProjects = totalStudents > 0 ? (totalProjects / totalStudents).toFixed(1) : 0;
 
-                if (filteredStudents.length === 0) {
-                    content.innerHTML = '<div class="no-students">No students match your search</div>';
-                    return;
-                }
+            // Update stats bar
+            document.getElementById('totalStudents').textContent = totalStudents;
+            document.getElementById('totalProjects').textContent = totalProjects;
+            document.getElementById('averageProjects').textContent = averageProjects;
+            document.getElementById('statsBar').style.display = 'flex';
 
-                // Calculate overall stats based on filtered students
-                const totalStudents = filteredStudents.length;
-                const totalProjects = filteredStudents.reduce((sum, s) => sum + s.completedCount, 0);
-                const averageProjects = totalStudents > 0 ? (totalProjects / totalStudents).toFixed(1) : 0;
-
-                // Update stats bar
-                document.getElementById('totalStudents').textContent = totalStudents;
-                document.getElementById('totalProjects').textContent = totalProjects;
-                document.getElementById('averageProjects').textContent = averageProjects;
-                document.getElementById('statsBar').style.display = 'flex';
-
-                // Generate student cards from filtered students
-                const html = `
+            // Generate student cards from filtered students
+            const html = `
                 <div class="student-grid">
                     ${filteredStudents.map((student, index) => `
                         <div class="student-card">
@@ -616,11 +614,11 @@
                                     </div>
                                     <div class="projects-list" id="projects-${index}">
                                         ${student.projects.map(proj => {
-                    const isCompleted = proj.projectStatus && proj.projectStatus.toLowerCase().includes('completed');
-                    const isInProgress = proj.projectStatus && (proj.projectStatus.toLowerCase().includes('progress') || proj.projectStatus.toLowerCase().includes('working'));
-                    const className = isCompleted ? 'completed' : isInProgress ? 'in-progress' : '';
+                const isCompleted = proj.projectStatus && proj.projectStatus.toLowerCase().includes('completed');
+                const isInProgress = proj.projectStatus && (proj.projectStatus.toLowerCase().includes('progress') || proj.projectStatus.toLowerCase().includes('working'));
+                const className = isCompleted ? 'completed' : isInProgress ? 'in-progress' : '';
 
-                    return `
+                return `
                                                 <div class="project-item ${className}">
                                                     <div class="project-name">${proj.projectName || 'Unnamed Project'}</div>
                                                     <div class="project-details">
@@ -630,7 +628,7 @@
                                                     </div>
                                                 </div>
                                             `;
-                }).join('')}
+            }).join('')}
                                     </div>
                                 </div>
                             ` : '<div style="color: #6B7280; font-style: italic;">No projects yet</div>'}
@@ -639,40 +637,40 @@
                 </div>
             `;
 
-                content.innerHTML = html;
+            content.innerHTML = html;
+        }
+
+        function toggleProjects(index) {
+            const projectsList = document.getElementById(`projects-${index}`);
+            const toggleIcon = document.getElementById(`toggle-${index}`);
+
+            projectsList.classList.toggle('open');
+            toggleIcon.classList.toggle('open');
+        }
+
+        function showError(message) {
+            const content = document.getElementById('content');
+            content.innerHTML = `<div class="error">❌ ${message}</div>`;
+        }
+
+        async function refreshData() {
+            // Clear cache and reload
+            try {
+                await fetch('/api/google-sheets/clear-cache', { method: 'POST' });
+                document.getElementById('content').innerHTML = '<div class="loading">Refreshing student progress...</div>';
+                document.getElementById('offlineNotice').style.display = 'none';
+                loadStudentProgress();
+            } catch (error) {
+                console.error('Error refreshing:', error);
             }
+        }
 
-            function toggleProjects(index) {
-                const projectsList = document.getElementById(`projects-${index}`);
-                const toggleIcon = document.getElementById(`toggle-${index}`);
+        // Load on page load
+        loadStudentProgress();
 
-                projectsList.classList.toggle('open');
-                toggleIcon.classList.toggle('open');
-            }
-
-            function showError(message) {
-                const content = document.getElementById('content');
-                content.innerHTML = `<div class="error">❌ ${message}</div>`;
-            }
-
-            async function refreshData() {
-                // Clear cache and reload
-                try {
-                    await fetch('/api/google-sheets/clear-cache', { method: 'POST' });
-                    document.getElementById('content').innerHTML = '<div class="loading">Refreshing student progress...</div>';
-                    document.getElementById('offlineNotice').style.display = 'none';
-                    loadStudentProgress();
-                } catch (error) {
-                    console.error('Error refreshing:', error);
-                }
-            }
-
-            // Load on page load
-            loadStudentProgress();
-
-            // Auto-refresh every 5 minutes
-            setInterval(loadStudentProgress, 5 * 60 * 1000);
-        </script>
+        // Auto-refresh every 5 minutes
+        setInterval(loadStudentProgress, 5 * 60 * 1000);
+    </script>
 
     </div> <!-- Close page-content -->
     <footer>
