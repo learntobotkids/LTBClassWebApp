@@ -67,7 +67,7 @@
         .navbar-menu {
             display: flex;
             align-items: center;
-            gap: 30px;
+            gap: 15px;
             list-style: none;
         }
 
@@ -76,7 +76,7 @@
             text-decoration: none;
             font-weight: 600;
             font-size: 1em;
-            padding: 8px 16px;
+            padding: 8px 10px;
             border-radius: 8px;
             transition: all 0.3s ease;
             position: relative;
@@ -1224,6 +1224,114 @@
             min-width: 25px;
             text-align: center;
         }
+
+        .header p {
+            font-size: 1.2em;
+            color: #9CA3AF;
+        }
+
+        /* Marquee Styles */
+        .marquee-container {
+            width: 100%;
+            overflow: hidden;
+            background: linear-gradient(90deg, rgba(31, 41, 55, 0) 0%, rgba(31, 41, 55, 1) 20%, rgba(31, 41, 55, 1) 80%, rgba(31, 41, 55, 0) 100%);
+            margin: 0 0 30px 0;
+            padding: 10px 0;
+            position: relative;
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        }
+
+        .marquee-content {
+            display: flex;
+            gap: 20px;
+            animation: scroll 400s linear infinite;
+            width: max-content;
+        }
+
+        .marquee-content:hover {
+            animation-play-state: paused;
+        }
+
+        @keyframes scroll {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        .marquee-item {
+            background: rgba(55, 65, 81, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50px;
+            padding: 5px 15px 5px 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+            backdrop-filter: blur(5px);
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .marquee-item:hover {
+            transform: scale(1.05);
+            border-color: #3B82F6;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .marquee-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+        }
+
+        .marquee-info {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.2;
+        }
+
+        .marquee-name {
+            font-weight: 700;
+            color: #fff;
+            font-size: 0.9em;
+        }
+
+        .marquee-points {
+            font-size: 0.8em;
+            color: #F59E0B;
+            font-weight: 600;
+        }
+
+        .leaderboard-link-wrapper {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .view-leaderboard-btn {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s;
+        }
+
+        .view-leaderboard-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
     </style>
 </head>
 
@@ -1239,10 +1347,9 @@
                 <li><a href="/" class="navbar-link active">Projects</a></li>
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
                 <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
-                <li><a href="/student-files.html" class="navbar-link">Student Files</a></li>
                 <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
-                <li><a href="/test-page.html" class="navbar-link">Test Page</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -1497,6 +1604,17 @@
         <div class="header">
             <h1>🤖 LearnToBot Class</h1>
             <p>Choose a project to get started</p>
+        </div>
+
+        <!-- Marquee Section -->
+        <div id="leaderboardMarquee" class="marquee-container" style="display: none;">
+            <div class="marquee-content" id="marqueeContent">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+
+        <div class="leaderboard-link-wrapper">
+            <a href="/leaderboard.html" class="view-leaderboard-btn">🏆 View Full Leaderboard</a>
         </div>
 
         <div class="search-container">
@@ -2689,8 +2807,11 @@
                 const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
                 dateDisplay.textContent = new Date().toLocaleDateString('en-US', dateOptions);
 
-                // Check if we already loaded? (Optional caching)
-                // For now, reload to be fresh
+                // Ensure we have student data (for headshots)
+                if (!allStudents || allStudents.length === 0) {
+                    console.log('Waiting for student data...');
+                    await loadStudents();
+                }
 
                 try {
                     const resp = await fetch('/api/today-classes');
@@ -2768,17 +2889,20 @@
                             }
                         }
 
+                        // Fallback generator
+                        const fallback = `this.onerror=null; this.parentNode.innerHTML='<div class="modal-student-initial" style="background:${stringToColor(name)}">${name.charAt(0)}</div>'`;
+
                         if (headshotUrl) {
                             html += `
                                 <div class="modal-student-card" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
-                                    <img src="${headshotUrl}" class="modal-student-headshot">
+                                    <img src="${headshotUrl}" class="modal-student-headshot" onerror="${fallback}">
                                     <div class="modal-student-name">${name}</div>
                                 </div>
                             `;
                         } else {
                             html += `
                                 <div class="modal-student-card" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
-                                    <div class="modal-student-initial">${name.charAt(0)}</div>
+                                    <div class="modal-student-initial" style="background:${stringToColor(name)}">${name.charAt(0)}</div>
                                     <div class="modal-student-name">${name}</div>
                                 </div>
                             `;
@@ -2792,6 +2916,16 @@
                 });
 
                 document.getElementById('classGridContainer').innerHTML = html;
+            }
+
+            // Helper to generate consistent pleasant colors from names
+            function stringToColor(str) {
+                let hash = 0;
+                for (let i = 0; i < str.length; i++) {
+                    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+                return '#' + '00000'.substring(0, 6 - c.length) + c;
             }
 
             // Update login button
@@ -3115,6 +3249,69 @@
     </script>
     <script src="mode-indicator.js"></script>
     <script src="mobile-nav.js"></script>
+    <!-- Marquee Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchMarqueeData();
+        });
+
+        async function fetchMarqueeData() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (data.success && data.leaderboard.length > 0) {
+                    renderMarquee(data.leaderboard);
+                }
+            } catch (error) {
+                console.error('Failed to load marquee:', error);
+            }
+        }
+
+        function renderMarquee(students) {
+            const container = document.getElementById('marqueeContent');
+            const wrapper = document.getElementById('leaderboardMarquee');
+
+            // Filter valid points and Shuffle
+            const validStudents = students.filter(s => (s.totalPoints || 0) > 0);
+            if (validStudents.length === 0) return;
+
+            // Fisher-Yates Shuffle
+            for (let i = validStudents.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [validStudents[i], validStudents[j]] = [validStudents[j], validStudents[i]];
+            }
+
+            // Take top 30 random students to keep DOM light
+            const displayList = validStudents.slice(0, 30);
+
+            // Generate HTML
+            const itemsHtml = displayList.map(student => {
+                const points = student.totalPoints || 0;
+                // Name cleaning
+                let cleanName = student.name.split('@')[0];
+                cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
+                // Headshot logic
+                const safeId = student.id ? student.id.toString().replace(/\//g, '_') : '';
+                const headshotSrc = safeId ? `/headshots/${safeId}.jpg` : student.headshot;
+                const fallback = `this.onerror=null; this.src='https://ui-avatars.com/api/?background=random&name=${encodeURIComponent(cleanName)}'`;
+
+                return `
+                <div class="marquee-item" onclick="window.location.href='/leaderboard.html'">
+                    <img src="${headshotSrc}" class="marquee-avatar" onerror="${fallback}">
+                    <div class="marquee-info">
+                        <span class="marquee-name">${cleanName}</span>
+                        <span class="marquee-points">${points.toLocaleString()} PTS</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Duplicate content 10 times to ensure smooth infinite scroll
+            container.innerHTML = itemsHtml.repeat(10);
+            wrapper.style.display = 'block';
+        }
+    </script>
 </body>
 
 </html>

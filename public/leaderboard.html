@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Champions Leaderboard | LearnToBot</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="kids-theme.css">
+    <link rel="stylesheet" href="mobile.css">
+    <style>
+        :root {
+            --gold: #FFD700;
+            --silver: #E0E0E0;
+            --bronze: #CD7F32;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --glow-color: rgba(59, 130, 246, 0.5);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif !important;
+            background: radial-gradient(circle at top center, #1F2937 0%, #111827 100%);
+            min-height: 100vh;
+            color: #fff;
+            padding-top: 80px;
+            overflow-x: hidden;
+        }
+
+        /* Fixed Navbar Overlay - Merged with Robust Layout */
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(17, 24, 39, 0.9) !important;
+            /* Slightly more opaque for readability */
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+            z-index: 1000;
+            padding: 0 20px;
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 70px;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #E5E7EB;
+            text-decoration: none;
+            font-size: 1.5em;
+            font-weight: 700;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-logo {
+            font-size: 1.8em;
+        }
+
+        .navbar-menu {
+            display: flex;
+            align-items: center;
+            gap: 15px !important;
+            list-style: none;
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1em;
+            padding: 8px 12px !important;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-auth {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .navbar-btn {
+            background: #3B82F6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .page-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Design */
+        .header-section {
+            text-align: center;
+            margin-bottom: 50px;
+            position: relative;
+        }
+
+        .main-title {
+            font-size: 3.5em;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FFF 0%, #9CA3AF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -2px;
+            text-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .subtitle {
+            font-size: 1.2em;
+            color: #9CA3AF;
+            font-weight: 300;
+        }
+
+        /* Prize Sneak Peek */
+        .prize-section {
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 100%);
+            border-radius: 20px;
+            padding: 20px 30px;
+            margin-bottom: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: none;
+            /* Hidden until loaded */
+        }
+
+        .prize-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .prize-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .view-store-btn {
+            background: #F59E0B;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9em;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        }
+
+        .view-store-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .mini-prizes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .mini-prize-card {
+            background: rgba(31, 41, 55, 0.8);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .mini-prize-card:hover {
+            transform: translateY(-5px);
+            border-color: #F59E0B;
+        }
+
+        .mini-prize-img {
+            width: 100%;
+            height: 120px;
+            object-fit: cover;
+        }
+
+        .mini-prize-info {
+            padding: 10px;
+        }
+
+        .mini-prize-name {
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .mini-prize-points {
+            font-size: 0.8em;
+            color: #F59E0B;
+            font-weight: 800;
+        }
+
+        /* Controls */
+        .controls-wrapper {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 60px;
+        }
+
+        .scope-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: #9CA3AF;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(5px);
+        }
+
+        .scope-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            color: #fff;
+        }
+
+        .scope-btn.active {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 0 20px var(--glow-color);
+        }
+
+        /* Podium Layout */
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            margin-bottom: 80px;
+            gap: 20px;
+            height: 350px;
+            /* Fixed height for alignment */
+        }
+
+        .podium-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 220px;
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            opacity: 0;
+            animation: popIn 0.6s forwards;
+        }
+
+        .podium-item:hover {
+            transform: translateY(-10px) scale(1.02);
+        }
+
+        /* 1st Place - Center/Tallest */
+        .podium-1 {
+            order: 2;
+            z-index: 3;
+            animation-delay: 0.2s;
+        }
+
+        /* 2nd Place - Left */
+        .podium-2 {
+            order: 1;
+            z-index: 2;
+            animation-delay: 0.4s;
+        }
+
+        /* 3rd Place - Right */
+        .podium-3 {
+            order: 3;
+            z-index: 1;
+            animation-delay: 0.6s;
+        }
+
+        .podium-avatar-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .podium-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            background: #1F2937;
+        }
+
+        .crown {
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 3em;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .podium-1 .podium-avatar {
+            width: 150px;
+            height: 150px;
+            border-color: var(--gold);
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+        }
+
+        .podium-2 .podium-avatar {
+            border-color: var(--silver);
+        }
+
+        .podium-3 .podium-avatar {
+            border-color: var(--bronze);
+        }
+
+        .podium-base {
+            width: 100%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px 20px 0 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+
+        .podium-1 .podium-base {
+            height: 180px;
+            background: linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(0, 0, 0, 0) 100%);
+            border-top: 2px solid var(--gold);
+        }
+
+        .podium-2 .podium-base {
+            height: 140px;
+            background: linear-gradient(180deg, rgba(224, 224, 224, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
+            border-top: 2px solid var(--silver);
+        }
+
+        .podium-3 .podium-base {
+            height: 110px;
+            background: linear-gradient(180deg, rgba(205, 127, 50, 0.15) 0%, rgba(0, 0, 0, 0) 100%);
+            border-top: 2px solid var(--bronze);
+        }
+
+        .podium-rank {
+            font-size: 3em;
+            font-weight: 800;
+            opacity: 0.1;
+            position: absolute;
+            bottom: 10px;
+        }
+
+        .podium-name {
+            font-size: 1.3em;
+            font-weight: 700;
+            margin-bottom: 5px;
+            text-align: center;
+            width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .podium-points {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #60A5FA;
+            background: rgba(59, 130, 246, 0.2);
+            padding: 4px 12px;
+            border-radius: 12px;
+        }
+
+        /* List Layout for Rest */
+        .rank-list-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            perspective: 1000px;
+        }
+
+        .rank-card {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.6);
+            backdrop-filter: blur(10px);
+            margin-bottom: 15px;
+            padding: 15px 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+            transform-origin: center;
+            opacity: 0;
+            animation: slideUp 0.5s forwards;
+            cursor: pointer;
+        }
+
+        .rank-card:hover {
+            transform: scale(1.02) translateZ(20px);
+            background: rgba(59, 130, 246, 0.15);
+            border-color: #3B82F6;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .list-rank {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #6B7280;
+            width: 60px;
+            text-align: center;
+        }
+
+        .list-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 0 25px;
+            border: 2px solid #374151;
+            object-fit: cover;
+        }
+
+        .list-info {
+            flex-grow: 1;
+        }
+
+        .list-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #F3F4F6;
+        }
+
+        .list-points {
+            font-size: 1.4em;
+            font-weight: 800;
+            color: #3B82F6;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            0% {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(-10px);
+            }
+        }
+
+        .loading-container {
+            height: 400px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-left-color: #3B82F6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Responsive Fixes */
+        @media (max-width: 768px) {
+            .podium-container {
+                flex-direction: column;
+                height: auto;
+                align-items: center;
+                gap: 40px;
+            }
+
+            .podium-2,
+            .podium-3 {
+                order: 2;
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .podium-1 {
+                order: 1;
+                width: 100%;
+                max-width: 300px;
+            }
+
+            .podium-base {
+                height: auto !important;
+                padding: 20px;
+                border-radius: 20px;
+            }
+        }
+
+        /* Search Bar */
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 40px auto;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(31, 41, 55, 0.8);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 15px 50px 15px 20px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-family: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #3B82F6;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+            transform: scale(1.02);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #9CA3AF;
+            font-size: 1.2em;
+            pointer-events: none;
+        }
+
+        /* Controls */
+        .controls-wrapper {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            /* Reduced margin to pull search closer */
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            <a href="/" class="navbar-brand">
+                <span class="navbar-logo">🤖</span>
+                <span>LearnToBot</span>
+            </a>
+
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/leaderboard.html" class="navbar-link active">Leaders</a></li>
+                <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
+                <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
+            </ul>
+
+            <div class="navbar-auth">
+                <a href="/" class="navbar-btn">Back to Projects</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="page-content">
+        <div class="header-section">
+            <h1 class="main-title">Hall of Fame</h1>
+            <p class="subtitle">Celebrating our top achievers and coding masters</p>
+        </div>
+
+        <!-- Prize Teaser Section -->
+        <div id="prizeSection" class="prize-section">
+            <div class="prize-header">
+                <div class="prize-title">🎁 Next Rewards</div>
+                <a href="/prizes.html" class="view-store-btn">View All Prizes →</a>
+            </div>
+            <div id="prizePreviewGrid" class="mini-prizes-grid">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+
+        <div class="controls-wrapper">
+            <button class="scope-btn active" onclick="setScope('all')">All Time</button>
+            <button class="scope-btn" onclick="setScope('monthly')">This Month</button>
+            <button class="scope-btn" onclick="setScope('weekly')">This Week</button>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-container">
+            <input type="text" class="search-input" id="studentSearch" placeholder="🔍 Search for your name..."
+                oninput="handleSearch()">
+            <div class="search-icon">✨</div>
+        </div>
+
+        <div id="leaderboardContent">
+            <div class="loading-container">
+                <div class="spinner"></div>
+                <div style="color: #9CA3AF;">Crunching the numbers...</div>
+            </div>
+        </div>
+
+        <div id="prizeSection2" class="prize-preview-section" style="display: none;">
+            <h2 class="section-title">Prizes Up For Grabs!</h2>
+            <p class="section-subtitle">Earn points and claim awesome rewards.</p>
+            <div id="prizePreviewGrid2" class="prize-grid">
+                <!-- Prizes will be rendered here -->
+            </div>
+            <div class="view-all-prizes">
+                <a href="/prizes.html" class="btn-primary">View All Prizes</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script>
+        let currentScope = 'all';
+        let leaderboardData = [];
+        let searchTerm = '';
+        const PRIZES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchLeaderboard();
+            fetchPrizesPreview();
+        });
+
+        // Search Handler
+        function handleSearch() {
+            searchTerm = document.getElementById('studentSearch').value.toLowerCase().trim();
+            render();
+        }
+
+        async function fetchPrizesPreview() {
+            try {
+                const response = await fetch(PRIZES_SHEET_URL);
+                if (!response.ok) return; // Silent fail for preview
+
+                const csvText = await response.text();
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function (results) {
+                        renderPrizesPreview(results.data);
+                    }
+                });
+            } catch (error) {
+                console.log('Prize fetch error:', error);
+            }
+        }
+
+        function renderPrizesPreview(prizes) {
+            const container = document.getElementById('prizePreviewGrid');
+            if (!container) return;
+
+            // Take top 4 distinct prizes
+            const previewPrizes = prizes.slice(0, 4);
+
+            if (previewPrizes.length === 0) return;
+
+            container.innerHTML = previewPrizes.map(prize => `
+                <div class="mini-prize-card" onclick="window.location.href='/prizes.html'">
+                    <img src="${prize['Prize Image']}" class="mini-prize-img" loading="lazy" onerror="this.src='https://via.placeholder.com/150?text=Prize'">
+                    <div class="mini-prize-info">
+                        <div class="mini-prize-name">${prize['Prize Name']}</div>
+                        <div class="mini-prize-points">${prize['Prize Points'] || '?'} PTS</div>
+                    </div>
+                </div>
+            `).join('');
+
+            // Show the section (it starts hidden or empty)
+            document.getElementById('prizeSection').style.display = 'block';
+        }
+
+        async function fetchLeaderboard() {
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (data.success) {
+                    leaderboardData = data.leaderboard;
+                    render();
+                } else {
+                    showError(data.error || "Failed to load");
+                }
+            } catch (e) {
+                console.error(e);
+                showError("Server Connection Failed");
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('leaderboardContent').innerHTML = `
+                <div style="text-align:center; padding:50px; color:#EF4444; background: rgba(239, 68, 68, 0.1); border-radius: 20px;">
+                    <h3>⚠️ Oops!</h3>
+                    <p>${msg}</p>
+                </div>`;
+        }
+
+        function setScope(scope) {
+            currentScope = scope;
+            document.querySelectorAll('.scope-btn').forEach(btn => {
+                if (btn.innerText.toLowerCase().includes(scope === 'all' ? 'all' : scope.replace('ly', ''))) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            render();
+        }
+
+        function render() {
+            const container = document.getElementById('leaderboardContent');
+
+            // 1. Sort & Filter Data
+            let sorted = [...leaderboardData].sort((a, b) => {
+                return getValue(b) - getValue(a);
+            }).filter(s => getValue(s) > 0);
+
+            // Filter if Searching
+            if (searchTerm) {
+                sorted = sorted.filter(s => s.name.toLowerCase().includes(searchTerm));
+            }
+
+            if (sorted.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:100px; color:#6B7280; font-size:1.5em; opacity:0.6;">No matching champions found! 🕵️</div>`;
+                return;
+            }
+
+            // 2. Logic: If searching, show EVERYTHING as a list (hide podium) for clarity.
+            //    If NOT searching, show Podium + Rest.
+            let showPodium = !searchTerm;
+
+            // Generate HTML
+            let html = '';
+
+            if (showPodium) {
+                const top3 = sorted.slice(0, 3);
+                const rest = sorted.slice(3);
+
+                // Reorder top 3 for podium: 2nd, 1st, 3rd
+                const podiumOrder = [];
+                if (top3[1]) podiumOrder.push({ ...top3[1], rank: 2 });
+                if (top3[0]) podiumOrder.push({ ...top3[0], rank: 1 });
+                if (top3[2]) podiumOrder.push({ ...top3[2], rank: 3 });
+
+                html += `<div class="podium-container">`;
+                podiumOrder.forEach(student => html += renderPodiumItem(student));
+                html += `</div><div class="rank-list-wrapper">`;
+                rest.forEach((student, idx) => html += renderListItem(student, idx + 4));
+                html += `</div>`;
+            } else {
+                // Search Mode - Simple List
+                html += `<div class="rank-list-wrapper">`;
+                sorted.forEach((student, idx) => {
+                    // Calculate TRUE rank from original data
+                    // Actually, let's just show their relative rank in this view or their score?
+                    // Better to find their real rank.
+                    let realRank = -1;
+                    // We need original sorted list to find real rank.
+                    // Let's just reconstruct it cheaply:
+                    const fullSorted = [...leaderboardData]
+                        .sort((a, b) => getValue(b) - getValue(a))
+                        .filter(s => getValue(s) > 0);
+
+                    realRank = fullSorted.findIndex(s => s.id === student.id) + 1;
+
+                    html += renderListItem(student, realRank);
+                });
+                html += `</div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderPodiumItem(student) {
+            const points = getValue(student);
+            const safeId = student.id ? student.id.toString().replace(/\//g, '_') : '';
+            const headshotSrc = safeId ? `/headshots/${safeId}.jpg` : student.headshot;
+            const fallback = `this.onerror=null; this.src='${student.headshot || 'https://ui-avatars.com/api/?background=random&name=' + encodeURIComponent(student.name)}'`;
+
+            const crown = student.rank === 1 ? '<div class="crown">👑</div>' : '';
+
+            return `
+            <div class="podium-item podium-${student.rank}">
+                <div class="podium-avatar-wrapper">
+                    ${crown}
+                    <img src="${headshotSrc || '/api/placeholder/150/150'}" class="podium-avatar" onerror="${fallback}">
+                </div>
+                <div class="podium-base">
+                    <div class="podium-name">${student.name}</div>
+                    <div class="podium-points">${points.toLocaleString()} PTS</div>
+                    <div class="podium-rank">#${student.rank}</div>
+                </div>
+            </div>`;
+        }
+
+        function renderListItem(student, rank) {
+            const points = getValue(student);
+            const safeId = student.id ? student.id.toString().replace(/\//g, '_') : '';
+            const headshotSrc = safeId ? `/headshots/${safeId}.jpg` : student.headshot;
+            const fallback = `this.onerror=null; this.src='${student.headshot || 'https://ui-avatars.com/api/?background=random&name=' + encodeURIComponent(student.name)}'`;
+
+            // Stagger animation
+            const delay = Math.min((rank - 1) * 0.05, 1.0); // Cap delay
+
+            return `
+            <div class="rank-card" style="animation-delay: ${delay}s">
+                <div class="list-rank">#${rank}</div>
+                <img src="${headshotSrc || '/api/placeholder/50/50'}" class="list-avatar" onerror="${fallback}">
+                <div class="list-info">
+                    <div class="list-name">${student.name}</div>
+                </div>
+                <div class="list-points">${points.toLocaleString()}</div>
+            </div>`;
+        }
+
+        function getValue(student) {
+            if (currentScope === 'weekly') return student.weeklyPoints || 0;
+            if (currentScope === 'monthly') return student.monthlyPoints || 0;
+            return student.totalPoints || 0;
+        }
+    </script>
+    <script src="mode-indicator.js"></script>
+    <script src="mobile-nav.js"></script>
+</body>
+
+</html>
