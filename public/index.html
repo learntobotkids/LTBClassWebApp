@@ -1971,12 +1971,35 @@
                 content.classList.toggle('collapsed');
             }
 
-            // Render assigned projects section
             // Render multiple project sections
             function renderAssignedProjects(assigned, next, completed) {
                 console.log('renderAssignedProjects called with:', { assigned: assigned?.length, next: next?.length, completed: completed?.length });
 
                 const container = document.getElementById('assignedProjectsContainer');
+
+                // Helper to enrich project with icon and other data from allProjects
+                function enrichProject(project) {
+                    if (!project) return project;
+                    // Find matching project in allProjects by ID (project code)
+                    const projectCode = project.id || project.originalCode || '';
+                    const fullProject = allProjects.find(p =>
+                        p.id && p.id.toUpperCase() === projectCode.toUpperCase()
+                    );
+                    if (fullProject) {
+                        return {
+                            ...project,
+                            icon: fullProject.icon || project.icon,
+                            videoCount: fullProject.videoCount || project.videoCount || 0,
+                            category: fullProject.category || project.category
+                        };
+                    }
+                    return project;
+                }
+
+                // Enrich all project arrays with icon data
+                assigned = (assigned || []).map(enrichProject);
+                next = (next || []).map(enrichProject);
+                completed = (completed || []).map(enrichProject);
 
                 // If nothing at all
                 if ((!assigned || assigned.length === 0) && (!next || next.length === 0) && (!completed || completed.length === 0)) {
