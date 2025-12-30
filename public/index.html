@@ -1878,6 +1878,34 @@
                 );
             }
 
+            // Helper: Convert icon value to displayable URL
+            // Handles: full URLs, Google Drive file IDs, local filenames
+            function getIconUrl(icon, projectId) {
+                if (!icon) return null;
+
+                // If it starts with http, it's a direct URL
+                if (icon.startsWith('http')) {
+                    // Check if it's a Google Drive link that needs conversion
+                    if (icon.includes('drive.google.com/file/d/')) {
+                        // Extract file ID from drive.google.com/file/d/FILE_ID/view
+                        const match = icon.match(/\/file\/d\/([^\/]+)/);
+                        if (match) {
+                            return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
+                        }
+                    }
+                    return icon;
+                }
+
+                // If it looks like a Google Drive file ID (long alphanumeric string)
+                // Google Drive IDs are typically 33+ characters with letters, numbers, hyphens, underscores
+                if (/^[a-zA-Z0-9_-]{20,}$/.test(icon)) {
+                    return `https://drive.google.com/thumbnail?id=${icon}&sz=w400`;
+                }
+
+                // Otherwise, treat as local filename
+                return `/projects/${encodeURIComponent(projectId)}/${encodeURIComponent(icon)}`;
+            }
+
             // Display projects
             function displayProjects(projects, categoryTitle = 'All Projects') {
                 const content = document.getElementById('content');
@@ -1934,9 +1962,7 @@
                                     ${badgeHTML}
                                     <div class="project-icon">
                                         ${project.icon
-                            ? (project.icon.startsWith('http')
-                                ? `<img src="${project.icon}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
-                                : `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`)
+                            ? `<img src="${getIconUrl(project.icon, project.id)}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
                             : '🎮'
                         }
                                     </div>
@@ -2021,9 +2047,7 @@
                         const demoUrl = demoVideo ? `/ projects / ${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
 
                         const iconHTML = project.icon
-                            ? (project.icon.startsWith('http')
-                                ? `<img src="${project.icon}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
-                                : `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`)
+                            ? `<img src="${getIconUrl(project.icon, project.id)}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
                             : '🎮';
 
                         const clickHandler = project.notFound ? '' : `onclick="openProject('${project.id}')"`;
