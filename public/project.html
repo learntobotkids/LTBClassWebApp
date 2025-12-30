@@ -955,17 +955,43 @@
 
                     const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
 
-                    // Replace video player with YouTube iframe
-                    const container = document.getElementById('playerContainer');
-                    container.innerHTML = `
-                        <iframe 
-                            id="youtubePlayer"
-                            src="${embedUrl}"
-                            style="width: 100%; height: 100%; border: none;"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen>
-                        </iframe>
-                    `;
+                    // Find or create video player area
+                    let videoPlayer = document.getElementById('videoPlayer');
+                    let youtubePlayer = document.getElementById('youtubePlayer');
+
+                    if (youtubePlayer) {
+                        // Just update the src
+                        youtubePlayer.src = embedUrl;
+                    } else if (videoPlayer) {
+                        // Replace video element with YouTube iframe
+                        videoPlayer.insertAdjacentHTML('afterend', `
+                            <iframe 
+                                id="youtubePlayer"
+                                src="${embedUrl}"
+                                style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0;"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowfullscreen>
+                            </iframe>
+                        `);
+                        videoPlayer.style.display = 'none';
+                    } else {
+                        // No player exists, create one in playerContainer
+                        const container = document.getElementById('playerContainer');
+                        const existingIframe = container.querySelector('iframe');
+                        if (existingIframe) {
+                            existingIframe.src = embedUrl;
+                        } else {
+                            container.insertAdjacentHTML('afterbegin', `
+                                <iframe 
+                                    id="youtubePlayer"
+                                    src="${embedUrl}"
+                                    style="width: 100%; height: 100%; border: none; position: absolute; top: 0; left: 0;"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen>
+                                </iframe>
+                            `);
+                        }
+                    }
                 } else {
                     // Local video file - use HTML5 video player
                     // Encode each path segment separately
