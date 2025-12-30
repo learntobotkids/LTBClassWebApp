@@ -227,6 +227,7 @@ module.exports = {
         CODE: 0,            // Column A: Project Code (e.g., PROJ101)
         NAME: 1,            // Column B: Full Project Name
         DESCRIPTION: 2,     // Column C: What kids Learn in this project
+        ICON: 12,           // Column M: Project Icon/Cover Image URL
         CATEGORY: 57        // Column BF: Type of Project (0-indexed, A=0, BF=57)
     },
 

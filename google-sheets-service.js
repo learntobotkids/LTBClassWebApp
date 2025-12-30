@@ -713,6 +713,7 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
             const code = row[config.PROJECT_LIST_COLUMNS.CODE]; // Column A
             const name = row[config.PROJECT_LIST_COLUMNS.NAME]; // Column B
             const description = row[config.PROJECT_LIST_COLUMNS.DESCRIPTION]; // Column C
+            const icon = row[config.PROJECT_LIST_COLUMNS.ICON]; // Column M
             const category = row[config.PROJECT_LIST_COLUMNS.CATEGORY]; // Column BF (index 57)
 
             if (code && code.trim()) {
@@ -720,6 +721,7 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
                     id: code.trim().toUpperCase(),
                     name: name ? name.trim() : code.trim(),
                     description: description ? description.trim() : '',
+                    icon: icon ? icon.trim() : null,
                     category: category ? category.trim() : 'Uncategorized'
                 });
             }
