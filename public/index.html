@@ -2411,6 +2411,18 @@
                     return;
                 }
 
+                // In ONLINE mode, skip local folder fetch - files are on Google Drive
+                if (DEPLOYMENT_MODE === 'online') {
+                    list.innerHTML = `
+                        <li style="padding:15px; color:#60A5FA; text-align:center;">
+                            <div style="font-size: 2em; margin-bottom: 10px;">☁️</div>
+                            <div>Files available on Google Drive</div>
+                            <div style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">Click "Open My Folder" above</div>
+                        </li>
+                     `;
+                    return;
+                }
+
                 list.innerHTML = '<li style="padding:10px; color:#9CA3AF;">Loading files...</li>';
 
                 try {
