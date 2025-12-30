@@ -295,16 +295,15 @@
 <body>
 
     <!-- HEADER -->
+    <!-- HEADER -->
     <header class="app-header">
         <div class="header-left">
-            <div class="back-icon" onclick="logout()">←</div>
-            <div class="app-logo">
-                <!-- Simple logo placeholder -->
-                <div
-                    style="width: 100%; height: 100%; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">
-                    🤖</div>
-            </div>
-            <div class="header-title" id="pageTitle">TODAY</div>
+            <!-- Logout Button -->
+            <button onclick="logout()"
+                style="background: none; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                <span style="font-size: 14px;">←</span> Logout
+            </button>
+            <div class="header-title" id="pageTitle" style="margin-left: 15px;">TODAY</div>
         </div>
         <div class="header-right">
             <div class="header-icon">🔍</div> <!-- Search -->
@@ -312,6 +311,16 @@
             <div class="header-icon" onclick="loadData()">🔄</div> <!-- Refresh -->
         </div>
     </header>
+
+    <script>
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('instructorName');
+                localStorage.removeItem('instructorPasscode');
+                window.location.href = '/';
+            }
+        }
+    </script>
 
     <!-- MAIN CONTENT -->
     <div class="content-area" id="mainContent">
@@ -483,12 +492,13 @@
             // Setup Structure if not exists
             const wrapperId = 'today-view-wrapper';
             if (!document.getElementById(wrapperId)) {
+                const count = studentsData ? studentsData.length : 0;
                 // Search Bar HTML
                 const searchBarHtml = `
                 <div style="padding: 10px 15px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10;">
                     <input type="text" 
                            id="todaySearchInput"
-                           placeholder="Search Today's Students..." 
+                           placeholder="Search ${count} Students..." 
                            value="${todaySearchTerm}"
                            oninput="handleTodaySearch(this.value)"
                            style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none;">
@@ -504,8 +514,13 @@
             } else {
                 // Ensure input value matches state (in case of tab switch back)
                 const input = document.getElementById('todaySearchInput');
-                if (input && input.value !== todaySearchTerm) {
-                    input.value = todaySearchTerm;
+                if (input) {
+                    if (input.value !== todaySearchTerm) {
+                        input.value = todaySearchTerm;
+                    }
+                    // Update placeholder count dynamically
+                    const count = studentsData ? studentsData.length : 0;
+                    input.placeholder = `Search ${count} Students...`;
                 }
             }
 
@@ -1412,12 +1427,120 @@
             // Stop Stream
             if (mediaStream) {
                 mediaStream.getTracks().forEach(track => track.stop());
-                mediaStream = null;
+            }
+        };
+
+        // ============================================================================
+        // ASSIGN PROJECT LOGIC
+        // ============================================================================
+
+        // 1. Open Assign Project Modal
+        window.openAssignModal = async (studentId, studentName) => {
+            // Fetch Project List First
+            let projects = [];
+            try {
+                const response = await fetch('/api/project-list');
+                const data = await response.json();
+                if (data.success) {
+                    projects = data.projects;
+                } else {
+                    alert('Failed to load project list');
+                    return;
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error fetching project list');
+                return;
             }
 
-            // Reset UI
-            resetRecordingUI();
+            // Generate Options
+            const optionsHtml = projects.map(p =>
+                `<option value="${p.code}">${p.code} - ${p.name}</option>`
+            ).join('');
+
+            const modalHtml = `
+            <div id="assignProjectModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; border-radius: 12px; padding: 20px; width: 90%; max-width: 400px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top: 0;">Assign Project</h3>
+                    <p>Assigning to: <strong>${studentName}</strong></p>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-size: 14px; color: #666; margin-bottom: 5px;">Select Project</label>
+                        <select id="assignProjectSelect" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px;">
+                            <option value="" disabled selected>Choose a project...</option>
+                            ${optionsHtml}
+                        </select>
+                    </div>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button onclick="document.getElementById('assignProjectModal').remove()" 
+                            style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: white; cursor: pointer;">
+                            Cancel
+                        </button>
+                        <button onclick="submitAssignment('${studentId}', '${studentName}')" 
+                            style="flex: 1; padding: 10px; border-radius: 8px; border: none; background: #db3236; color: white; font-weight: bold; cursor: pointer;">
+                            Assign
+                        </button>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
         };
+
+        // 2. Submit Assignment
+        window.submitAssignment = async (studentId, studentName) => {
+            const projectCode = document.getElementById('assignProjectSelect').value;
+
+            if (!projectCode) {
+                alert('Please select a project');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/assign-project', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        projectCode: projectCode,
+                        instructorName: localStorage.getItem('instructorName') || 'Instructor'
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Success
+                    document.getElementById('assignProjectModal').remove();
+
+                    // Show Feedback
+                    const feedback = document.createElement('div');
+                    feedback.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 8px; font-weight: bold; z-index: 3000;';
+                    feedback.innerText = 'Project Assigned! 🚀';
+                    document.body.appendChild(feedback);
+                    setTimeout(() => feedback.remove(), 2000);
+
+                    // Refresh Student Detail View if open
+                    // We need to find the headshot again.
+                    // Let's look up the student card in the DOM to get the image src!
+                    /*
+                    const cardImg = document.querySelector(`.student-card[onclick*="${studentId}"] img`);
+                    const headshot = cardImg ? cardImg.src : null;
+                    if (headshot) openStudentDetail(studentId, studentName, headshot); 
+                    */
+                    // For now, just close modal. The detail view needs to be closed/reopened to see changes.
+                    alert('Project Assigned! Please close and re-open the student detail view to see it.');
+
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Request failed: ' + e.message);
+            }
+        };
+
 
         window.toggleRecording = () => {
             if (!isRecording) {
@@ -1476,9 +1599,67 @@
             isRecording = false;
             resetRecordingUI();
             clearInterval(recordingInterval);
-            document.getElementById('recordBtn').innerHTML = '';
+            document.getElementById('recordBtn').innerHTML = '<i class="fas fa-video"></i>';
             document.getElementById('recordBtn').style.background = '#ff3b30';
         }
+
+        // ============================================================================
+        // STUDENT DETAIL VIEW
+        // ============================================================================
+        window.openStudentDetail = async (studentId, studentName, headshotUrl) => {
+            const detailView = document.getElementById('studentDetailView');
+            const mainContent = document.getElementById('mainContent');
+
+            // Populate Header
+            document.getElementById('detailStudentName').innerText = studentName;
+            document.getElementById('detailStudentHeadshot').src = headshotUrl || '/api/placeholder/150/150';
+
+            // Add Assign Button to Header (Right side)
+            // We'll create it dynamically to handle the click event with parameters
+            const headerActions = document.getElementById('detailHeaderActions');
+            if (headerActions) {
+                headerActions.innerHTML = `
+                    <button onclick="openAssignModal('${studentId}', '${studentName}')" 
+                        style="padding: 10px 20px; background: #333; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                        <span>+</span> Assign Project
+                    </button>
+                    <button onclick="closeStudentDetail()" 
+                        style="padding: 10px 20px; background: #eee; color: #333; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
+                        Close
+                    </button>
+                 `;
+            } else {
+                // Fallback if container missing (should be there in layout)
+                console.warn('Detail header actions container not found');
+            }
+
+            // Show View
+            mainContent.style.display = 'none';
+            detailView.style.display = 'block';
+            window.scrollTo(0, 0);
+
+            // Fetch History
+            const container = document.getElementById('projectHistoryList');
+            container.innerHTML = '<div class="loading-spinner"></div>';
+
+            try {
+                // ... rest of fetch logic is fine ...
+                const response = await fetch(`/api/student-projects/${encodeURIComponent(studentId)}`);
+                const data = await response.json();
+
+                if (data.success && data.student) {
+                    renderProjectHistory(data.student.projects, studentId, studentName, headshotUrl);
+                    // Update Stats
+                    document.getElementById('detailPoints').innerText = data.student.stats.totalPoints || 0;
+                    document.getElementById('detailCompleted').innerText = data.student.stats.completedProjects || 0;
+                } else {
+                    container.innerHTML = '<p style="text-align:center; padding: 20px;">No projects found.</p>';
+                }
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<p style="text-align:center; padding: 20px; color: red;">Error loading history.</p>';
+            }
+        };
 
         function resetRecordingUI() {
             document.getElementById('recordingTimer').style.display = 'none';
@@ -1567,6 +1748,7 @@
         }
 
         let inventorySearchTerm = '';
+        let inventoryFilterStatus = 'all'; // 'all', 'low', 'medium', 'full'
 
         function renderInventoryUI(container) {
             if (inventoryKits.length === 0) {
@@ -1596,22 +1778,37 @@
             </div>
             `;
 
+            // 3. Status Filter HTML ("What are you low on?")
+            const filterButtonsHtml = `
+            <div style="padding: 10px 15px; background: #fff; border-bottom: 1px solid #eee; display: flex; gap: 8px; overflow-x: auto;">
+                <button onclick="setInventoryFilter('all')" 
+                    style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid ${inventoryFilterStatus === 'all' ? '#333' : '#ddd'}; background: ${inventoryFilterStatus === 'all' ? '#333' : 'white'}; color: ${inventoryFilterStatus === 'all' ? 'white' : '#666'}; font-size: 13px;">
+                    Show All
+                </button>
+                <button onclick="setInventoryFilter('Low')" 
+                    style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid ${inventoryFilterStatus === 'Low' ? '#db3236' : '#ddd'}; background: ${inventoryFilterStatus === 'Low' ? '#db3236' : 'white'}; color: ${inventoryFilterStatus === 'Low' ? 'white' : '#666'}; font-size: 13px;">
+                    ⚠️ Low Only
+                </button>
+                <button onclick="setInventoryFilter('Medium')" 
+                    style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid ${inventoryFilterStatus === 'Medium' ? '#f4b400' : '#ddd'}; background: ${inventoryFilterStatus === 'Medium' ? '#f4b400' : 'white'}; color: ${inventoryFilterStatus === 'Medium' ? 'white' : '#666'}; font-size: 13px;">
+                    Medium
+                </button>
+                <button onclick="setInventoryFilter('Full')" 
+                    style="flex: 1; padding: 6px; border-radius: 6px; border: 1px solid ${inventoryFilterStatus === 'Full' ? '#0f9d58' : '#ddd'}; background: ${inventoryFilterStatus === 'Full' ? '#0f9d58' : 'white'}; color: ${inventoryFilterStatus === 'Full' ? 'white' : '#666'}; font-size: 13px;">
+                    Full
+                </button>
+            </div>
+            `;
+
             // Combine Header
             const headerHtml = `
             <div style="padding: 15px; background: #f8f9fa; border-bottom: 1px solid #ddd; display: flex; overflow-x: auto; white-space: nowrap; position: sticky; top: 0; z-index: 10;">
                 ${kitButtons}
             </div>
             ${searchBarHtml}
+            ${filterButtonsHtml}
             `;
 
-            // 3. Container Structure
-            // We set the structure once if we are just switching kits? 
-            // Actually, keep it simple: Full render, then populate list.
-            // But wait, if we re-render full UI on every keystroke, we lose focus.
-            // So we need to separate "Setup" from "Update List".
-
-            // Check if we are already in inventory view structure
-            // Use a specific ID for the inventory wrapper
             const wrapperId = 'inventory-view-wrapper';
             if (!document.getElementById(wrapperId)) {
                 container.innerHTML = `
@@ -1621,32 +1818,25 @@
                     </div>
                 `;
             } else {
-                // If wrapper exists, just update header (for kit switch) but maybe preserve input?
-                // If we switch kit, we do want to update header.
-                // If we search, we don't want to update header (lose focus).
-                // Let's decide based on context. 
-                // For simplicity: Always update header if Kit changes.
-                // But handleInventorySearch will ONLY update list.
                 document.getElementById('inventory-header-container').innerHTML = headerHtml;
-
-                // Restore Focus if we just re-rendered header and input was focused?
-                // Actually, handleInventorySearch won't call this function. It will call renderInventoryItems directly.
-                // switchKit WILL call this.
             }
 
             renderInventoryItems();
 
-            // Expose Switcher
             window.switchKit = (kit) => {
                 currentKit = kit;
-                // Full re-render of UI
                 renderInventoryUI(container);
             };
 
-            // Expose Search Handler
             window.handleInventorySearch = (val) => {
                 inventorySearchTerm = val;
                 renderInventoryItems();
+            };
+
+            window.setInventoryFilter = (status) => {
+                inventoryFilterStatus = status;
+                // Re-render header to update active state of buttons
+                renderInventoryUI(container);
             };
         }
 
@@ -1659,7 +1849,15 @@
             const filtered = inventoryItems.filter(item => {
                 const name = (item.product || '').toLowerCase();
                 const id = (item.id || '').toString().toLowerCase();
-                return name.includes(term) || id.includes(term);
+                const matchesTerm = name.includes(term) || id.includes(term);
+
+                if (!matchesTerm) return false;
+
+                // Status Filter
+                if (inventoryFilterStatus === 'all') return true;
+
+                const status = (item.stocks[currentKit] || '').toLowerCase();
+                return status === inventoryFilterStatus.toLowerCase();
             });
 
             if (filtered.length === 0) {
@@ -1668,9 +1866,15 @@
             }
 
             const itemsHtml = filtered.map(item => {
-                const stock = item.stocks[currentKit] || 0;
+                const status = item.stocks[currentKit] || ''; // 'Low', 'Medium', 'Full' or empty
                 const safeId = item.id;
                 const safeName = item.product || 'Unknown Item';
+                const lastUpdated = (item.lastUpdated && item.lastUpdated[currentKit]) ? item.lastUpdated[currentKit] : '';
+
+                // Helper to check active status
+                const isLow = status.toLowerCase() === 'low';
+                const isMed = status.toLowerCase() === 'medium';
+                const isFull = status.toLowerCase() === 'full';
 
                 return `
                 <div class="student-card" style="padding: 10px 20px;">
@@ -1684,13 +1888,23 @@
                     <div class="student-info">
                         <div class="student-name" style="font-size: 15px;">${safeName}</div>
                         <div class="student-project" style="font-size: 12px; color: #888;">ID: ${safeId}</div>
+                        ${lastUpdated ? `<div style="font-size: 11px; color: #059669; font-style: italic; margin-top: 2px;">Updated: ${lastUpdated}</div>` : ''}
                     </div>
 
-                    <!-- Actions -->
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <button onclick="updateStock('${safeId}', -1)" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ccc; background: white; font-weight: bold; font-size: 16px; color: #db3236; cursor: pointer;">-</button>
-                        <div style="width: 40px; text-align: center; font-weight: bold; font-size: 16px;">${stock}</div>
-                        <button onclick="updateStock('${safeId}', 1)" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #ccc; background: white; font-weight: bold; font-size: 16px; color: #047857; cursor: pointer;">+</button>
+                    <!-- Status Actions -->
+                    <div style="display: flex; gap: 4px;">
+                        <button onclick="updateInventoryStatus('${safeId}', 'Low')" 
+                            style="padding: 6px 12px; border-radius: 6px; border: 1px solid ${isLow ? '#db3236' : '#ddd'}; background: ${isLow ? '#db3236' : '#f8f9fa'}; color: ${isLow ? 'white' : '#666'}; font-size: 13px; cursor: pointer; font-weight: 500;">
+                            Low
+                        </button>
+                        <button onclick="updateInventoryStatus('${safeId}', 'Medium')" 
+                            style="padding: 6px 12px; border-radius: 6px; border: 1px solid ${isMed ? '#f4b400' : '#ddd'}; background: ${isMed ? '#f4b400' : '#f8f9fa'}; color: ${isMed ? 'white' : '#666'}; font-size: 13px; cursor: pointer; font-weight: 500;">
+                            Med
+                        </button>
+                        <button onclick="updateInventoryStatus('${safeId}', 'Full')" 
+                            style="padding: 6px 12px; border-radius: 6px; border: 1px solid ${isFull ? '#0f9d58' : '#ddd'}; background: ${isFull ? '#0f9d58' : '#f8f9fa'}; color: ${isFull ? 'white' : '#666'}; font-size: 13px; cursor: pointer; font-weight: 500;">
+                            Full
+                        </button>
                     </div>
                 </div>
                 `;
@@ -1699,18 +1913,23 @@
             listContainer.innerHTML = itemsHtml;
         }
 
-        async function updateStock(itemId, change) {
+        async function updateInventoryStatus(itemId, newStatus) {
             // Find item
             const item = inventoryItems.find(i => i.id === itemId);
             if (!item) return;
 
-            const currentVal = item.stocks[currentKit] || 0;
-            const newVal = currentVal + change;
-            if (newVal < 0) return;
+            // Check if redundant update? Optional.
+            // if (item.stocks[currentKit] === newStatus) return; 
 
             // Optimistic Update
-            item.stocks[currentKit] = newVal;
-            renderInventoryUI(document.getElementById('mainContent'));
+            item.stocks[currentKit] = newStatus;
+
+            // Optimistic Timestamp Update
+            item.lastUpdated = item.lastUpdated || {};
+            item.lastUpdated[currentKit] = new Date().toLocaleString();
+
+            // Re-render UI (keeping scroll / focus logic if possible? Full re-render is simplest for now)
+            renderInventoryItems(); // Just re-render list, keeps Header intact.
 
             try {
                 const response = await fetch('/api/inventory/update', {
@@ -1719,20 +1938,17 @@
                     body: JSON.stringify({
                         itemId: itemId,
                         kitName: currentKit,
-                        newQuantity: newVal,
+                        newStatus: newStatus,
                         userEmail: 'Instructor'
                     })
                 });
-
-                const res = await response.json();
-                if (!res.success) throw new Error(res.error);
-
-            } catch (e) {
-                console.error('Stock Update Error:', e);
-                alert('Failed to update stock: ' + e.message);
-                // Revert
-                item.stocks[currentKit] = currentVal;
-                renderInventoryUI(document.getElementById('mainContent'));
+                const data = await response.json();
+                if (!data.success) {
+                    console.error('Update failed:', data.error);
+                    // Could revert here if needed
+                }
+            } catch (err) {
+                console.error('Update error:', err);
             }
         }
     </script>

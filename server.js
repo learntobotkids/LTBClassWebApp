@@ -1642,6 +1642,17 @@ app.get('/api/todays-students', async (req, res) => {
     }
 });
 
+app.post('/api/inventory/update', async (req, res) => {
+    try {
+        const { itemId, kitName, newStatus, userEmail } = req.body;
+        await googleSheetsService.updateInventory(itemId, kitName, newStatus, userEmail);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Inventory update failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to update inventory' });
+    }
+});
+
 
 // ============================================================================
 // VIDEO UPLOAD ENDPOINT
@@ -1763,7 +1774,7 @@ app.get('/api/student-projects/:studentId', async (req, res) => {
 });
 
 // ============================================================================
-// PROJECT COMPLETION ENDPOINT
+// PROJECT COMPLETION & ASSIGNMENT ENDPOINTS
 // ============================================================================
 app.post('/api/complete-project', async (req, res) => {
     try {
@@ -1781,6 +1792,35 @@ app.post('/api/complete-project', async (req, res) => {
 
     } catch (error) {
         console.error('Error completing project:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// NEW: Assign a new project
+app.post('/api/assign-project', async (req, res) => {
+    try {
+        const { studentId, projectCode, instructorName } = req.body;
+
+        if (!studentId || !projectCode) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const result = await googleSheetsService.assignProject(studentId, projectCode, instructorName || 'Instructor');
+        res.json(result);
+
+    } catch (error) {
+        console.error('Error assigning project:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// NEW: Get full project list for dropdowns
+app.get('/api/project-list', async (req, res) => {
+    try {
+        const projects = await googleSheetsService.fetchProjectList();
+        res.json({ success: true, projects });
+    } catch (error) {
+        console.error('Error fetching project list:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
@@ -2376,21 +2416,7 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-app.post('/api/inventory/update', async (req, res) => {
-    try {
-        const { itemId, kitName, newQuantity, userEmail } = req.body;
 
-        if (!itemId || !kitName || newQuantity === undefined) {
-            return res.status(400).json({ success: false, error: 'Missing required fields' });
-        }
-
-        const result = await googleSheetsService.updateInventory(itemId, kitName, newQuantity, userEmail || 'Unknown');
-        res.json(result);
-    } catch (error) {
-        console.error('API Error: /api/inventory/update', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
 
 // ============================================================================
 // STEP 19: START THE SERVER

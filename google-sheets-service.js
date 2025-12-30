@@ -1689,19 +1689,39 @@ async function fetchInventory(forceRefresh = false) {
 
         const headers = rows[0];
         const kitColumns = {};
+        // Also map update columns: kitName -> columnIndex
+        const updateColumns = {};
 
         headers.forEach((header, index) => {
-            if (header && header.toLowerCase().includes('current stock in')) {
+            if (!header) return;
+            const h = header.toLowerCase();
+
+            // Detect Stock Columns: "Current Stock in KIT1"
+            if (h.includes('current stock in')) {
                 const parts = header.split(' in ');
                 if (parts.length > 1) {
                     const kitName = parts[1].trim();
                     kitColumns[kitName] = index;
                 }
             }
+            // Detect Update Columns: "Last Update KIT1"
+            else if (h.includes('last update')) {
+                // Format is usually "Last Update KIT1"
+                // Let's try to extract the kit name by removing "Last Update "
+                // Assuming header is "Last Update KIT1"
+                const prefix = "Last Update ";
+                if (header.startsWith(prefix)) {
+                    const kitName = header.substring(prefix.length).trim();
+                    if (kitName) {
+                        updateColumns[kitName] = index;
+                    }
+                }
+            }
         });
 
         const kits = Object.keys(kitColumns);
         console.log('Detected Kits:', kits);
+        console.log('Detected Update Columns:', Object.keys(updateColumns));
 
         const items = rows.slice(1).map((row, rowIndex) => {
             const item = {
@@ -1709,13 +1729,23 @@ async function fetchInventory(forceRefresh = false) {
                 product: row[config.INVENTORY_COLUMNS.PRODUCT],
                 image: row[config.INVENTORY_COLUMNS.IMAGE],
                 stocks: {},
+                lastUpdated: {}, // New object to hold timestamps
                 rowIndex: rowIndex + 2
             };
 
             kits.forEach(kit => {
+                // Get Stock (now string status: Low/Medium/Full)
                 const colIndex = kitColumns[kit];
                 const val = row[colIndex];
-                item.stocks[kit] = val ? parseInt(val) : 0;
+                item.stocks[kit] = val ? val.trim() : '';
+
+                // Get Last Update for this kit
+                const updateColIndex = updateColumns[kit];
+                if (updateColIndex !== undefined) {
+                    item.lastUpdated[kit] = row[updateColIndex] || '';
+                } else {
+                    item.lastUpdated[kit] = ''; // No timestamp column found
+                }
             });
 
             return item;
@@ -1730,11 +1760,11 @@ async function fetchInventory(forceRefresh = false) {
 }
 
 /**
- * Updates the inventory quantity for a specific item and kit
+ * Updates the inventory status for a specific item and kit
  */
-async function updateInventory(itemId, kitName, newQuantity, userEmail) {
+async function updateInventory(itemId, kitName, newStatus, userEmail) {
     try {
-        console.log(`Updating ${itemId} in ${kitName} to ${newQuantity} by ${userEmail}`);
+        console.log(`Updating ${itemId} in ${kitName} to '${newStatus}' by ${userEmail}`);
         const sheets = await getGoogleSheetsClient();
 
         const headerRes = await sheets.spreadsheets.values.get({
@@ -1747,9 +1777,15 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
         }
         const headers = headerRes.data.values[0];
         let kitColIndex = -1;
+        let updateColIndex = -1;
 
         headers.forEach((h, i) => {
-            if (h && h.includes(`in ${kitName}`)) kitColIndex = i;
+            if (!h) return;
+            // Find Kit Stock Column
+            if (h.includes(`in ${kitName}`)) kitColIndex = i;
+            // Find Kit Update Timestamp Column (Exact match "Last Update KIT1")
+            // Assuming header format is "Last Update KIT1"
+            if (h === `Last Update ${kitName}`) updateColIndex = i;
         });
 
         if (kitColIndex === -1) throw new Error(`Kit '${kitName}' not found in headers`);
@@ -1787,7 +1823,7 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
         const updates = [
             {
                 range: `${config.INVENTORY_SHEET}!${kitColLetter}${targetRowIndex}`,
-                values: [[newQuantity]]
+                values: [[newStatus]]
             },
             {
                 range: `${config.INVENTORY_SHEET}!${logTimeColLetter}${targetRowIndex}`,
@@ -1798,6 +1834,18 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
                 values: [[userEmail]]
             }
         ];
+
+        // Add Kit Specific Update Time if column exists
+        if (updateColIndex !== -1) {
+            const updateColLetter = getColLetter(updateColIndex);
+            updates.push({
+                range: `${config.INVENTORY_SHEET}!${updateColLetter}${targetRowIndex}`,
+                values: [[new Date().toLocaleString()]] // Use nice readable format
+            });
+            console.log(`Writing per-kit timestamp to column ${updateColLetter}`);
+        } else {
+            console.log(`No specific update column found for 'Last Update ${kitName}'. Skipping.`);
+        }
 
         await sheets.spreadsheets.values.batchUpdate({
             spreadsheetId: config.SPREADSHEET_ID,
@@ -1817,8 +1865,132 @@ async function updateInventory(itemId, kitName, newQuantity, userEmail) {
 }
 
 // ============================================================================
+// FUNCTION: Get Leaderboard Data
+// ============================================================================
+
+/**
+ * Fetches rankings for the leaderboard
+ * Currently derives data from fetchStudents()
+ * 
+ * Future improvement: Fetch specific Weekly/Monthly columns if they exist
+ */
+async function getLeaderboard(forceRefresh = false) {
+    try {
+        console.log('Fetching leaderboard data...');
+
+        // Reuse student data which already has total points
+        const students = await fetchStudents(forceRefresh);
+
+        // Map to leaderboard structure
+        const leaderboard = students.map(s => ({
+            id: s.id,
+            name: s.name,
+            headshot: s.headshot,
+            email: '', // Not strictly needed for public display
+            totalPoints: s.totalPoints || 0,
+            // START TEMPORARY: Use Total Points for all scopes until we map AI/AJ
+            monthlyPoints: s.totalPoints || 0,
+            weeklyPoints: s.totalPoints || 0
+            // END TEMPORARY
+        }));
+
+        // Sort by total points descending default
+        leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
+
+        console.log(`Generated leaderboard with ${leaderboard.length} entries`);
+        return leaderboard;
+
+    } catch (error) {
+        console.error('Error in getLeaderboard:', error);
+        throw error;
+    }
+}
+
+// ============================================================================
 // EXPORTS
 // ============================================================================
+
+/**
+ * Assigns a new project to a student
+ */
+async function assignProject(studentId, projectCode, instructorName) {
+    console.log(`Assigning Project ${projectCode} to Student ${studentId}`);
+
+    // 1. Get Student Data (Need Name, Email)
+    const students = await fetchStudents();
+    const student = students.find(s => s.id === studentId); // Using ID from Col A
+
+    if (!student) {
+        throw new Error(`Student not found with ID: ${studentId}`);
+    }
+
+    // 2. Get Project Data (Need Name)
+    const projects = await fetchProjectList();
+    const project = projects.find(p => p.code === projectCode);
+
+    if (!project) {
+        throw new Error(`Project not found with Code: ${projectCode}`);
+    }
+
+    // 3. Prepare Row Data
+    const uniqueId = Math.random().toString(36).substring(2, 10).toUpperCase(); // 8 char unique ID
+    const date = new Date().toLocaleDateString('en-US'); // mm/dd/yyyy
+    const timestamp = new Date().toLocaleString();
+
+    // Mapping based on config.PROGRESS_COLUMNS
+    // We need to construct an array correctly mapped to columns A, B, C, etc.
+    // Since we are using Append, we just need values in correct order relative to A1
+
+    // BUT, using `values.append` with `valueInputOption: USER_ENTERED` is usually flexible
+    // However, to be precise, let's map to specific indices if we were updating
+    // For appending, we generally append a row. 
+    // Let's create a sparse array or just a long array matching the sheet columns?
+    // Safer: Create array up to max column we touch.
+
+    const maxCol = Math.max(
+        config.PROGRESS_COLUMNS.ID,
+        config.PROGRESS_COLUMNS.DATE,
+        config.PROGRESS_COLUMNS.SID,
+        config.PROGRESS_COLUMNS.STUDENT_EMAIL,
+        config.PROGRESS_COLUMNS.STUDENT_NAME,
+        config.PROGRESS_COLUMNS.ASSIGN_TYPE,
+        config.PROGRESS_COLUMNS.PROJECT_NAME,
+        config.PROGRESS_COLUMNS.PROJECT_STATUS,
+        config.PROGRESS_COLUMNS.LAST_EDITED_BY,
+        config.PROGRESS_COLUMNS.LAST_EDITED_TIME
+    );
+
+    const rowValues = new Array(maxCol + 1).fill('');
+
+    rowValues[config.PROGRESS_COLUMNS.ID] = uniqueId;                 // Col A
+    rowValues[config.PROGRESS_COLUMNS.DATE] = date;                   // Col B
+    rowValues[config.PROGRESS_COLUMNS.SID] = student.id;              // Col C
+    rowValues[config.PROGRESS_COLUMNS.STUDENT_EMAIL] = student.email; // Col D
+    rowValues[config.PROGRESS_COLUMNS.STUDENT_NAME] = student.name;   // Col E
+    rowValues[config.PROGRESS_COLUMNS.ASSIGN_TYPE] = 'Web App';       // Col H
+    rowValues[config.PROGRESS_COLUMNS.PROJECT_NAME] = project.name;   // Col I
+    rowValues[config.PROGRESS_COLUMNS.PROJECT_STATUS] = 'Assigned';   // Col J
+    rowValues[config.PROGRESS_COLUMNS.LAST_EDITED_BY] = instructorName; // Col V
+    rowValues[config.PROGRESS_COLUMNS.LAST_EDITED_TIME] = timestamp;    // Col W
+
+    // 4. Append to Sheet
+    const sheets = await getGoogleSheetsClient();
+
+    // Determine Range: Just Sheet Name is enough for Append
+    const range = config.PROGRESS_SHEET;
+
+    await sheets.spreadsheets.values.append({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: range,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+            values: [rowValues]
+        }
+    });
+
+    console.log(`Successfully assigned project. New Row ID: ${uniqueId}`);
+    return { success: true, uniqueId };
+}
 
 module.exports = {
     getGoogleSheetsClient,
@@ -1829,10 +2001,10 @@ module.exports = {
     fetchStudentNamesForLogin,
     getStudentProgress,
     getStudentProjects,
-    getStudentProjectsByName,       // Added for online login flow
+    getStudentProjectsByName,
     fetchProjectList,
-    fetchAllProjectsDetailed,       // Added for online projects display
-    fetchProjectParts,              // Added for YouTube video parts
+    fetchAllProjectsDetailed,
+    fetchProjectParts,
     fetchBookingInfo,
     fetchEnrichedBookingInfo,
     syncMasterDatabase,
@@ -1842,5 +2014,7 @@ module.exports = {
     getLocalMasterDB,
     clearCache,
     fetchInventory,
-    updateInventory
+    updateInventory,
+    getLeaderboard,
+    assignProject // Added export
 };
