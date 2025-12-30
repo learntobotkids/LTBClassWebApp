@@ -1998,7 +1998,9 @@
                         const demoUrl = demoVideo ? `/ projects / ${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
 
                         const iconHTML = project.icon
-                            ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                            ? (project.icon.startsWith('http')
+                                ? `<img src="${project.icon}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
+                                : `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`)
                             : '🎮';
 
                         const clickHandler = project.notFound ? '' : `onclick="openProject('${project.id}')"`;

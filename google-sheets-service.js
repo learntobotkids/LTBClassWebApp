@@ -1094,8 +1094,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     type: project.projectType,
                     assignType: project.assignType
                 });
-            } else if (statusLower.includes('next project')) {
-                // Next Project
+            } else if (statusLower === 'next' || statusLower.includes('next project')) {
+                // Next Project (matches "Next", "Next Project", "next project", etc.)
                 nextProjects.push({
                     studentId: project.studentId,
                     id: project.projectName,
