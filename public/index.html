@@ -1699,18 +1699,34 @@
                             return;
                         }
 
+                        // Also fetch project parts to get video counts
+                        let projectParts = {};
+                        try {
+                            const partsResp = await fetch('/api/project-parts');
+                            const partsData = await partsResp.json();
+                            if (partsData.success) {
+                                projectParts = partsData.parts;
+                            }
+                        } catch (e) {
+                            console.warn('Could not fetch project parts for counts:', e);
+                        }
+
                         // Transform Google Sheets data to match expected format
-                        allProjects = data.projects.map(p => ({
-                            id: p.id,
-                            name: `${p.id} - ${p.name}`,
-                            category: p.category || 'Uncategorized',
-                            categoryArray: [p.category || 'Uncategorized'],
-                            description: p.description || '',
-                            videos: [],
-                            videoCount: 0,
-                            icon: null,
-                            pdf: null
-                        }));
+                        allProjects = data.projects.map(p => {
+                            const projectCode = p.id.toUpperCase();
+                            const parts = projectParts[projectCode] || [];
+                            return {
+                                id: p.id,
+                                name: `${p.id} - ${p.name}`,
+                                category: p.category || 'Uncategorized',
+                                categoryArray: [p.category || 'Uncategorized'],
+                                description: p.description || '',
+                                videos: parts.map(part => part.youtubeUrl),
+                                videoCount: parts.length,
+                                icon: null,
+                                pdf: null
+                            };
+                        });
 
                         // Extract unique categories
                         const categorySet = new Set(allProjects.map(p => p.category));
