@@ -656,7 +656,10 @@
                 <span>LearnToBot</span>
             </a>
 
-            <ul class="navbar-menu">
+            <!-- Hamburger Button (Mobile Only) -->
+            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+
+            <ul class="navbar-menu" id="mobileMenu">
                 <li><a href="/" class="navbar-link active">Projects</a></li>
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
@@ -669,6 +672,14 @@
             </div>
         </div>
     </nav>
+
+    <script>
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('mobile-open');
+        }
+    </script>
 
     <div class="page-content">
         <div class="header">
