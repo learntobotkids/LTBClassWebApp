@@ -1343,6 +1343,9 @@
                 <span>LearnToBot</span>
             </a>
 
+            <!-- Hamburger Button -->
+            <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link active">Projects</a></li>
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
@@ -1359,6 +1362,14 @@
                     style="display: none;">Logout</button>
             </div>
         </div>
+    </nav>
+
+    <script>
+        function toggleMenu() {
+            document.querySelector('.navbar-menu').classList.toggle('active');
+            document.querySelector('.navbar-auth').classList.toggle('active');
+        }
+    </script>
     </nav>
 
     <div id="student-folder-sidebar">

@@ -116,7 +116,7 @@ module.exports = {
      * Name of the sheet (tab) containing inventory data
      * Default: 'Inventory'
      */
-    INVENTORY_SHEET: 'Inventory',
+    INVENTORY_SHEET: 'inventory2',
 
     /**
      * Name of the sheet (tab) containing project video parts/tutorials
@@ -185,6 +185,7 @@ module.exports = {
         PROJECT_NAME: 8,    // Column I: Name of the project
         PROJECT_STATUS: 9,  // Column J: Status (Assigned, In Progress, Completed, etc.)
         LAST_EDITED_BY: 21, // Column V: Name of instructor who last edited
+        LAST_EDITED_TIME: 22, // Column W: Time of last edit
 
         // Completion information columns
         COMPLETED_DATE: 25, // Column Z: Date project was completed

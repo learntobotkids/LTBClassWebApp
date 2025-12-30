@@ -79,7 +79,7 @@
         /* Align left */
     }
 
-    .navbar-menu.mobile-open {
+    .navbar-menu.active {
         display: flex;
         animation: slideDown 0.3s ease-out;
     }
