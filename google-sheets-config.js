@@ -148,7 +148,8 @@ module.exports = {
         LOGIN_NAME: 'C',    // Column C: Name shown in login dropdown
         FILE_LINK: 'G',     // Column G: Google Drive folder link
         HEADSHOT: 'I',      // Column I: Headshot image URL
-        NOTE: 'X'           // Column X: Note for child
+        NOTE: 'X',          // Column X: Note for child
+        ALL_PROJECT_ACCESS: 'AI'  // Column AI: All Project Access (Yes/No)
     },
 
     // ========================================================================

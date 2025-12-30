@@ -510,11 +510,12 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         // Get authenticated Sheets API client
         const sheets = await getGoogleSheetsClient();
 
-        // Fetch columns D (Name) through I (Headshot)
-        // Range: "Child Names!D:I"
+        // Fetch columns D (Name) through AI (All Project Access)
+        // Range: "Child Names!D:AI"
+        // D=Name(0), E(1), F(2), G=FileLink(3), H(4), I=Headshot(5), ... AI=AllProjectAccess(31)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!D:I`,
+            range: `${config.STUDENT_NAMES_SHEET}!D:AI`,
         });
 
         // Extract rows from response
@@ -539,6 +540,9 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
             .map(row => {
                 const name = row[0].trim();
                 let headshot = row[5] ? row[5].trim() : '';
+                const fileLink = row[3] ? row[3].trim() : '';  // Column G (index 3 from D)
+                // Column AI is index 31 from D (D=0, E=1, ..., AI=31)
+                const allProjectAccess = row[31] ? row[31].trim().toLowerCase() : '';
 
                 // Try to map to local file
                 // Start by assuming Column I is the filename
@@ -554,7 +558,12 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
                     headshot = `/headshots/${sanitized}`;
                 }
 
-                return { name, headshot };
+                return {
+                    name,
+                    headshot,
+                    fileLink,
+                    allProjectAccess: allProjectAccess === 'yes'  // Convert to boolean
+                };
             });
 
         // Remove duplicates (based on name) and sort alphabetically
