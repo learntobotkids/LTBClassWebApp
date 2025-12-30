@@ -688,6 +688,24 @@
             let currentVideoIndex = 0;
             let inactivityTimeout;
 
+            // ========================================================================
+            // DEPLOYMENT MODE DETECTION (same as index.html)
+            // ========================================================================
+            function isOfflineMode() {
+                const hostname = window.location.hostname;
+                return (
+                    hostname === 'localhost' ||
+                    hostname === '127.0.0.1' ||
+                    /^192\.168\.\d+\.\d+$/.test(hostname) ||
+                    /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
+                    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname) ||
+                    hostname.endsWith('.local')
+                );
+            }
+
+            const DEPLOYMENT_MODE = isOfflineMode() ? 'offline' : 'online';
+            console.log(`[Project Page] Deployment mode: ${DEPLOYMENT_MODE}`);
+
             // Get project ID from URL
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
@@ -700,6 +718,62 @@
 
             async function loadProject() {
                 try {
+                    // ========================================================================
+                    // ONLINE MODE: Fetch project info and parts from Google Sheets
+                    // ========================================================================
+                    if (DEPLOYMENT_MODE === 'online') {
+                        console.log('Loading project from Google Sheets (Online Mode)...');
+
+                        // Fetch project details
+                        const projectsResp = await fetch('/api/all-projects');
+                        const projectsData = await projectsResp.json();
+
+                        if (!projectsData.success) {
+                            showError('Failed to load projects: ' + (projectsData.error || 'Unknown error'));
+                            return;
+                        }
+
+                        // Find the project by ID
+                        const projectInfo = projectsData.projects.find(p => p.id === projectId.toUpperCase());
+
+                        if (!projectInfo) {
+                            showError('Project not found: ' + projectId);
+                            return;
+                        }
+
+                        // Fetch parts/videos for this project
+                        const partsResp = await fetch(`/api/project-parts/${projectId}`);
+                        const partsData = await partsResp.json();
+
+                        if (!partsData.success) {
+                            showError('Failed to load project parts: ' + (partsData.error || 'Unknown error'));
+                            return;
+                        }
+
+                        // Build currentProject object compatible with existing displayProject()
+                        currentProject = {
+                            id: projectInfo.id,
+                            name: projectInfo.name || projectInfo.id,
+                            description: projectInfo.description || '',
+                            category: projectInfo.category || '',
+                            // Convert parts to videos array (YouTube URLs)
+                            videos: partsData.parts.map(part => part.youtubeUrl),
+                            // Store full parts data for filmstrip
+                            parts: partsData.parts,
+                            // No PDF in online mode
+                            pdf: null,
+                            icon: null,
+                            videoCount: partsData.count
+                        };
+
+                        console.log(`Loaded project ${currentProject.name} with ${currentProject.videos.length} videos`);
+                        displayProject();
+                        return;
+                    }
+
+                    // ========================================================================
+                    // OFFLINE MODE: Fetch from local project folders (original behavior)
+                    // ========================================================================
                     const response = await fetch('/api/projects');
                     const data = await response.json();
 
@@ -823,18 +897,38 @@
 
             function renderFilmstrip() {
                 const track = document.getElementById('filmstripTrack');
+
+                // Check if we have parts data (Online mode) or just video URLs (Offline mode)
+                const hasParts = currentProject.parts && currentProject.parts.length > 0;
+
                 track.innerHTML = currentProject.videos.map((video, index) => {
-                    const videoFileName = video.split('/').pop();
-                    // Just use a generic video icon as thumb since we don't have real thumbnails yet
-                    // In a real app we'd generate thumbs, but for now a styled div is fine
+                    // Get part info if available (Online mode)
+                    const part = hasParts ? currentProject.parts[index] : null;
+
+                    // Determine thumbnail
+                    let thumbContent = '';
+                    if (part && part.coverImage) {
+                        // Use cover image from parts data (Online mode)
+                        thumbContent = `<img src="${part.coverImage}" class="filmstrip-thumb" onerror="this.parentNode.innerHTML='<div style=\\'width:100%;height:100%;background:linear-gradient(45deg,#1F2937,#374151);display:flex;align-items:center;justify-content:center;font-size:2em\\'>🎥</div>'">`;
+                    } else {
+                        // Fallback to generic icon (Offline mode or no cover)
+                        thumbContent = `<div style="width:100%; height:100%; background: linear-gradient(45deg, #1F2937, #374151); display:flex; align-items:center; justify-content:center; font-size:2em;">🎥</div>`;
+                    }
+
+                    // Determine title
+                    let title = '';
+                    if (part && part.partTitle) {
+                        title = part.partTitle;
+                    } else {
+                        // Fallback to video filename for offline mode
+                        title = video.split('/').pop();
+                    }
+
                     return `
                     <div class="filmstrip-item ${index === currentVideoIndex ? 'active' : ''}" onclick="playVideo(${index})">
                         <div class="filmstrip-number">${index + 1}</div>
-                        <!-- Placeholder Thumb -->
-                        <div style="width:100%; height:100%; background: linear-gradient(45deg, #1F2937, #374151); display:flex; align-items:center; justify-content:center; font-size:2em;">
-                            🎥
-                        </div>
-                        <div class="filmstrip-title">${videoFileName}</div>
+                        ${thumbContent}
+                        <div class="filmstrip-title">${title}</div>
                     </div>
                     `;
                 }).join('');

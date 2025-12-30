@@ -118,6 +118,25 @@ module.exports = {
      */
     INVENTORY_SHEET: 'Inventory',
 
+    /**
+     * Name of the sheet (tab) containing project video parts/tutorials
+     * Default: 'LTBCLASSWEBAPP'
+     */
+    PROJECT_PARTS_SHEET: 'LTBCLASSWEBAPP',
+
+    // ========================================================================
+    // COLUMN MAPPINGS FOR PROJECT PARTS SHEET (LTBCLASSWEBAPP)
+    // ========================================================================
+    PROJECT_PARTS_COLUMNS: {
+        PROJECT_CODE: 0,    // Column A: Project Code (e.g., PROJ101) - REQUIRED
+        PROJECT_TITLE: 1,   // Column B: Project Title (optional, for display)
+        PART_NUMBER: 2,     // Column C: Part Number (e.g., 1, 2, 3)
+        PART_TITLE: 3,      // Column D: Part Title (e.g., "Introduction")
+        YOUTUBE_URL: 4,     // Column E: YouTube URL - REQUIRED
+        DURATION: 5,        // Column F: Duration (e.g., "5:30")
+        COVER_IMAGE: 6      // Column G: Cover Image URL
+    },
+
     // ========================================================================
     // COLUMN MAPPINGS FOR STUDENT NAMES SHEET
     // ========================================================================

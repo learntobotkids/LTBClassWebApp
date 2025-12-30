@@ -1222,6 +1222,60 @@ app.get('/api/all-projects', async (req, res) => {
 });
 
 /**
+ * GET /api/project-parts
+ *
+ * Fetches ALL project parts/videos from the LTBCLASSWEBAPP sheet.
+ * Returns object grouped by project code.
+ *
+ * Response: { success: true, parts: { "PROJ101": [{...}, {...}], "PROJ102": [...] } }
+ */
+app.get('/api/project-parts', async (req, res) => {
+    try {
+        const parts = await googleSheetsService.fetchProjectParts();
+        res.json({ success: true, parts: parts });
+    } catch (error) {
+        console.error('Error fetching project parts:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch project parts',
+            message: error.message
+        });
+    }
+});
+
+/**
+ * GET /api/project-parts/:projectCode
+ *
+ * Fetches parts/videos for a SPECIFIC project.
+ * 
+ * URL params:
+ * - projectCode: The project code (e.g., PROJ101)
+ *
+ * Response: { success: true, projectCode: "PROJ101", parts: [{...}, {...}] }
+ */
+app.get('/api/project-parts/:projectCode', async (req, res) => {
+    try {
+        const projectCode = req.params.projectCode.toUpperCase();
+        const allParts = await googleSheetsService.fetchProjectParts();
+        const projectParts = allParts[projectCode] || [];
+
+        res.json({
+            success: true,
+            projectCode: projectCode,
+            parts: projectParts,
+            count: projectParts.length
+        });
+    } catch (error) {
+        console.error('Error fetching project parts:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch project parts',
+            message: error.message
+        });
+    }
+});
+
+/**
  * POST /api/google-sheets/clear-cache
  *
  * Clears the Google Sheets data cache

@@ -742,11 +742,144 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
     }
 }
 
+// ============================================================================
+// FUNCTION: Fetch Project Parts (YouTube Videos) from LTBCLASSWEBAPP sheet
+// ============================================================================
+
+// Cache for project parts
+let projectPartsCache = null;
+let lastProjectPartsFetch = 0;
+
+/**
+ * Fetches all project parts/videos from the LTBCLASSWEBAPP sheet.
+ * Returns grouped by project code for easy lookup.
+ *
+ * @param {boolean} forceRefresh - If true, ignore cache and refetch
+ * @returns {Promise<Object>} - Object with projectCode as key, array of parts as value
+ * 
+ * Example return:
+ * {
+ *   "PROJ101": [
+ *     { partNumber: 1, title: "Introduction", youtubeUrl: "...", duration: "5:30", coverImage: "..." },
+ *     { partNumber: 2, title: "Your First Sprite", youtubeUrl: "...", duration: "8:15", coverImage: "..." }
+ *   ],
+ *   "PROJ102": [...]
+ * }
+ */
+async function fetchProjectParts(forceRefresh = false) {
+    const now = Date.now();
+
+    // Check cache
+    const cacheAge = now - lastProjectPartsFetch;
+    if (!forceRefresh && projectPartsCache && cacheAge < config.CACHE_DURATION) {
+        console.log('Returning cached project parts');
+        return projectPartsCache;
+    }
+
+    try {
+        console.log('Fetching project parts from Google Sheets (LTBCLASSWEBAPP)...');
+
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch all columns A through G
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.PROJECT_PARTS_SHEET}!A:G`,
+        });
+
+        const rows = response.data.values || [];
+        if (rows.length <= 1) {
+            console.log('No project parts found (empty sheet or headers only)');
+            return {};
+        }
+
+        // Group parts by project code
+        const projectParts = {};
+
+        rows.slice(1).forEach(row => {
+            const projectCode = row[config.PROJECT_PARTS_COLUMNS.PROJECT_CODE];
+            const youtubeUrl = row[config.PROJECT_PARTS_COLUMNS.YOUTUBE_URL];
+
+            // Only include if we have at least project code and YouTube URL (required fields)
+            if (!projectCode || !youtubeUrl) return;
+
+            const code = projectCode.trim().toUpperCase();
+
+            // Build part object - include all fields, but only if they have values
+            const part = {
+                projectCode: code,
+                youtubeUrl: youtubeUrl.trim()
+            };
+
+            // Optional fields - only add if present
+            const projectTitle = row[config.PROJECT_PARTS_COLUMNS.PROJECT_TITLE];
+            const partNumber = row[config.PROJECT_PARTS_COLUMNS.PART_NUMBER];
+            const partTitle = row[config.PROJECT_PARTS_COLUMNS.PART_TITLE];
+            const duration = row[config.PROJECT_PARTS_COLUMNS.DURATION];
+            const coverImage = row[config.PROJECT_PARTS_COLUMNS.COVER_IMAGE];
+
+            if (projectTitle) part.projectTitle = projectTitle.trim();
+            if (partNumber) part.partNumber = parseInt(partNumber) || 0;
+            if (partTitle) part.partTitle = partTitle.trim();
+            if (duration) part.duration = duration.trim();
+            if (coverImage) part.coverImage = coverImage.trim();
+
+            // Auto-generate cover image from YouTube URL if not provided
+            if (!part.coverImage && part.youtubeUrl) {
+                const videoId = extractYouTubeVideoId(part.youtubeUrl);
+                if (videoId) {
+                    part.coverImage = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                }
+            }
+
+            // Add to grouped result
+            if (!projectParts[code]) {
+                projectParts[code] = [];
+            }
+            projectParts[code].push(part);
+        });
+
+        // Sort parts by part number within each project
+        Object.keys(projectParts).forEach(code => {
+            projectParts[code].sort((a, b) => (a.partNumber || 0) - (b.partNumber || 0));
+        });
+
+        // Update cache
+        projectPartsCache = projectParts;
+        lastProjectPartsFetch = now;
+
+        const totalParts = Object.values(projectParts).reduce((sum, arr) => sum + arr.length, 0);
+        console.log(`Fetched ${totalParts} parts for ${Object.keys(projectParts).length} projects`);
+        return projectParts;
+
+    } catch (error) {
+        console.error('Error fetching project parts:', error.message);
+        if (projectPartsCache) return projectPartsCache;
+        return {};
+    }
+}
+
+/**
+ * Helper: Extract YouTube video ID from various URL formats
+ */
+function extractYouTubeVideoId(url) {
+    if (!url) return null;
+
+    // Match various YouTube URL formats
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/  // Just the video ID
+    ];
+
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
 
 
-// ============================================================================
-// FUNCTION: Get Student Progress Summary
-// ============================================================================
+
 
 /**
  * Builds a summary of each student's progress
@@ -1688,6 +1821,7 @@ module.exports = {
     getStudentProjectsByName,       // Added for online login flow
     fetchProjectList,
     fetchAllProjectsDetailed,       // Added for online projects display
+    fetchProjectParts,              // Added for YouTube video parts
     fetchBookingInfo,
     fetchEnrichedBookingInfo,
     syncMasterDatabase,
