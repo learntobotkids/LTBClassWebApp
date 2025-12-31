@@ -62,13 +62,13 @@
 
     /* Usually Auth is on the right, we might want to hide it or move it */
     .navbar-auth {
-        display: none;
+        display: none !important;
         /* Simplify headers for now, or move into menu if needed */
     }
 
     /* Navbar Menu - Stacked and Hidden */
     .navbar-menu {
-        display: none;
+        display: none !important;
         width: 100%;
         flex-direction: column;
         gap: 15px;
@@ -80,7 +80,7 @@
     }
 
     .navbar-menu.active {
-        display: flex;
+        display: flex !important;
         animation: slideDown 0.3s ease-out;
     }
 

@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Instructor Dashboard</title>
+    <script src="analytics.js"></script> <!-- Analytics Telemetry -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js Visualization -->
     <!-- Use standard font similar to screenshot -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -287,6 +289,79 @@
             color: #888;
         }
 
+        /* --- ANALYTICS DASHBOARD --- */
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .analytics-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .analytics-stat {
+            font-size: 24px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .analytics-label {
+            font-size: 12px;
+            color: #6B7280;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .chart-section {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #f3f4f6;
+            padding-bottom: 10px;
+        }
+
+        .activity-feed-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .feed-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .feed-time {
+            color: #9CA3AF;
+            font-size: 11px;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         /* --- ICONS SVG --- */
         /* Using inline SVG for simplicity and performance */
     </style>
@@ -306,9 +381,11 @@
             <div class="header-title" id="pageTitle" style="margin-left: 15px;">TODAY</div>
         </div>
         <div class="header-right">
-            <div class="header-icon">🔍</div> <!-- Search -->
-            <div class="header-icon">☑️</div> <!-- Select/Check -->
-            <div class="header-icon" onclick="loadData()">🔄</div> <!-- Refresh -->
+            <!-- Icons removed as requested
+            <div class="header-icon">🔍</div>
+            <div class="header-icon">☑️</div>
+            <div class="header-icon" onclick="loadData()">🔄</div>
+            -->
         </div>
     </header>
 
@@ -339,9 +416,15 @@
             <div class="tab-icon">👥</div>
             <div>ALL KIDS</div>
         </div>
+        <!-- 
         <div class="tab-item" onclick="switchTab('report')">
             <div class="tab-icon">📊</div>
             <div>CLASS REPORT</div>
+        </div> 
+        -->
+        <div class="tab-item" onclick="switchTab('analytics')">
+            <div class="tab-icon">📈</div>
+            <div>ANALYTICS</div>
         </div>
         <div class="tab-item" onclick="switchTab('projects')">
             <div class="tab-icon">📁</div>
@@ -364,9 +447,18 @@
         let studentsData = [];
 
         // Init
+        // Init
         document.addEventListener('DOMContentLoaded', () => {
             checkLogin();
-            loadData();
+
+            // Deep Linking Check
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            if (tabParam && ['analytics', 'today', 'all', 'projects', 'leaderboard', 'inventory'].includes(tabParam)) {
+                switchTab(tabParam);
+            } else {
+                loadData(); // Default load (initially fetches today data)
+            }
         });
 
         function checkLogin() {
@@ -385,7 +477,8 @@
             // Update UI
             document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
             // Find component based on index or text
-            const index = ['today', 'all', 'report', 'projects', 'leaderboard', 'inventory'].indexOf(tab);
+            // Updated order: Today, All, Analytics, Projects, Leaderboard, Inventory
+            const index = ['today', 'all', 'analytics', 'projects', 'leaderboard', 'inventory'].indexOf(tab);
             if (index >= 0) {
                 document.querySelectorAll('.tab-item')[index].classList.add('active');
             }
@@ -396,7 +489,7 @@
             const titles = {
                 'today': 'TODAY',
                 'all': 'ALL STUDENTS',
-                'report': 'CLASS REPORT',
+                'analytics': 'ANALYTICS',
                 'projects': 'PROJECTS',
                 'leaderboard': 'LEADERBOARD',
                 'inventory': 'INVENTORY'
@@ -406,7 +499,6 @@
             // Re-render content
             render();
         }
-
         async function loadData() {
             const container = document.getElementById('mainContent');
 
@@ -448,6 +540,8 @@
                 renderAllStudents(container);
             } else if (currentTab === 'leaderboard') {
                 renderLeaderboard(container);
+            } else if (currentTab === 'analytics') {
+                renderAnalytics(container);
             } else if (currentTab === 'inventory') {
                 renderInventory(container);
             } else {
@@ -740,6 +834,19 @@
         // ============================================================================
         let leaderboardScope = 'all'; // all, monthly, weekly
 
+        // Helper to format name from email if needed
+        const formatName = (str) => {
+            if (!str) return 'Unknown';
+            // If it looks like an email, take the part before @
+            if (str.includes('@')) {
+                const parts = str.split('@');
+                const namePart = parts[0];
+                // Capitalize first letter
+                return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+            }
+            return str;
+        };
+
         async function renderLeaderboard(container) {
             container.innerHTML = '<div class="loading-container">Loading Rankings...</div>';
 
@@ -797,8 +904,7 @@
                            </div>
 
                            <div style="flex-grow:1;">
-                               <div style="font-weight:600; color:#333; font-size:16px;">${s.name}</div>
-                               <div style="font-size:12px; color:#888;">${s.email || ''}</div>
+                               <div style="font-weight:600; color:#333; font-size:16px;">${formatName(s.name)}</div>
                            </div>
                            
                            <div style="font-weight:bold; font-size:18px; color:#db3236;">
@@ -1431,7 +1537,144 @@
         };
 
         // ============================================================================
-        // ASSIGN PROJECT LOGIC
+        // ANALYTICS RENDERER
+        // ============================================================================
+        async function renderAnalytics(container) {
+            container.innerHTML = `
+        <div class="loading-container">
+            <div style="font-size: 24px; margin-bottom: 10px;">📊</div>
+            <div>Loading Analytics...</div>
+        </div>
+    `;
+
+            try {
+                const res = await fetch('/api/analytics/summary?scope=today');
+                const data = await res.json();
+
+                // Safety check for empty data
+                const totalEvents = data.totalEvents || 0;
+                const pageViews = data.pageViews || {};
+                const heatmap = data.heatmap || Array(24).fill(0);
+                const topVideos = data.topVideos || {};
+
+                // Calculate most popular page
+                let topPage = 'None';
+                let maxViews = 0;
+                for (const [page, views] of Object.entries(pageViews)) {
+                    if (views > maxViews) {
+                        maxViews = views;
+                        topPage = page;
+                    }
+                }
+
+                // HTML Structure
+                container.innerHTML = `
+            <div style="padding: 20px;">
+                <!-- SUMMARY CARDS -->
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-stat">${totalEvents}</div>
+                        <div class="analytics-label">Events Today</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-stat">${Object.keys(pageViews).length}</div>
+                        <div class="analytics-label">Active Pages</div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-stat" style="font-size: 14px; overflow:hidden; text-overflow:ellipsis;">${topPage.split('/').pop() || 'None'}</div>
+                        <div class="analytics-label">Top Page</div>
+                    </div>
+                </div>
+
+                <!-- CHARTS ROW 1: HEATMAP -->
+                <div class="chart-section">
+                    <div class="chart-title">Activity Levels (Hour of Day)</div>
+                    <canvas id="heatmapChart" height="100"></canvas>
+                </div>
+
+                <!-- CHARTS ROW 2: TOP VIDEOS -->
+                <div class="chart-section">
+                    <div class="chart-title">Top Videos Watched</div>
+                    <canvas id="videosChart" height="150"></canvas>
+                </div>
+
+                <!-- RECENT ACTIVITY -->
+                <div class="chart-section">
+                    <div class="chart-title">Recent Activity Log</div>
+                    <ul class="activity-feed-list">
+                        ${(data.recentActivity || []).map(event => `
+                            <li class="feed-item">
+                                <div>
+                                    <span style="font-weight:600; color:#3B82F6">${event.eventType}</span>
+                                    <span style="color:#6B7280; font-size:12px; margin-left:5px;">
+                                        ${event.studentName || 'Guest'} 
+                                        ${event.videoTitle ? 'watched ' + event.videoTitle : ''}
+                                        ${event.url ? 'visited ' + event.url : ''}
+                                    </span>
+                                </div>
+                                <div class="feed-time">${new Date(event.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                            </li>
+                        `).join('')}
+                        ${(!data.recentActivity || data.recentActivity.length === 0) ? '<li style="padding:10px; color:#999; text-align:center;">No recent activity</li>' : ''}
+                    </ul>
+                </div>
+            </div>
+        `;
+
+                // DRAW CHARTS
+
+                // 1. Heatmap (Line Chart)
+                new Chart(document.getElementById('heatmapChart'), {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+                        datasets: [{
+                            label: 'Interactions',
+                            data: heatmap,
+                            borderColor: '#4ECDC4',
+                            backgroundColor: 'rgba(78, 205, 196, 0.2)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { y: { beginAtZero: true } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+                // 2. Top Videos (Bar Chart)
+                const videoLabels = Object.keys(topVideos).slice(0, 5); // Top 5
+                const videoData = videoLabels.map(k => topVideos[k].views);
+
+                new Chart(document.getElementById('videosChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: videoLabels.map(l => l.length > 20 ? l.substring(0, 20) + '...' : l),
+                        datasets: [{
+                            label: 'Views',
+                            data: videoData,
+                            backgroundColor: '#FF6B6B',
+                            borderRadius: 5
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        scales: { x: { beginAtZero: true } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+
+            } catch (err) {
+                console.error("Analytics Render Error:", err);
+                container.innerHTML = `<div class="empty-state">Failed to load analytics.<br><small>${err.message}</small></div>`;
+            }
+        }
+
+        // ============================================================================
+        // ASSIGNMENT MODAL LOGIC (Existing)
         // ============================================================================
 
         // 1. Open Assign Project Modal

@@ -1884,9 +1884,9 @@ async function getLeaderboard(forceRefresh = false) {
         // Map to leaderboard structure
         const leaderboard = students.map(s => ({
             id: s.id,
-            name: s.name,
+            name: s.loginName || s.name, // Use Login Name (Col C) if available
             headshot: s.headshot,
-            email: '', // Not strictly needed for public display
+            email: s.email, // Include email but frontend won't show it unless we want to
             totalPoints: s.totalPoints || 0,
             // START TEMPORARY: Use Total Points for all scopes until we map AI/AJ
             monthlyPoints: s.totalPoints || 0,

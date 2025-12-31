@@ -108,10 +108,11 @@ body {
 }
 
 .project-card:hover {
-    transform: translateY(-5px) scale(1.01) !important;
-    /* Reduced movement */
+    transform: translateY(-5px) scale(1.1) !important;
+    /* Increased scale for animation */
     border-color: var(--kid-accent) !important;
-    box-shadow: 0 10px 20px rgba(255, 230, 109, 0.2) !important;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5) !important;
+    z-index: 10 !important;
 }
 
 .project-name {

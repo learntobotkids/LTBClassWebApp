@@ -62,6 +62,7 @@ const upload = multer({
 const http = require('http');              // Creates HTTP server (the foundation of web servers)
 const socketIO = require('socket.io');     // Enables real-time, two-way communication (like walkie-talkies)
 const googleSheetsService = require('./google-sheets-service'); // Our custom code for Google Sheets
+const analyticsService = require('./analytics-service'); // [NEW] Analytics Logger
 const config = require('./google-sheets-config'); // Configuration file
 const { exec } = require('child_process'); // Execute system commands (to open folders)
 
@@ -782,6 +783,38 @@ app.get('/api/config', (req, res) => {
         isOnline: isOnline,
         projectFolderExists: fs.existsSync(PROJECT_FOLDER)
     });
+});
+
+// ============================================================================
+// STEP 11.6: API ENDPOINT - ANALYTICS LOGGING [NEW]
+// ============================================================================
+// Telemetry endpoint for tracking page views, video usage, etc.
+app.post('/api/analytics/event', (req, res) => {
+    try {
+        const eventData = req.body;
+        analyticsService.logEvent(eventData);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        console.error('Analytics Error:', error);
+        // Don't crash the client if analytics fail
+        res.status(200).json({ success: false });
+    }
+});
+
+/**
+ * GET /api/analytics/summary
+ * Returns aggregated analytics data for the dashboard.
+ * Supports date/scope filtering.
+ */
+app.get('/api/analytics/summary', (req, res) => {
+    try {
+        const scope = req.query.scope || 'today';
+        const stats = analyticsService.getAggregatedStats(scope);
+        res.json(stats);
+    } catch (error) {
+        console.error('Analytics Aggregation Error:', error);
+        res.status(500).json({ error: 'Failed to aggregate stats' });
+    }
 });
 
 /**
