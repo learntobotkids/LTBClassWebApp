@@ -703,32 +703,35 @@
             let inactivityTimeout;
 
             // ========================================================================
-            // DEPLOYMENT MODE DETECTION (same as index.html)
+            // DEPLOYMENT MODE - Fetched from server's environment variable
             // ========================================================================
-            function isOfflineMode() {
-                const hostname = window.location.hostname;
-                return (
-                    hostname === 'localhost' ||
-                    hostname === '127.0.0.1' ||
-                    /^192\.168\.\d+\.\d+$/.test(hostname) ||
-                    /^10\.\d+\.\d+\.\d+$/.test(hostname) ||
-                    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname) ||
-                    hostname.endsWith('.local')
-                );
-            }
+            let DEPLOYMENT_MODE = 'offline'; // Default
 
-            const DEPLOYMENT_MODE = isOfflineMode() ? 'offline' : 'online';
-            console.log(`[Project Page] Deployment mode: ${DEPLOYMENT_MODE}`);
+            async function fetchDeploymentMode() {
+                try {
+                    const response = await fetch('/api/config');
+                    const config = await response.json();
+                    DEPLOYMENT_MODE = config.deploymentMode || 'offline';
+                    console.log(`[Project Page] Deployment mode: ${DEPLOYMENT_MODE} (from server)`);
+                } catch (error) {
+                    console.warn('[Project Page] Could not fetch config, defaulting to offline mode');
+                    DEPLOYMENT_MODE = 'offline';
+                }
+            }
 
             // Get project ID from URL
             const urlParams = new URLSearchParams(window.location.search);
             const projectId = urlParams.get('id');
 
-            if (!projectId) {
-                showError('No project ID specified');
-            } else {
-                loadProject();
-            }
+            // Initialize the page
+            (async function init() {
+                await fetchDeploymentMode();
+                if (!projectId) {
+                    showError('No project ID specified');
+                } else {
+                    loadProject();
+                }
+            })();
 
             async function loadProject() {
                 try {

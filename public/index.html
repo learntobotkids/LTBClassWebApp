@@ -1679,27 +1679,21 @@
 
         <script>
             // ========================================================================
-            // DEPLOYMENT MODE DETECTION
+            // DEPLOYMENT MODE - Fetched from server's environment variable
             // ========================================================================
-            // Detects if user is accessing from classroom (offline) or home (online)
-            // Used to determine whether to load local videos or cloud/YouTube videos
+            let DEPLOYMENT_MODE = 'offline'; // Default
 
-            function isOfflineMode() {
-                const hostname = window.location.hostname;
-                // Local IP patterns indicate classroom/offline access
-                return (
-                    hostname === 'localhost' ||
-                    hostname === '127.0.0.1' ||
-                    /^192\.168\.\d+\.\d+$/.test(hostname) ||  // 192.168.x.x
-                    /^10\.\d+\.\d+\.\d+$/.test(hostname) ||   // 10.x.x.x
-                    /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/.test(hostname) || // 172.16-31.x.x
-                    hostname.endsWith('.local')
-                );
+            async function fetchDeploymentMode() {
+                try {
+                    const response = await fetch('/api/config');
+                    const config = await response.json();
+                    DEPLOYMENT_MODE = config.deploymentMode || 'offline';
+                    console.log(`[LTB] Deployment mode: ${DEPLOYMENT_MODE} (from server)`);
+                } catch (error) {
+                    console.warn('[LTB] Could not fetch config, defaulting to offline mode');
+                    DEPLOYMENT_MODE = 'offline';
+                }
             }
-
-            // Global deployment mode flag - use this to switch between local/cloud resources
-            const DEPLOYMENT_MODE = isOfflineMode() ? 'offline' : 'online';
-            console.log(`[LTB] Deployment mode: ${DEPLOYMENT_MODE} (hostname: ${window.location.hostname})`);
 
             // ========================================================================
             // APPLICATION STATE VARIABLES
@@ -3372,7 +3366,10 @@
         });
     </script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', async function () {
+            // First: Fetch deployment mode from server
+            await fetchDeploymentMode();
+
             // Initialize Staging Environment
             console.log('Staging environment initialized');
 

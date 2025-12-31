@@ -44,9 +44,9 @@ module.exports = {
      *                                     ↑                                                    ↑
      *                                     └──────────── This is the SPREADSHEET_ID ──────────┘
      *
-     * If you want to use a different Google Sheet, replace this ID
+     * Can be set via environment variable SPREADSHEET_ID
      */
-    SPREADSHEET_ID: '1W6ojeogcA__vqYcQvwpav07rP9g5rAMpYXvHHY3sRKM', // The "Child Names" sheet
+    SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1W6ojeogcA__vqYcQvwpav07rP9g5rAMpYXvHHY3sRKM',
 
     // ========================================================================
     // GOOGLE DRIVE CONFIGURATION

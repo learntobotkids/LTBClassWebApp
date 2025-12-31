@@ -279,6 +279,18 @@ app.get('/teacher', (req, res) => {
 });
 
 // ============================================================================
+// CONFIGURATION API - Exposes deployment mode to frontend
+// ============================================================================
+app.get('/api/config', (req, res) => {
+    const deploymentMode = process.env.DEPLOYMENT_MODE || 'offline';
+    res.json({
+        deploymentMode: deploymentMode,
+        isOnline: deploymentMode === 'online',
+        version: '1.0.0'
+    });
+});
+
+// ============================================================================
 // STEP 9: HELPER FUNCTIONS FOR PROJECT DISCOVERY
 // ============================================================================
 // These functions help us find and organize all the project folders
