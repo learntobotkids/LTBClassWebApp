@@ -1862,10 +1862,32 @@ app.post('/api/assign-project', async (req, res) => {
 // NEW: Get full project list for dropdowns
 app.get('/api/project-list', async (req, res) => {
     try {
-        const projects = await googleSheetsService.fetchProjectList();
+        const projectsMap = await googleSheetsService.fetchProjectList();
+        // Convert Map to Array of Objects for easier consumption by frontend
+        const projects = Array.from(projectsMap, ([code, name]) => ({ code, name }));
+
+        // Sort alphabetically by code
+        projects.sort((a, b) => a.code.localeCompare(b.code));
+
         res.json({ success: true, projects });
     } catch (error) {
         console.error('Error fetching project list:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// NEW: Delete a project assignment
+app.post('/api/delete-project-log', async (req, res) => {
+    try {
+        const { uniqueId } = req.body;
+        if (!uniqueId) {
+            return res.status(400).json({ success: false, error: 'Missing uniqueId' });
+        }
+
+        await googleSheetsService.deleteProjectLog(uniqueId);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting project log:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

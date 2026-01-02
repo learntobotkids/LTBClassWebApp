@@ -1916,81 +1916,138 @@ async function getLeaderboard(forceRefresh = false) {
 async function assignProject(studentId, projectCode, instructorName) {
     console.log(`Assigning Project ${projectCode} to Student ${studentId}`);
 
-    // 1. Get Student Data (Need Name, Email)
+    // 1. Get Student Data
     const students = await fetchStudents();
-    const student = students.find(s => s.id === studentId); // Using ID from Col A
+    const student = students.find(s => s.id === studentId);
 
     if (!student) {
         throw new Error(`Student not found with ID: ${studentId}`);
     }
 
-    // 2. Get Project Data (Need Name)
-    const projects = await fetchProjectList();
-    const project = projects.find(p => p.code === projectCode);
+    // 2. Get Project Data
+    const projectsMap = await fetchProjectList(); // Returns Map<Code, Name>
+    // Ensure we handle case insensitivity if needed, but Map is case sensitive.
+    // Assuming codes are uppercase standard.
+    const projectName = projectsMap.get(projectCode) || projectsMap.get(projectCode.toUpperCase());
 
-    if (!project) {
+    if (!projectName) {
         throw new Error(`Project not found with Code: ${projectCode}`);
     }
 
     // 3. Prepare Row Data
     const uniqueId = Math.random().toString(36).substring(2, 10).toUpperCase(); // 8 char unique ID
-    const date = new Date().toLocaleDateString('en-US'); // mm/dd/yyyy
-    const timestamp = new Date().toLocaleString();
 
-    // Mapping based on config.PROGRESS_COLUMNS
-    // We need to construct an array correctly mapped to columns A, B, C, etc.
-    // Since we are using Append, we just need values in correct order relative to A1
+    // Date Format: mm/dd/yyyy
+    const now = new Date();
+    const date = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
 
-    // BUT, using `values.append` with `valueInputOption: USER_ENTERED` is usually flexible
-    // However, to be precise, let's map to specific indices if we were updating
-    // For appending, we generally append a row. 
-    // Let's create a sparse array or just a long array matching the sheet columns?
-    // Safer: Create array up to max column we touch.
+    // Timestamp Format: M/d/yyyy H:mm:ss (Approximate, using locale)
+    const timestamp = now.toLocaleString('en-US', { hour12: false }).replace(',', '');
 
-    const maxCol = Math.max(
-        config.PROGRESS_COLUMNS.ID,
-        config.PROGRESS_COLUMNS.DATE,
-        config.PROGRESS_COLUMNS.SID,
-        config.PROGRESS_COLUMNS.STUDENT_EMAIL,
-        config.PROGRESS_COLUMNS.STUDENT_NAME,
-        config.PROGRESS_COLUMNS.ASSIGN_TYPE,
-        config.PROGRESS_COLUMNS.PROJECT_NAME,
-        config.PROGRESS_COLUMNS.PROJECT_STATUS,
-        config.PROGRESS_COLUMNS.LAST_EDITED_BY,
-        config.PROGRESS_COLUMNS.LAST_EDITED_TIME
-    );
+    // Construct Row (0-indexed)
+    // A=0, B=1, ... V=21, W=22
+    const rowValues = new Array(23).fill('');
 
-    const rowValues = new Array(maxCol + 1).fill('');
+    rowValues[0] = uniqueId;                    // Col A: Unique ID
+    rowValues[1] = date;                        // Col B: Date
+    rowValues[2] = student.id;                  // Col C: SID
+    rowValues[3] = student.id.includes('@') ? student.id : ''; // Col D: Email (Best effort)
+    rowValues[4] = student.name;                // Col E: Student Name
 
-    rowValues[config.PROGRESS_COLUMNS.ID] = uniqueId;                 // Col A
-    rowValues[config.PROGRESS_COLUMNS.DATE] = date;                   // Col B
-    rowValues[config.PROGRESS_COLUMNS.SID] = student.id;              // Col C
-    rowValues[config.PROGRESS_COLUMNS.STUDENT_EMAIL] = student.email; // Col D
-    rowValues[config.PROGRESS_COLUMNS.STUDENT_NAME] = student.name;   // Col E
-    rowValues[config.PROGRESS_COLUMNS.ASSIGN_TYPE] = 'Web App';       // Col H
-    rowValues[config.PROGRESS_COLUMNS.PROJECT_NAME] = project.name;   // Col I
-    rowValues[config.PROGRESS_COLUMNS.PROJECT_STATUS] = 'Assigned';   // Col J
-    rowValues[config.PROGRESS_COLUMNS.LAST_EDITED_BY] = instructorName; // Col V
-    rowValues[config.PROGRESS_COLUMNS.LAST_EDITED_TIME] = timestamp;    // Col W
+    rowValues[7] = 'Web App';                   // Col H: Assign Type
+    rowValues[8] = projectCode;                 // Col I: Project Code (Requirement: PROJxxx)
+    rowValues[9] = 'Assigned';                  // Col J: Project Status
+
+    rowValues[21] = instructorName;             // Col V: Last Edited by
+    rowValues[22] = timestamp;                  // Col W: Last Edited time
 
     // 4. Append to Sheet
     const sheets = await getGoogleSheetsClient();
 
-    // Determine Range: Just Sheet Name is enough for Append
-    const range = config.PROGRESS_SHEET;
-
-    await sheets.spreadsheets.values.append({
+    const response = await sheets.spreadsheets.values.append({
         spreadsheetId: config.SPREADSHEET_ID,
-        range: range,
+        range: `${config.PROGRESS_SHEET}!A:A`, // Force append to Col A, avoids appending to far right
         valueInputOption: 'USER_ENTERED',
         resource: {
             values: [rowValues]
         }
     });
 
-    console.log(`Successfully assigned project. New Row ID: ${uniqueId}`);
+    const updatedRange = response.data.updates.updatedRange; // e.g., "'Project Log'!A100:W100"
+    console.log(`Successfully assigned project ${projectName} (ID: ${uniqueId})`);
+    console.log(`[SPREADSHEET UPDATE] Written to: ${updatedRange}`);
+
     return { success: true, uniqueId };
 }
+
+/**
+ * Deletes a project assignment from the log based on Unique ID
+ * @param {string} uniqueId 
+ */
+async function deleteProjectLog(uniqueId) {
+    console.log(`Attempting to delete project log with ID: ${uniqueId}`);
+    const sheets = await getGoogleSheetsClient();
+
+    // 1. Fetch Column A (Unique IDs) to find the row index
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${config.PROGRESS_SHEET}!A:A`,
+    });
+
+    const rows = response.data.values || [];
+    // Find the row index (adding 1 because values array is 0-indexed but Sheets rows are 1-indexed)
+    const rowIndex = rows.findIndex(row => row[0] === uniqueId);
+
+    if (rowIndex === -1) {
+        throw new Error(`Project Log with ID ${uniqueId} not found.`);
+    }
+
+    const sheetId = await getSheetIdByName(sheets, config.SPREADSHEET_ID, config.PROGRESS_SHEET);
+
+    // 2. Delete the row
+    // Note: rowIndex in 'values' is 0-based relative to the data range. 
+    // If getting A:A, row[0] corresponds to A1.
+    // batchUpdate deleteDimension uses 0-indexed start and exclusive end.
+
+    await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: config.SPREADSHEET_ID,
+        resource: {
+            requests: [{
+                deleteDimension: {
+                    range: {
+                        sheetId: sheetId,
+                        dimension: 'ROWS',
+                        startIndex: rowIndex,
+                        endIndex: rowIndex + 1
+                    }
+                }
+            }]
+        }
+    });
+
+    console.log(`Deleted row ${rowIndex + 1} for ID ${uniqueId}`);
+    return { success: true };
+}
+
+/**
+ * Helper to get Sheet ID (GID) from Name
+ */
+async function getSheetIdByName(sheets, spreadsheetId, sheetName) {
+    const response = await sheets.spreadsheets.get({
+        spreadsheetId: spreadsheetId
+    });
+
+    const sheet = response.data.sheets.find(s => s.properties.title === sheetName);
+    if (!sheet) {
+        throw new Error(`Sheet with name ${sheetName} not found`);
+    }
+    return sheet.properties.sheetId;
+}
+
 
 module.exports = {
     getGoogleSheetsClient,
@@ -2016,5 +2073,6 @@ module.exports = {
     fetchInventory,
     updateInventory,
     getLeaderboard,
-    assignProject // Added export
+    assignProject, // Added export
+    deleteProjectLog // Added export
 };

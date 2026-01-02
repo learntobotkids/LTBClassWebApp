@@ -1498,7 +1498,8 @@
                         style="background: none; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer; font-size: 0.9em;">
                         Continue without logging in
                     </button>
-                    <div style="margin-top: 15px; font-size: 0.85em;">
+                    <!-- INSTRUCTOR LOGIN LINK (Only visible in ONLINE mode) -->
+                    <div id="instructorLoginContainer" style="margin-top: 15px; font-size: 0.85em; display: none;">
                         <a href="#" onclick="openInstructorLogin()" style="color: #4B5563; text-decoration: none;">Are
                             you an instructor?</a>
                     </div>
@@ -3368,6 +3369,17 @@
     <script>
         document.addEventListener('DOMContentLoaded', async function () {
             // First: Fetch deployment mode from server
+            try {
+                const confResp = await fetch('/api/config');
+                const confData = await confResp.json();
+                if (confData.mode === 'online') {
+                    const loginContainer = document.getElementById('instructorLoginContainer');
+                    if (loginContainer) loginContainer.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Failed to fetch config for instructor login logic:', e);
+            }
+
             await fetchDeploymentMode();
 
             // Initialize Staging Environment
