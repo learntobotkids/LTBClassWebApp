@@ -94,8 +94,27 @@ const analyticsService = {
     },
 
     /**
+     * Helper: Get logs for a date range (Inclusive)
+     */
+    getLogsForRange: (startDate, endDate) => {
+        let allEvents = [];
+        let current = new Date(startDate);
+        const end = new Date(endDate);
+
+        while (current <= end) {
+            const dateStr = current.toISOString().split('T')[0];
+            const dailyEvents = analyticsService.getDailyLogs(dateStr);
+            allEvents = allEvents.concat(dailyEvents);
+
+            // Next day
+            current.setDate(current.getDate() + 1);
+        }
+        return allEvents;
+    },
+
+    /**
      * Aggregates stats for a given time range.
-     * @param {string} scope - 'today' or 'week' (default: 'today')
+     * @param {string} scope - 'today', 'week', 'month', 'year'
      * @returns {Object} - Aggregated stats object.
      */
     getAggregatedStats: (scope = 'today') => {
@@ -104,16 +123,32 @@ const analyticsService = {
             topVideos: {},
             recentActivity: [],
             heatmap: Array(24).fill(0),
-            totalEvents: 0
+            totalEvents: 0,
+            scope: scope
         };
 
         try {
-            const date = new Date();
-            const dateStr = date.toISOString().split('T')[0];
+            const today = new Date();
+            let startDate = new Date(today);
 
-            // For now, simple implementation: fetch TODAY's data
-            // (Can extend to loop through last 7 days for 'week' scope)
-            const events = analyticsService.getDailyLogs(dateStr);
+            // Determine Start Date
+            switch (scope) {
+                case 'week':
+                    startDate.setDate(today.getDate() - 7);
+                    break;
+                case 'month':
+                    startDate.setDate(today.getDate() - 30);
+                    break;
+                case 'year':
+                    startDate.setDate(today.getDate() - 365);
+                    break;
+                case 'today':
+                default:
+                    startDate = new Date(today); // Start is today
+                    break;
+            }
+
+            const events = analyticsService.getLogsForRange(startDate, today);
             stats.totalEvents = events.length;
 
             events.forEach(e => {
@@ -145,13 +180,9 @@ const analyticsService = {
                         stats.topVideos[title].watchTime += 15;
                     }
                 }
-
-                // 4. Recent Activity (Raw Feed)
-                // Limit to last 50 events for the feed
             });
 
-            // Sort and slice recent activity
-            // Use reverse chronological order
+            // Sort and slice recent activity (newest first)
             stats.recentActivity = events
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                 .slice(0, 50);
