@@ -1155,6 +1155,29 @@ app.post('/api/mark-attendance', async (req, res) => {
     }
 });
 
+// ============================================================================
+// STEP 16.5: API ENDPOINT - INSTRUCTORS
+// ============================================================================
+
+/**
+ * GET /api/instructors
+ * 
+ * Fetches list of instructors (names and passcodes) for login
+ */
+app.get('/api/instructors', async (req, res) => {
+    try {
+        const instructors = await googleSheetsService.fetchInstructors();
+        res.json({ success: true, instructors });
+    } catch (error) {
+        console.error('Error fetching instructors:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to fetch instructors',
+            message: error.message
+        });
+    }
+});
+
 /**
  * GET /api/all-kids
  * API Endpoint: Get All Kids (Detailed)
