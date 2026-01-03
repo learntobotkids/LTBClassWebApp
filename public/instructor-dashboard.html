@@ -425,6 +425,10 @@
             <div class="header-title" id="pageTitle" style="margin-left: 15px;">TODAY</div>
         </div>
         <div class="header-right">
+            <button onclick="loadData()"
+                style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; margin-right: 10px;">
+                <span>🔄</span> Refresh
+            </button>
             <button onclick="logout()"
                 style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
                 <span>🚪</span> Logout
@@ -947,9 +951,10 @@
                                 <div class="student-name">${s.name}</div>
                                 <div class="student-project" style="color: #6B7280;">${s.email || 'No email'}</div>
                             </div>
-                            <div class="attendance-actions" style="opacity: 0.3;">
-                                <!-- Placeholder for Edit Actions -->
-                                ⚙️
+                            <div class="attendance-actions">
+                                <button onclick="event.stopPropagation(); openStudentEditModal('${safeId}')" style="background:none; border:none; font-size: 20px; cursor: pointer; padding: 10px;">
+                                    ✏️
+                                </button>
                             </div>
                         </div>
                         `;
@@ -984,6 +989,173 @@
                 container.innerHTML = `<div class="empty-state"><h3>Failed to load students</h3><p>${e.message}</p></div>`;
             }
         }
+
+        // ============================================================================
+        // EDIT STUDENT MODAL
+        // ============================================================================
+        window.openStudentEditModal = async function (studentId) {
+            // Remove existing modal if any
+            const existing = document.getElementById('editStudentModal');
+            if (existing) existing.remove();
+
+            // Create Modal Structure
+            const modal = document.createElement('div');
+            modal.id = 'editStudentModal';
+            modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:4000; display:flex; justify-content:center; align-items:center;';
+
+            modal.innerHTML = `
+                <div style="background:white; width:90%; max-width:600px; max-height:90vh; border-radius:12px; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                    <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; background:#f8f9fa;">
+                        <h3 style="margin:0; color:#333;">Edit Student Details</h3>
+                        <button onclick="document.getElementById('editStudentModal').remove()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+                    </div>
+                    <div id="editStudentFormContent" style="padding:20px; overflow-y:auto; flex-grow:1;">
+                        <div style="text-align:center; padding:20px; color:#666;">Loading details...</div>
+                    </div>
+                    <div style="padding:15px; border-top:1px solid #eee; background:#f8f9fa; text-align:right;">
+                        <button onclick="document.getElementById('editStudentModal').remove()" style="padding:8px 16px; border:1px solid #ccc; background:white; border-radius:6px; margin-right:10px; cursor:pointer;">Cancel</button>
+                        <button id="saveStudentBtn" onclick="submitStudentEdit('${studentId}')" style="padding:8px 20px; border:none; background:#db3236; color:white; border-radius:6px; font-weight:bold; cursor:pointer;" disabled>Save Changes</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            try {
+                const res = await fetch('/api/student-detail/' + encodeURIComponent(studentId));
+                const data = await res.json();
+
+                if (!data.success) throw new Error(data.error);
+
+                const { headers, row } = data;
+
+                let formHtml = '<div style="display:grid; grid-template-columns: 1fr; gap:15px;">';
+
+                // Column Permissions Configuration
+                const readOnlyIndices = [0, 1, 2, 3, 4, 33]; // A, B, C, D, E, AH
+                // N=13, Z=25, AA=26, AD=29, AF=31, AG=32
+                // Hide: 13-29 (N-AD), 31-32 (AF-AG)
+                const hiddenIndices = [];
+                for (let i = 13; i <= 29; i++) hiddenIndices.push(i);
+                hiddenIndices.push(31, 32);
+
+                headers.forEach((header, index) => {
+                    const value = row[index] || '';
+                    const safeValue = value.replace(/"/g, '&quot;');
+
+                    if (hiddenIndices.includes(index)) {
+                        // Render hidden input to preserve value on save
+                        formHtml += `<input type="hidden" class="edit-student-input" data-index="${index}" value="${safeValue}">`;
+                        return;
+                    }
+
+                    const isReadOnly = readOnlyIndices.includes(index);
+                    const readOnlyAttr = isReadOnly ? 'readonly disabled style="background:#f0f0f0; color:#888; cursor: not-allowed;"' : '';
+
+                    formHtml += `
+                        <div>
+                            <label style="display:block; font-weight:600; font-size:12px; color:#555; margin-bottom:4px;">${header}</label>
+                            <input type="text" 
+                                class="edit-student-input" 
+                                data-index="${index}" 
+                                value="${safeValue}" 
+                                ${readOnlyAttr}
+                                style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:14px; ${isReadOnly ? 'background:#f0f0f0; color:#666;' : ''}">
+                        </div>
+                    `;
+                });
+
+                formHtml += '</div>';
+
+                const container = document.getElementById('editStudentFormContent');
+                if (container) {
+                    container.innerHTML = formHtml;
+                    document.getElementById('saveStudentBtn').disabled = false;
+                }
+
+            } catch (err) {
+                const container = document.getElementById('editStudentFormContent');
+                if (container) container.innerHTML = `<div style="color:red; text-align:center;">Error: ${err.message}</div>`;
+            }
+        };
+
+        window.submitStudentEdit = async function (studentId) {
+            const btn = document.getElementById('saveStudentBtn');
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            try {
+                // Gather all inputs
+                const inputs = document.querySelectorAll('.edit-student-input');
+                const values = [];
+                // Initialize array with explicit size if needed, but pushing in order is fine 
+                // as long as we iterate by DOM order which should match create order.
+                // However, let's use data-index to be safe.
+
+                // Find max index to size array
+                let maxIndex = 0;
+                inputs.forEach(inp => {
+                    const idx = parseInt(inp.dataset.index);
+                    if (idx > maxIndex) maxIndex = idx;
+                });
+
+                // Fill values
+                for (let i = 0; i <= maxIndex; i++) {
+                    values.push(''); // Fill empty
+                }
+
+                inputs.forEach(inp => {
+                    const idx = parseInt(inp.dataset.index);
+                    values[idx] = inp.value;
+                });
+
+                const res = await fetch('/api/student-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        values: values,
+                        userEmail: localStorage.getItem('instructorName') || 'Instructor'
+                    })
+                });
+
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                alert('Student details updated successfully!');
+                document.getElementById('editStudentModal').remove();
+
+                // Refresh list if we are on All Kids page
+                // We don't have direct access to 'renderAllStudents' container easily unless we store it globally 
+                // or just trigger click on tab again.
+                // Re-clicking the tab is easiest way to refresh.
+                const allKidsTab = document.querySelector('button[onclick*="renderAllStudents"]');
+                // Actually the tabs are handled by openTab usually.
+                // Let's just try to refresh the active view if it ID matches
+                const listContainer = document.getElementById('allStudentsList');
+                if (listContainer) {
+                    // Trigger a simpler refresh or reload page?
+                    // Reloading data is cleaner.
+                    // Finding the tab button:
+                    // The tabs in index.html are separate. 
+                    // In instructor-dashboard, tabs are:
+                    // <div class="nav-item" onclick="switchTab('today')">TODAY</div>
+                    // <div class="nav-item" onclick="switchTab('all-students')">ALL STUDENTS</div>
+
+                    // Calling switchTab('all-students') works if defined globally.
+                    if (typeof switchTab === 'function') {
+                        switchTab('all-students');
+                    } else {
+                        location.reload();
+                    }
+                }
+
+            } catch (err) {
+                alert('Saved Failed: ' + err.message);
+                btn.disabled = false;
+                btn.innerText = 'Save Changes';
+            }
+        };
+
 
         // ============================================================================
         // LEADERBOARD RENDERER
@@ -1184,7 +1356,7 @@
                         </button>
                     </div>
                     <div style="position: absolute; right: 10px; bottom: 10px; background: #ECFDF5; color: #047857; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); cursor: pointer; border: 1px solid #6EE7B7; z-index: 10;">
-                        <span style="font-size: 20px; pointer-events: none;">${p.videoLink ? '👁️' : '✓'}</span>
+                        <span style="font-size: 20px; pointer-events: none;">${p.videoLink ? '🎥' : '✓'}</span>
                     </div>
                 </div>
             `).join('');
@@ -1353,6 +1525,13 @@
                             </div>
                             <input type="hidden" id="selectedRating" value="${initialRating}">
                         </div>
+
+                         ${embedUrl ? `
+                        <div style="margin-bottom: 20px; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background: #f0f0f0;">
+                            <div style="padding: 8px; font-size: 12px; color: #666; text-align: center; border-bottom: 1px solid #ddd;">Current Video</div>
+                            <iframe src="${embedUrl}" width="100%" height="240" style="border:none;"></iframe>
+                        </div>
+                        ` : ''}
 
                         <div style="border: 2px dashed #CBD5E0; border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: #F7FAFC;">
                             <input type="file" id="modalVideoInput" accept="video/*" style="display: none;" onchange="handleModalFileSelect(this)">
@@ -2513,7 +2692,9 @@
 
         window.closeStudentDetail = function () {
             const view = document.getElementById('studentDetailView');
+            const mainContent = document.getElementById('mainContent');
             if (view) view.style.display = 'none';
+            if (mainContent) mainContent.style.display = 'block';
         };
 
         window.showDetailLoading = function () {

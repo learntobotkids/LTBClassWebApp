@@ -1372,6 +1372,43 @@ app.post('/api/google-sheets/clear-cache', (req, res) => {
 });
 
 // ============================================================================
+// STUDENT DETAIL EDIT API
+// ============================================================================
+
+/**
+ * GET /api/student-detail/:id
+ * Fetches full student row and headers
+ */
+app.get('/api/student-detail/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        const details = await googleSheetsService.fetchStudentFullDetails(id);
+        res.json({ success: true, ...details });
+    } catch (error) {
+        console.error('Error fetching student details:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * POST /api/student-update
+ * Updates full student row
+ */
+app.post('/api/student-update', async (req, res) => {
+    try {
+        const { studentId, values, userEmail } = req.body;
+        if (!studentId || !values) {
+            return res.status(400).json({ success: false, error: 'Missing Data' });
+        }
+        await googleSheetsService.updateStudentFullDetails(studentId, values, userEmail || 'System');
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error updating student:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// ============================================================================
 // STEP 17: API ENDPOINT - SYNC STUDENTS FROM GOOGLE SHEETS TO LOCAL FILES
 // ============================================================================
 // This is the most important sync operation!
@@ -1438,6 +1475,8 @@ app.post('/api/sync-students', async (req, res) => {
 
             // Determine project status and categorize
             const statusLower = project.projectStatus ? project.projectStatus.toLowerCase() : '';
+
+            // [Moved API Endpoints]
 
             // Build basic project data object
             const projectData = {

@@ -2122,6 +2122,110 @@ async function deleteProjectEntry(rowIndex, instructorName = 'System') {
     }
 }
 
+// ============================================================================
+// FUNCTION: FULL STUDENT EDIT (DYNAMIC)
+// ============================================================================
+
+/**
+ * Fetches the entire row for a student + Headers
+ * @param {string} studentId 
+ */
+async function fetchStudentFullDetails(studentId) {
+    console.log(`Fetching full details for student ID: ${studentId}`);
+    const sheets = await getGoogleSheetsClient();
+    const sheetName = config.STUDENT_NAMES_SHEET;
+
+    // 1. Fetch Headers (Row 1)
+    const headerRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!1:1`
+    });
+    const headers = headerRes.data.values ? headerRes.data.values[0] : [];
+
+    // 2. Fetch All Data (A:Z or whatever) - To find the row
+    // We need to find the row index first.
+    // Fetch Column A only to search efficiently.
+    const idRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A:A`
+    });
+
+    const rows = idRes.data.values || [];
+    const rowIndex = rows.findIndex(row => row[0] && row[0].toString().trim() === studentId.toString().trim());
+
+    if (rowIndex === -1) {
+        throw new Error('Student ID not found');
+    }
+
+    // rowIndex is 0-based index in the 'values' array.
+    // Actual Sheet Row is rowIndex + 1.
+    const actualRow = rowIndex + 1;
+
+    // 3. Fetch the Specific Row ( Entire Row )
+    const rowRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!${actualRow}:${actualRow}`
+    });
+
+    const rowData = rowRes.data.values ? rowRes.data.values[0] : [];
+
+    return {
+        headers: headers,
+        row: rowData,
+        rowIndex: actualRow,
+        studentId: studentId
+    };
+}
+
+/**
+ * Updates a student's full record
+ * @param {string} studentId 
+ * @param {Array} newValues - Array of values matching the header order
+ */
+async function updateStudentFullDetails(studentId, newValues, userEmail) {
+    console.log(`Updating full details for student ID: ${studentId}`);
+    const sheets = await getGoogleSheetsClient();
+    const sheetName = config.STUDENT_NAMES_SHEET;
+
+    // 1. Verify ID to find Row (Safety)
+    const idRes = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A:A`
+    });
+
+    const rows = idRes.data.values || [];
+    const rowIndex = rows.findIndex(row => row[0] && row[0].toString().trim() === studentId.toString().trim());
+
+    if (rowIndex === -1) {
+        throw new Error('Student ID not found');
+    }
+
+    const actualRow = rowIndex + 1;
+
+    // 2. SAFETY CHECK: Ensure Column A (ID) matches!
+    // We should overwrite the whole row, BUT we must ensure newValues[0] is the ID.
+    if (newValues[0] !== studentId) {
+        console.warn(`[Update Warning] Attempt to change ID from ${studentId} to ${newValues[0]}. Resetting to original ID.`);
+        newValues[0] = studentId; // Force ID preservation
+    }
+
+    // 3. Update the Row
+    await sheets.spreadsheets.values.update({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A${actualRow}`, // Start at A{row}
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+            values: [newValues]
+        }
+    });
+
+    // Clear caches
+    clearCache();
+
+    console.log('Student details updated successfully.');
+    return { success: true };
+}
+
 module.exports = {
     getGoogleSheetsClient,
     getGoogleDriveClient,
@@ -2145,7 +2249,11 @@ module.exports = {
     clearCache,
     fetchInventory,
     updateInventory,
+    fetchInventory,
+    updateInventory,
     getLeaderboard,
     assignProject,
-    deleteProjectEntry
+    deleteProjectEntry,
+    fetchStudentFullDetails,
+    updateStudentFullDetails
 };
