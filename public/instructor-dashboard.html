@@ -2006,8 +2006,8 @@
 
             try {
                 const [listRes, historyRes] = await Promise.all([
-                    fetch('/api/project-list'),
-                    fetch(`/ api / student - projects / ${encodeURIComponent(studentId)} `)
+                    fetch('/api/all-projects'),
+                    fetch(`/api/google-sheets/student-projects/${encodeURIComponent(studentName)}`)
                 ]);
 
                 const listData = await listRes.json();
@@ -2018,20 +2018,18 @@
                 }
 
                 if (historyData.success) {
-                    // Collect all project codes the student has ever touched
-                    const addToSet = (arr) => arr.forEach(p => existingHistory.add(p.originalCode.trim().toUpperCase()));
+                    const student = historyData.data || historyData.student; // Handle both just in case
 
-                    if (historyData.student.assignedProjects) addToSet(historyData.student.assignedProjects);
-                    if (historyData.student.inProgressProjects) addToSet(historyData.student.inProgressProjects);
-                    if (historyData.student.completedProjects) addToSet(historyData.student.completedProjects);
-                    // Also check "Next Projects" if available? 
-                    // The requirement said: "Assigned, Completed, or Next Project".
-                    // getStudentProjects doesn't explicitly return "Next" array but maybe nested?
-                    // Let's assume the main 3 cover it for now or check if my service returns it.
-                    // Service actually has `assignedProjects`, `inProgressProjects`, `completedProjects`. 
-                    // `nextProjects` was pushed but seemingly not returned in the final object in previous view?
-                    // Re-checking service... Ah, I didn't verify if `nextProjects` was added to return.
-                    // Assuming standard arrays for now.
+                    if (student) {
+                        // Collect all project codes the student has ever touched
+                        const addToSet = (arr) => {
+                            if (arr) arr.forEach(p => existingHistory.add((p.originalCode || p.code || '').trim().toUpperCase()));
+                        };
+
+                        addToSet(student.assignedProjects);
+                        addToSet(student.inProgressProjects);
+                        addToSet(student.completedProjects);
+                    }
                 }
 
             } catch (e) {

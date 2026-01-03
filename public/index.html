@@ -1671,6 +1671,15 @@
 
         <div id="assignedProjectsContainer"></div>
 
+        <!-- [NEW] Filter Controls (Only visible when logged in) -->
+        <div id="filterControls" style="display: none; justify-content: flex-end; padding: 0 40px; margin-bottom: 5px;">
+            <label
+                style="color: #E5E7EB; font-weight: 600; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #374151; padding: 6px 15px; border-radius: 20px; font-size: 0.9em; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+                <input type="checkbox" id="hideCompletedFilter" checked onchange="refreshCurrentView()">
+                Hide Completed Projects
+            </label>
+        </div>
+
         <div id="tabsContainer" class="tabs-container"></div>
         <div id="subTabsContainer" class="tabs-container" style="display: none;"></div>
 
@@ -1892,6 +1901,23 @@
                 displayProjects(projectsToShow, displayName);
             }
 
+            // Refresh the current view (used by filter checkbox)
+            function refreshCurrentView() {
+                if (activeCategory && activeCategory !== 'All') {
+                    showCategory(activeCategory);
+                } else {
+                    showTopLevel(activeTopLevel || 'All');
+                }
+            }
+
+            // Function to update visibility of the filter checkbox
+            function updateFilterVisibility() {
+                const filterControls = document.getElementById('filterControls');
+                if (filterControls) {
+                    filterControls.style.display = currentStudent ? 'flex' : 'none';
+                }
+            }
+
             // Helper function to check if project is completed
             function isProjectCompleted(projectName) {
                 if (!studentProgress || !studentProgress.completedProjects) {
@@ -1976,12 +2002,17 @@
             function displayProjects(projects, categoryTitle = 'All Projects') {
                 const content = document.getElementById('content');
 
-                if (projects.length === 0) {
-                    content.innerHTML = '<div class="no-results">No projects found</div>';
-                    return;
-                }
+                // [NEW] Check filter state
+                const hideCompletedCheckbox = document.getElementById('hideCompletedFilter');
+                const shouldHideCompleted = currentStudent && studentProgress && (hideCompletedCheckbox ? hideCompletedCheckbox.checked : true);
 
-                // If student is logged in, separate completed and available projects
+                // Filter projects if needed
+                let projectsToRender = projects;
+
+                // If student is logged in, we separate completed/available logic needs to be respected
+                // Previously, offline mode forced 'availableProjects' (no completed). 
+                // Now we let the checkbox decide.
+
                 let completedProjects = [];
                 let availableProjects = [];
 
@@ -1993,8 +2024,16 @@
                             availableProjects.push(project);
                         }
                     });
-                } else {
-                    availableProjects = projects;
+
+                    // APPLY FILTER: If hide checked, exclude completed projects
+                    if (shouldHideCompleted) {
+                        projectsToRender = projectsToRender.filter(p => !isProjectCompleted(p.name));
+                    }
+                }
+
+                if (projectsToRender.length === 0) {
+                    content.innerHTML = '<div class="no-results">No projects match your filter</div>';
+                    return;
                 }
 
                 const html = `
@@ -2003,7 +2042,7 @@
                 </div>
 
                 <div class="projects-container">
-                    ${(DEPLOYMENT_MODE === 'online' ? projects : availableProjects).map(project => {
+                    ${(projectsToRender).map(project => {
                     const inProgress = currentStudent && studentProgress && isProjectInProgress(project.name);
                     const isCompleted = currentStudent && studentProgress && isProjectCompleted(project.name);
 
@@ -2019,9 +2058,12 @@
                         badgeHTML = '<div class="in-progress-badge">⏳ IN PROGRESS</div>';
                     }
 
+
                     // Check if user has access to all projects
-                    const hasAccess = localStorage.getItem('allProjectAccess') === 'yes';
-                    const isLocked = currentStudent && !hasAccess && !isCompleted && !inProgress;
+                    // LOCK FEATURE DISABLED FOR NOW (By Request)
+                    // const hasAccess = localStorage.getItem('allProjectAccess') === 'yes';
+                    // const isLocked = currentStudent && !hasAccess && !isCompleted && !inProgress;
+                    const isLocked = false;
 
                     // Lock overlay HTML
                     const lockOverlayHTML = isLocked ? `<div class="lock-overlay">🔒</div>` : '';
@@ -2113,7 +2155,7 @@
                 container.style.display = 'block';
 
                 // Helper to create a section
-                function createSection(title, projects, icon, badgeClass, badgeText, headerColor = 'white') {
+                function createSection(title, projects, icon, badgeClass, badgeText, headerColor = 'white', isCollapsible = false) {
                     if (!projects || projects.length === 0) return '';
 
                     const projectsHTML = projects.map(project => {
@@ -2144,13 +2186,27 @@
                         `;
                     }).join('');
 
+                    // Collapsible Logic
+                    const collapseId = 'section-' + title.replace(/\s+/g, '-').toLowerCase();
+                    const arrowStyle = isCollapsible ? 'transition: transform 0.3s ease; display: inline-block;' : 'display: none;';
+                    const containerStyle = isCollapsible ? 'display: none;' : 'display: grid;'; // Default to collapsed if collapsible
+
+                    // Specific logic for Completed Projects: Collapsed by default
+                    // (Actually, user asked for collapsible, usually implies starts open or closed, but "collapsible" implies the ABILITY. 
+                    // Let's assume collapsed by default for "Completed Projects" as it takes up space, or open? 
+                    // The user prompt "make the completed projects section collapsible" usually implies they want to be able to hide it. 
+                    // Let's default it to collapsed (closed) so it's clean, as there are usually many completed projects.)
+
                     return `
                         <div style="margin-bottom: 30px;">
-                            <div class="assigned-header" style="justify-content: flex-start; gap:10px;">
+                            <div class="assigned-header" 
+                                 style="justify-content: flex-start; gap:10px; cursor: ${isCollapsible ? 'pointer' : 'default'};"
+                                 onclick="${isCollapsible ? `toggleSection('${collapseId}')` : ''}">
                                 <span class="assigned-icon">${icon}</span>
-                                <h2 style="color:${headerColor}">${title} (${projects.length})</h2>
+                                <h2 style="color:${headerColor}; flex: 1;">${title} (${projects.length})</h2>
+                                ${isCollapsible ? `<span id="arrow-${collapseId}" style="${arrowStyle} transform: rotate(-90deg); font-size: 1.5em; color: ${headerColor};">▼</span>` : ''}
                             </div>
-                            <div class="assigned-projects-container">
+                            <div id="${collapseId}" class="assigned-projects-container" style="${containerStyle}">
                                 ${projectsHTML}
                             </div>
                         </div>
@@ -2178,13 +2234,27 @@
 
                 // 3. Completed
                 if (completed && completed.length > 0) {
-                    html += createSection('Completed Projects', completed, '✅', 'completion-badge', '✓ COMPLETED', '#4ade80');
+                    html += createSection('Completed Projects', completed, '✅', 'completion-badge', '✓ COMPLETED', '#4ade80', true);
                 }
 
                 html += '</div>';
 
                 container.innerHTML = html;
                 container.style.display = 'block';
+            }
+
+            // [NEW] Toggle Section Function
+            function toggleSection(id) {
+                const container = document.getElementById(id);
+                const arrow = document.getElementById('arrow-' + id);
+
+                if (container.style.display === 'none') {
+                    container.style.display = 'grid'; // Expand
+                    if (arrow) arrow.style.transform = 'rotate(0deg)';
+                } else {
+                    container.style.display = 'none'; // Collapse
+                    if (arrow) arrow.style.transform = 'rotate(-90deg)';
+                }
             }
 
             // Render search results in dropdown
@@ -2284,6 +2354,7 @@
 
             // Load student progress if already logged in
             if (currentStudent) {
+                updateFilterVisibility();
                 loadStudentProgress(currentStudent);
             }
 
@@ -2475,6 +2546,9 @@
 
                 // Fetch files for sidebar
                 fetchStudentFiles(studentName);
+
+                // Update filter UI
+                updateFilterVisibility();
 
                 // Refresh project display to show/hide locks
                 if (allProjects.length > 0) {
@@ -2724,7 +2798,9 @@
                 studentProgress = null;
                 localStorage.removeItem('currentStudent');
                 updateLoginButton();
+
                 renderAssignedProjects([]);
+                updateFilterVisibility();
 
                 // Refresh display to remove completion indicators
                 if (allProjects.length > 0) {
