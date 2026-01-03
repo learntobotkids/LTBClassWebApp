@@ -410,7 +410,7 @@ async function fetchProjectLog(forceRefresh = false) {
         // Skip first row (header) and filter empty rows
         const projects = rows.slice(1)
             .filter(row => row.length > 0)
-            .map(row => ({
+            .map((row, i) => ({
                 // Map each column to a named field using config
                 id: row[config.PROGRESS_COLUMNS.ID] || '',
                 date: row[config.PROGRESS_COLUMNS.DATE] || '',
@@ -428,7 +428,8 @@ async function fetchProjectLog(forceRefresh = false) {
                 projectType: row[config.PROGRESS_COLUMNS.PROJECT_TYPE] || '',
                 rating: row[config.PROGRESS_COLUMNS.RATING] || '',
                 points: row[config.PROGRESS_COLUMNS.POINTS] || '',
-                videoLink: row[config.PROGRESS_COLUMNS.VIDEO_LINK] || ''
+                videoLink: row[config.PROGRESS_COLUMNS.VIDEO_LINK] || '',
+                uniqueId: i + 2  // Store the 1-based Row Index for updates/deletion
             }));
 
         // Update cache
@@ -455,7 +456,7 @@ async function fetchProjectLog(forceRefresh = false) {
             // Re-process rows same as above
             const projects = rows.slice(1)
                 .filter(row => row.length > 0)
-                .map(row => ({
+                .map((row, i) => ({
                     id: row[config.PROGRESS_COLUMNS.ID] || '',
                     date: row[config.PROGRESS_COLUMNS.DATE] || '',
                     studentId: row[config.PROGRESS_COLUMNS.SID] || '',
@@ -469,7 +470,9 @@ async function fetchProjectLog(forceRefresh = false) {
                     completedDate: row[config.PROGRESS_COLUMNS.COMPLETED_DATE] || '',
                     projectType: row[config.PROGRESS_COLUMNS.PROJECT_TYPE] || '',
                     rating: row[config.PROGRESS_COLUMNS.RATING] || '',
-                    points: row[config.PROGRESS_COLUMNS.POINTS] || ''
+                    rating: row[config.PROGRESS_COLUMNS.RATING] || '',
+                    points: row[config.PROGRESS_COLUMNS.POINTS] || '',
+                    uniqueId: i + 2
                 }));
 
             console.log(`✅ Loaded ${projects.length} project log entries from Local Master DB.`);
@@ -617,10 +620,11 @@ async function fetchProjectList(forceRefresh = false) {
         // Get authenticated Sheets API client
         const sheets = await getGoogleSheetsClient();
 
-        // Fetch columns A (Code) and B (Name)
+        // Fetch columns A (Code) through BF (Category)
+        // A=0, B=1 ... BF=57. So range A:BF cover all.
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.PROJECT_LIST_SHEET}!A:B`,
+            range: `${config.PROJECT_LIST_SHEET}!A:BF`,
         });
 
         const rows = response.data.values || [];
@@ -630,13 +634,14 @@ async function fetchProjectList(forceRefresh = false) {
         rows.slice(1).forEach(row => {
             const code = row[config.PROJECT_LIST_COLUMNS.CODE]; // Column A
             const name = row[config.PROJECT_LIST_COLUMNS.NAME]; // Column B
+            const category = row[config.PROJECT_LIST_COLUMNS.CATEGORY]; // Column BF
 
             if (code) {
-                // If name is present, use it. If not, use code or empty string.
-                // We want to return just the Name part if possible, or maybe both?
-                // Requirement: "PROJxxx: <full project name>"
-                // So this map will store the Full Name part.
-                projectMap.set(code.trim().toUpperCase(), name ? name.trim() : '');
+                // Return object { name, category }
+                projectMap.set(code.trim().toUpperCase(), {
+                    name: name ? name.trim() : '',
+                    category: category ? category.trim() : 'Other'
+                });
             }
         });
 
@@ -1043,14 +1048,14 @@ async function getStudentProjects(studentId, forceRefresh = false) {
         const projectMap = await fetchProjectList(forceRefresh);
 
         // Helper to formatting
-        // Code: "PROJ101" -> Map Value: "Introduction to Scratch"
-        // Result: "PROJ101 - Introduction to Scratch"
+        // Code: "PROJ101" -> Map Value: { name: "Intro", category: "Python" }
+        // Result: "PROJ101 - Intro"
         const formatProjectName = (code) => {
             if (!code) return 'Unknown Project';
             const cleanCode = code.trim();
-            const fullName = projectMap.get(cleanCode.toUpperCase());
-            if (fullName) {
-                return `${cleanCode} - ${fullName}`;
+            const projectInfo = projectMap.get(cleanCode.toUpperCase());
+            if (projectInfo && projectInfo.name) {
+                return `${cleanCode} - ${projectInfo.name}`;
             }
             return cleanCode; // Fallback to just the code
         };
@@ -1086,7 +1091,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     type: project.projectType,
                     rating: project.rating,
                     points: project.points,
-                    videoLink: project.videoLink // Includes public link if available
+                    videoLink: project.videoLink, // Includes public link if available
+                    uniqueId: project.uniqueId // Pass row index for deletion
                 });
             } else if (statusLower.includes('progress') || statusLower.includes('working')) {
                 // In-progress project (treat as assigned for now or separate?)
@@ -1101,7 +1107,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     originalCode: project.projectName,
                     status: project.projectStatus,
                     type: project.projectType,
-                    assignType: project.assignType
+                    assignType: project.assignType,
+                    uniqueId: project.uniqueId // Pass row index
                 });
             } else if (statusLower === 'next' || statusLower.includes('next project')) {
                 // Next Project (matches "Next", "Next Project", "next project", etc.)
@@ -1113,7 +1120,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType,
-                    date: project.date
+                    date: project.date,
+                    uniqueId: project.uniqueId // Pass row index
                 });
             } else if (statusLower.includes('assigned') || statusLower.includes('assign')) {
                 // Newly assigned project
@@ -1125,7 +1133,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType,
-                    date: project.date // Needed for sorting by latest assignment
+                    date: project.date, // Needed for sorting by latest assignment
+                    uniqueId: project.uniqueId // Pass row index for deletion
                 });
             }
         });
@@ -1363,7 +1372,8 @@ async function fetchEnrichedBookingInfo() {
             let currentProject = 'No active project';
             if (project) {
                 const code = project.projectName.trim().toUpperCase();
-                const fullName = projectMap.get(code);
+                const projectInfo = projectMap.get(code);
+                const fullName = projectInfo ? projectInfo.name : '';
                 currentProject = fullName ? `${code} - ${fullName}` : project.projectName;
             }
 
@@ -2049,6 +2059,69 @@ async function getSheetIdByName(sheets, spreadsheetId, sheetName) {
 }
 
 
+// ============================================================================
+// FUNCTION: Delete Project Entry (Mark as Deleted)
+// ============================================================================
+
+/**
+ * Marks a project entry as "Deleted" in Google Sheets.
+ * 
+ * @param {string|number} rowIndex - The 1-based row index to update (uniqueId)
+ * @param {string} instructorName - Name of instructor performing deletion
+ * @returns {Promise<boolean>} - True if successful
+ */
+async function deleteProjectEntry(rowIndex, instructorName = 'System') {
+    try {
+        console.log(`🗑️ Deleting project entry at Row ${rowIndex}...`);
+
+        const sheets = await getGoogleSheetsClient();
+        const sheetName = config.PROGRESS_SHEET;
+
+        // Columns to update:
+        // J (Index 9) -> "Deleted"
+        // V (Index 21) -> Instructor Name
+        // W (Index 22) -> Timestamp
+
+        // Note: Google Sheets API 1-based rows.
+        // We use A1 notation: Sheet!J{row}, Sheet!V{row}, Sheet!W{row}
+
+        const timestamp = new Date().toLocaleString(); // Format: 1/2/2026 15:43:40 (approx)
+
+        // Using batchUpdate with valueInputOption
+        await sheets.spreadsheets.values.batchUpdate({
+            spreadsheetId: config.SPREADSHEET_ID,
+            resource: {
+                data: [
+                    {
+                        range: `${sheetName}!J${rowIndex}`,
+                        values: [['Deleted']]
+                    },
+                    {
+                        range: `${sheetName}!V${rowIndex}`,
+                        values: [[instructorName]]
+                    },
+                    {
+                        range: `${sheetName}!W${rowIndex}`,
+                        values: [[timestamp]]
+                    }
+                ],
+                valueInputOption: 'USER_ENTERED'
+            }
+        });
+
+        console.log(`✅ Marked Row ${rowIndex} as Deleted.`);
+
+        // Invalidate cache so UI refreshes correctly
+        progressCache = null;
+
+        return true;
+
+    } catch (error) {
+        console.error('❌ Error deleting project entry:', error);
+        throw error;
+    }
+}
+
 module.exports = {
     getGoogleSheetsClient,
     getGoogleDriveClient,
@@ -2073,6 +2146,6 @@ module.exports = {
     fetchInventory,
     updateInventory,
     getLeaderboard,
-    assignProject, // Added export
-    deleteProjectLog // Added export
+    assignProject,
+    deleteProjectEntry
 };

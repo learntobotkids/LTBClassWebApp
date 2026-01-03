@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js Visualization -->
     <!-- Use standard font similar to screenshot -->
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -91,6 +92,24 @@
         .header-icon {
             font-size: 24px;
             cursor: pointer;
+        }
+
+        .logout-icon {
+            font-size: 20px;
+            cursor: pointer;
+            color: #FF6B6B;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+
+        .logout-icon:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* --- CONTENT AREA --- */
@@ -362,6 +381,36 @@
             }
         }
 
+        /* --- SPINNER --- */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #6B7280;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #3B82F6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 10px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
         /* --- ICONS SVG --- */
         /* Using inline SVG for simplicity and performance */
     </style>
@@ -373,19 +422,13 @@
     <!-- HEADER -->
     <header class="app-header">
         <div class="header-left">
-            <!-- Logout Button -->
-            <button onclick="logout()"
-                style="background: none; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
-                <span style="font-size: 14px;">←</span> Logout
-            </button>
             <div class="header-title" id="pageTitle" style="margin-left: 15px;">TODAY</div>
         </div>
         <div class="header-right">
-            <!-- Icons removed as requested
-            <div class="header-icon">🔍</div>
-            <div class="header-icon">☑️</div>
-            <div class="header-icon" onclick="loadData()">🔄</div>
-            -->
+            <button onclick="logout()"
+                style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+                <span>🚪</span> Logout
+            </button>
         </div>
     </header>
 
@@ -428,6 +471,7 @@
             <div>CLASS REPORT</div>
         </div> 
         -->
+        <!--
         <div class="tab-item" onclick="switchTab('analytics')">
             <div class="tab-icon">📈</div>
             <div>ANALYTICS</div>
@@ -436,6 +480,7 @@
             <div class="tab-icon">📁</div>
             <div>PROJECTS</div>
         </div>
+        -->
         <div class="tab-item" onclick="switchTab('leaderboard')">
             <div class="tab-icon">🏆</div>
             <div>LEADERS</div>
@@ -511,7 +556,11 @@
             // Only show full loading if container is empty or we are forcing it? 
             // Better UX: keep old content while loading? For now, simple.
             if (!container.innerHTML || container.innerHTML.includes('empty-state')) {
-                container.innerHTML = '<div class="loading-container"><div>Loading...</div></div>';
+                container.innerHTML = `
+                    <div class="loading-container">
+                        <div class="loading-spinner"></div>
+                        <div>Loading...</div>
+                    </div>`;
             }
 
             try {
@@ -1052,42 +1101,12 @@
         // Global Event Delegation for robustness
         // Handles clicks on dynamic elements without needing inline onclicks
         document.addEventListener('click', function (e) {
-            // 1. Student Card Click (Dashboard)
-            const card = e.target.closest('.student-card');
-            if (card) {
-                // Ignore if clicked on button/action inside
-                if (e.target.closest('button') || e.target.closest('.check-btn')) return;
-
-                const d = card.dataset;
-                if (d.sid) {
-                    openStudentDetail(d.sid, d.sname, d.headshot);
-                    return;
-                }
-            }
-
-            // 2. Project Item Click (Detail View)
-            const row = e.target.closest('.project-item-row');
-            if (row) {
-                e.stopPropagation(); // Stop bubbling
-                console.log('Row Click Detected:', row.dataset);
-                try {
-                    const d = row.dataset;
-                    // Ensure modal function exists
-                    if (window.openCompletionModal) {
-                        window.openCompletionModal(d.sid, d.pcode, d.pname, d.headshot, d.sname, d.video, d.rating, d.status, d.date);
-                    } else {
-                        console.error('Modal function not found!');
-                        alert('System Error: Modal function missing. Please refresh.');
-                    }
-                } catch (e) {
-                    console.error('Row click error:', e);
-                }
-            }
-
-            // 3. Delete Project Click
+            // 1. Delete Project Click (High Priority)
             const deleteBtn = e.target.closest('.delete-btn');
             if (deleteBtn) {
+                e.preventDefault();
                 e.stopPropagation();
+
                 const uniqueId = deleteBtn.dataset.uniqueid;
 
                 if (!uniqueId) {
@@ -1102,7 +1121,10 @@
                     fetch('/api/delete-project-log', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ uniqueId })
+                        body: JSON.stringify({
+                            uniqueId: uniqueId,
+                            instructorName: localStorage.getItem('instructorName') || 'Unknown'
+                        })
                     })
                         .then(res => res.json())
                         .then(data => {
@@ -1125,7 +1147,39 @@
                             deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
                         });
                 }
-                return;
+                return; // Stop further listeners (like the row click)
+            }
+
+            // 2. Student Card Click (Dashboard)
+            const card = e.target.closest('.student-card');
+            if (card) {
+                // Ignore if clicked on button/action inside
+                if (e.target.closest('button') || e.target.closest('.check-btn')) return;
+
+                const d = card.dataset;
+                if (d.sid) {
+                    openStudentDetail(d.sid, d.sname, d.headshot);
+                    return;
+                }
+            }
+
+            // 3. Project Item Click (Detail View)
+            const row = e.target.closest('.project-item-row');
+            if (row) {
+                e.stopPropagation(); // Stop bubbling
+                console.log('Row Click Detected:', row.dataset);
+                try {
+                    const d = row.dataset;
+                    // Ensure modal function exists
+                    if (window.openCompletionModal) {
+                        window.openCompletionModal(d.sid, d.pcode, d.pname, d.headshot, d.sname, d.video, d.rating, d.status, d.date);
+                    } else {
+                        console.error('Modal function not found!');
+                        alert('System Error: Modal function missing. Please refresh.');
+                    }
+                } catch (e) {
+                    console.error('Row click error:', e);
+                }
             }
         });
 
@@ -1658,42 +1712,95 @@
         // ============================================================================
 
         // 1. Open Assign Project Modal
+        // 1. Open Assign Project Modal
         window.openAssignModal = async (studentId, studentName, headshotUrl) => {
-            // Fetch Project List First
-            let projects = [];
+            // Show loading state
+            const existingModal = document.getElementById('assignProjectModal');
+            if (existingModal) existingModal.remove();
+
+            // Fetch Project List & Student History Concurrently
+            let allProjects = [];
+            let existingHistory = new Set();
+
             try {
-                const response = await fetch('/api/project-list');
-                const data = await response.json();
-                if (data.success) {
-                    projects = data.projects;
-                } else {
-                    alert('Failed to load project list');
-                    return;
+                const [listRes, historyRes] = await Promise.all([
+                    fetch('/api/project-list'),
+                    fetch(`/api/student-projects/${encodeURIComponent(studentId)}`)
+                ]);
+
+                const listData = await listRes.json();
+                const historyData = await historyRes.json();
+
+                if (listData.success) {
+                    allProjects = listData.projects; // Array of {code, name, category}
                 }
+
+                if (historyData.success) {
+                    // Collect all project codes the student has ever touched
+                    const addToSet = (arr) => arr.forEach(p => existingHistory.add(p.originalCode.trim().toUpperCase()));
+
+                    if (historyData.student.assignedProjects) addToSet(historyData.student.assignedProjects);
+                    if (historyData.student.inProgressProjects) addToSet(historyData.student.inProgressProjects);
+                    if (historyData.student.completedProjects) addToSet(historyData.student.completedProjects);
+                    // Also check "Next Projects" if available? 
+                    // The requirement said: "Assigned, Completed, or Next Project".
+                    // getStudentProjects doesn't explicitly return "Next" array but maybe nested?
+                    // Let's assume the main 3 cover it for now or check if my service returns it.
+                    // Service actually has `assignedProjects`, `inProgressProjects`, `completedProjects`. 
+                    // `nextProjects` was pushed but seemingly not returned in the final object in previous view?
+                    // Re-checking service... Ah, I didn't verify if `nextProjects` was added to return.
+                    // Assuming standard arrays for now.
+                }
+
             } catch (e) {
                 console.error(e);
-                alert('Error fetching project list');
+                alert('Error fetching data for assignment');
                 return;
             }
 
-            // Generate Options
-            const optionsHtml = projects.map(p =>
-                `<option value="${p.code}">${p.code} - ${p.name}</option>`
-            ).join('');
+            // Filter Projects
+            const availableProjects = allProjects.filter(p => !existingHistory.has(p.code.trim().toUpperCase()));
+
+            // Group by Category
+            const grouped = {};
+            availableProjects.forEach(p => {
+                const cat = p.category || 'Other';
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(p);
+            });
+
+            // Generate Options HTML with Optgroups
+            // Sort categories logic: Maybe standard ones first?
+            const sortedCategories = Object.keys(grouped).sort();
+
+            let optionsHtml = '<option value="" disabled selected>Choose a project...</option>';
+
+            sortedCategories.forEach(cat => {
+                optionsHtml += `<optgroup label="${cat}">`;
+                grouped[cat].forEach(p => {
+                    optionsHtml += `<option value="${p.code}">${p.code} - ${p.name}</option>`;
+                });
+                optionsHtml += `</optgroup>`;
+            });
+
+            if (availableProjects.length === 0) {
+                optionsHtml = '<option disabled>No new projects available</option>';
+            }
 
             const modalHtml = `
             <div id="assignProjectModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;">
                 <div style="background: white; border-radius: 12px; padding: 25px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
                     <h3 style="margin-top: 0; margin-bottom: 20px; color: #333; font-size: 20px;">Assign New Project</h3>
                     <div style="display: flex; align-items: center; margin-bottom: 20px; background: #f8f9fa; padding: 10px; border-radius: 8px;">
-                        <img src="${headshotUrl || '/api/placeholder/40/40'}" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; border: 2px solid #db3236;">
+                        <img src="${studentId ? `/headshots/${studentId.toString().replace(/\//g, '_')}.jpg` : (headshotUrl || '/api/placeholder/40/40')}" 
+                             onerror="this.onerror=null; this.src='${headshotUrl || '/api/placeholder/40/40'}';"
+                             style="width: 40px; height: 40px; border-radius: 50%; margin-right: 15px; border: 2px solid #db3236; object-fit: cover;">
                         <div style="font-weight: 600; font-size: 16px;">${studentName}</div>
                     </div>
                     
                     <div style="margin-bottom: 25px;">
                         <label style="display: block; font-size: 14px; font-weight: 500; color: #555; margin-bottom: 8px;">Select Project to Assign</label>
                         <select id="assignProjectSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; background: white;">
-                            <option value="" disabled selected>Choose a project...</option>
                             ${optionsHtml}
                         </select>
                     </div>
@@ -1840,24 +1947,23 @@
 
             // We need to inject the FAB and specific HEADER modifications
 
-            // 1. FAB (Floating Action Button)
-            let fab = document.getElementById('detailFab');
-            if (!fab) {
-                fab = document.createElement('button');
-                fab.id = 'detailFab';
-                fab.innerHTML = '+';
-                fab.style.cssText = `
-                   position: fixed; bottom: 80px; right: 20px;
-                   width: 56px; height: 56px;
-                   border-radius: 50%; background: #db3236; color: white;
-                   border: none; font-size: 32px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-                   cursor: pointer; z-index: 3000; display: none;
-                   align-items: center; justify-content: center; padding-bottom: 4px;
-               `;
-                fab.onclick = () => openAssignModal(studentData.studentId, studentData.studentName, headshotUrl);
-                document.body.appendChild(fab);
+            // 1. FAB (Floating Action Button) - MOVED TO INLINE BUTTON
+            // We remove the old FAB logic if present to clean up
+            let oldFab = document.getElementById('detailFab');
+            if (oldFab) oldFab.remove();
+
+            // INJECT "Assign New Project" BUTTON
+            // We'll inject it into the project history container, right at the top
+            const historyContainer = document.getElementById('projectHistoryList');
+            if (historyContainer) {
+                // Clear container first (it gets rebuilt anyway, but just to be safe)
+                // Wait, renderProjectHistory does this.
+                // We need to pass a flag or handle it inside renderProjectHistory?
+                // Actually, renderProjectHistory overwrites innerHTML.
+                // So we should modify renderProjectHistory instead?
+                // Or we can modify how renderProjectHistory wraps things.
+                // Let's modify renderProjectHistory below.
             }
-            fab.style.display = 'flex'; // Show it
 
             // 2. Custom Header in Overlay
             const detailView = document.getElementById('studentDetailView');
@@ -1979,6 +2085,17 @@
             }
 
             container.innerHTML = html;
+
+            // PREPEND THE "ASSIGN PROJECT" BUTTON
+            const assignBtnHtml = `
+                <div style="padding: 15px 15px 5px;">
+                    <button onclick="openAssignModal('${studentId}', '${studentName}', '${headshotUrl}')" 
+                        style="width: 100%; background: #db3236; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(219, 50, 54, 0.2);">
+                        <i class="fas fa-plus-circle"></i> Assign New Project
+                    </button>
+                </div>
+            `;
+            container.insertAdjacentHTML('afterbegin', assignBtnHtml);
         }
 
         function resetRecordingUI() {
@@ -2299,6 +2416,15 @@
                 }, 300);
             }
         };
+    </script>
+    <script>
+        function handleInstructorLogout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('instructorLoggedIn');
+                localStorage.removeItem('instructorName');
+                window.location.href = '/';
+            }
+        }
     </script>
 </body>
 

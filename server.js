@@ -1864,7 +1864,8 @@ app.get('/api/project-list', async (req, res) => {
     try {
         const projectsMap = await googleSheetsService.fetchProjectList();
         // Convert Map to Array of Objects for easier consumption by frontend
-        const projects = Array.from(projectsMap, ([code, name]) => ({ code, name }));
+        // Map value is now { name, category }
+        const projects = Array.from(projectsMap, ([code, { name, category }]) => ({ code, name, category }));
 
         // Sort alphabetically by code
         projects.sort((a, b) => a.code.localeCompare(b.code));
@@ -1876,21 +1877,7 @@ app.get('/api/project-list', async (req, res) => {
     }
 });
 
-// NEW: Delete a project assignment
-app.post('/api/delete-project-log', async (req, res) => {
-    try {
-        const { uniqueId } = req.body;
-        if (!uniqueId) {
-            return res.status(400).json({ success: false, error: 'Missing uniqueId' });
-        }
 
-        await googleSheetsService.deleteProjectLog(uniqueId);
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error deleting project log:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
 
 // ============================================================================
 // ADMIN: Setup Curriculum Tracks
@@ -2484,6 +2471,30 @@ app.get('/api/inventory', async (req, res) => {
 });
 
 
+
+// ============================================================================
+// API ENDPOINT - DELETE PROJECT LOG ENTRY
+// ============================================================================
+app.post('/api/delete-project-log', async (req, res) => {
+    try {
+        const { uniqueId, instructorName } = req.body;
+
+        if (!uniqueId) {
+            return res.status(400).json({ success: false, error: 'Missing uniqueId' });
+        }
+
+        const user = instructorName || 'System'; // Default if missing
+        console.log(`[API] Deleting project log entry ${uniqueId} by ${user}`);
+
+        await googleSheetsService.deleteProjectEntry(uniqueId, user);
+
+        res.json({ success: true });
+
+    } catch (error) {
+        console.error('Delete API Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
 
 // ============================================================================
 // STEP 19: START THE SERVER

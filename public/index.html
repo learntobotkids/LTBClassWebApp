@@ -1494,7 +1494,7 @@
 
                 <div class="login-footer" id="loginModalFooter"
                     style="margin-top: 20px; border-top: 1px solid #374151; padding-top: 15px; text-align: center;">
-                    <button id="skipLoginBtn" onclick="toggleLoginModal()"
+                    <button id="skipLoginBtn" onclick="skipLogin()"
                         style="background: none; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer; font-size: 0.9em;">
                         Continue without logging in
                     </button>
@@ -2758,10 +2758,11 @@
                         console.log('Online Mode detected. Checking login status...');
                         const student = localStorage.getItem('currentStudent');
 
-                        // If no student is logged in, force the blocking modal
-                        if (!student) {
-                            forceBlockingLogin();
-                        }
+                        // If no student is logged in, DO NOT force the blocking modal automatically
+                        // based on user feedback to allow "Continue without logging in" flow.
+                        // if (!student) {
+                        //     forceBlockingLogin();
+                        // }
                     }
                 } catch (e) {
                     console.error('Failed to check online config:', e);
@@ -2792,6 +2793,26 @@
 
                 // Disable clicking outside to close
                 modal.removeAttribute('onclick');
+            }
+
+            // Skip login handler
+            function skipLogin() {
+                logout(); // Logs out student
+                // Log out instructor
+                localStorage.removeItem('instructorLoggedIn');
+                localStorage.removeItem('instructorName');
+
+                // Close modal
+                toggleLoginModal();
+
+                // If in blocking mode, we need to re-enable interactions
+                if (isBlockingModal) {
+                    isBlockingModal = false;
+                    const modal = document.getElementById('loginModal');
+                    const closeBtn = modal.querySelector('.close-modal');
+                    if (closeBtn) closeBtn.style.display = 'block';
+                    modal.setAttribute('onclick', 'if(event.target === this) toggleLoginModal()');
+                }
             }
 
             // Function call for parent email check
@@ -3489,6 +3510,7 @@
             wrapper.style.display = 'block';
         }
     </script>
+    <script src="mobile-nav.js"></script>
 </body>
 
 </html>

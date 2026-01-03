@@ -12,6 +12,14 @@
     z-index: 1001;
 }
 
+/* Auth User Badge */
+.navbar-user {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.9em;
+}
+
 @media (max-width: 768px) {
 
     /* Global Adjustments */
@@ -79,7 +87,7 @@
         /* Align left */
     }
 
-    .navbar-menu.active {
+    .navbar-menu.mobile-open {
         display: flex !important;
         animation: slideDown 0.3s ease-out;
     }
