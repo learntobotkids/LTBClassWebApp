@@ -2543,6 +2543,30 @@
                 window.location.href = '/';
             }
         }
+
+        // Fetch and display Data Source ID
+        document.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/config/spreadsheet-id')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success && data.spreadsheetId) {
+                        const badge = document.createElement('div');
+                        badge.style.position = 'fixed';
+                        badge.style.bottom = '85px'; // Above tabs
+                        badge.style.right = '10px';
+                        badge.style.background = 'rgba(0,0,0,0.6)';
+                        badge.style.color = '#fff';
+                        badge.style.padding = '4px 8px';
+                        badge.style.borderRadius = '4px';
+                        badge.style.fontSize = '10px';
+                        badge.style.zIndex = '9999';
+                        badge.style.pointerEvents = 'none'; // Don't block clicks
+                        badge.innerText = 'Data Source: ' + data.spreadsheetId;
+                        document.body.appendChild(badge);
+                    }
+                })
+                .catch(err => console.error('Failed to get Spreadsheet ID', err));
+        });
     </script>
 </body>
 

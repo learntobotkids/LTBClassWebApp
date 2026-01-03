@@ -1160,6 +1160,14 @@ app.post('/api/mark-attendance', async (req, res) => {
 // ============================================================================
 
 /**
+ * GET /api/config/spreadsheet-id
+ * Returns the current Spreadsheet ID being used
+ */
+app.get('/api/config/spreadsheet-id', (req, res) => {
+    res.json({ success: true, spreadsheetId: config.SPREADSHEET_ID });
+});
+
+/**
  * GET /api/instructors
  * 
  * Fetches list of instructors (names and passcodes) for login
