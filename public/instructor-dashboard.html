@@ -2372,9 +2372,10 @@
                 }
 
                 // PREPEND THE "ASSIGN PROJECT" BUTTON
+                const safeHeadshot = headshotUrl || '/api/placeholder/40/40';
                 const assignBtnHtml = `
                 <div style="padding: 15px 15px 5px;">
-                    <button onclick="openAssignModal('${studentId}', '${studentName}', '${headshotUrl}')" 
+                    <button onclick="openAssignModal('${studentId}', '${studentName.replace(/'/g, "\\'")}', '${safeHeadshot}')" 
                         style="width: 100%; background: #db3236; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(219, 50, 54, 0.2);">
                         <i class="fas fa-plus-circle"></i> Assign New Project
                     </button>
@@ -2723,7 +2724,24 @@
             }
         }
 
+        // Check Login Status on Load
+        document.addEventListener('DOMContentLoaded', () => {
+            const isLoggedIn = localStorage.getItem('instructorLoggedIn') === 'true';
+
+            if (!isLoggedIn) {
+                // Show Login Modal
+                const modal = document.getElementById('instructorLoginModal');
+                if (modal) {
+                    modal.style.display = 'flex'; // Ensure flex layout for centering
+                    modal.classList.add('active'); // Add active class if used by CSS
+                } else {
+                    alert('Error: Login modal missing. Please refresh.');
+                }
+            }
+
+        // ... rest of initialization ...
         // Fetch and display Data Source ID
+        /*
         document.addEventListener('DOMContentLoaded', () => {
             fetch('/api/config/spreadsheet-id')
                 .then(res => res.json())
@@ -2746,6 +2764,7 @@
                 })
                 .catch(err => console.error('Failed to get Spreadsheet ID', err));
         });
+        */
     </script>
 </body>
 

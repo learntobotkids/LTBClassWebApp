@@ -1467,31 +1467,125 @@
 
                 <!-- VIEW 3: ONLINE PARENT LOGIN (New) -->
                 <div id="onlineParentView" style="display: none;">
-                    <p style="color: #9CA3AF; text-align: center; margin-bottom: 20px;">
-                        Please enter your parent email to find your student account.
-                    </p>
 
-                    <div style="margin-bottom: 20px;">
-                        <input type="email" id="parentEmailInput" class="search-box"
-                            placeholder="Enter parent email address..."
-                            style="width: 100%; border: 2px solid #374151; background: #111827; color: white;"
-                            autocomplete="email">
-                    </div>
+                    <!-- Step 1: Email Input -->
+                    <div id="parentEmailStep">
+                        <p style="color: #9CA3AF; text-align: center; margin-bottom: 20px;">
+                            Enter the parent email address registered with us to find your student account.
+                        </p>
 
-                    <button id="findKidsBtn" onclick="checkParentEmail()"
-                        style="width: 100%; padding: 15px; background: #3B82F6; color: white; border: none; border-radius: 10px; font-weight: bold; font-size: 1.1em; cursor: pointer; transition: background 0.2s;">
-                        Find My Kids
-                    </button>
-
-                    <div id="parentCheckError"
-                        style="color: #EF4444; margin-top: 15px; text-align: center; display: none;"></div>
-
-                    <div id="foundKidsList" style="margin-top: 25px; display: none;">
-                        <h4 style="color: #E5E7EB; margin-bottom: 10px; text-align: center;">Select Student:</h4>
-                        <div id="kidsButtonsContainer" style="display: flex; flex-direction: column; gap: 10px;">
-                            <!-- Kid buttons injected here -->
+                        <div style="margin-bottom: 20px;">
+                            <input type="email" id="parentEmailInput" placeholder="Enter Parent Email"
+                                onkeypress="if(event.key === 'Enter') checkParentEmail()"
+                                style="width: 100%; padding: 15px; background: #111827; border: 2px solid #374151; border-radius: 10px; color: white; font-size: 1.1em; box-sizing: border-box;">
                         </div>
+
+                        <div id="parentEmailError"
+                            style="color: #EF4444; margin-bottom: 15px; text-align: center; display: none;"></div>
+
+                        <button onclick="checkParentEmail()"
+                            style="width: 100%; background: #3B82F6; color: white; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: background 0.2s;">
+                            Find My Kids
+                        </button>
                     </div>
+
+                    <!-- Step 2: Select Child -->
+                    <div id="parentChildSelectStep" style="display: none;">
+                        <h3 style="color: white; margin-bottom: 15px; text-align: center;">Select Student</h3>
+                        <div id="foundChildrenList"
+                            style="display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto;">
+                            <!-- Children buttons will go here -->
+                        </div>
+
+                        <button onclick="resetParentLogin()"
+                            style="margin-top: 20px; width: 100%; background: transparent; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer;">
+                            &lt; Search with different email
+                        </button>
+                    </div>
+
+                    <script>
+                        async function checkParentEmail() {
+                            const emailInput = document.getElementById('parentEmailInput');
+                            const errorDiv = document.getElementById('parentEmailError');
+                            const email = emailInput.value.trim();
+
+                            if (!email) {
+                                errorDiv.textContent = 'Please enter an email address.';
+                                errorDiv.style.display = 'block';
+                                return;
+                            }
+
+                            // Show loading state
+                            errorDiv.style.display = 'none';
+                            const btn = document.querySelector('#parentEmailStep button');
+                            const originalText = btn.innerText;
+                            btn.innerText = 'Searching...';
+                            btn.disabled = true;
+
+                            try {
+                                const response = await fetch('/api/check-parent-email', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ email })
+                                });
+
+                                const data = await response.json();
+
+                                if (data.success && data.children.length > 0) {
+                                    showFoundChildren(data.children);
+                                } else {
+                                    errorDiv.textContent = data.message || 'No students found with this email.';
+                                    errorDiv.style.display = 'block';
+                                }
+
+                            } catch (err) {
+                                console.error('Error checking email:', err);
+                                errorDiv.textContent = 'Connection error. Please try again.';
+                                errorDiv.style.display = 'block';
+                            } finally {
+                                btn.innerText = originalText;
+                                btn.disabled = false;
+                            }
+                        }
+
+                        function showFoundChildren(children) {
+                            document.getElementById('parentEmailStep').style.display = 'none';
+                            document.getElementById('parentChildSelectStep').style.display = 'block';
+
+                            const list = document.getElementById('foundChildrenList');
+                            list.innerHTML = '';
+
+                            children.forEach(child => {
+                                const btn = document.createElement('div');
+                                btn.className = 'student-item'; // Reuse existing class for styling
+                                btn.style.display = 'flex';
+                                btn.style.alignItems = 'center';
+                                btn.style.justifyContent = 'space-between'; // Keep arrow on right
+                                btn.onclick = () => handleLogin(child.name); // Reuse existing login logic
+
+                                // Initials logic
+                                const initial = child.name ? child.name.charAt(0).toUpperCase() : '?';
+
+                                btn.innerHTML = `
+                                    <div style="display: flex; align-items: center; gap: 15px;">
+                                        <div class="student-initial" style="background: #3B82F6; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #60A5FA;">${initial}</div>
+                                        <div style="text-align: left;">
+                                            <div class="student-name" style="font-weight: 600; color: white;">${child.name}</div>
+                                        </div>
+                                    </div>
+                                    <span style="color: #6B7280;">→</span>
+                                `;
+                                list.appendChild(btn);
+                            });
+                        }
+
+                        function resetParentLogin() {
+                            document.getElementById('parentEmailStep').style.display = 'block';
+                            document.getElementById('parentChildSelectStep').style.display = 'none';
+                            document.getElementById('parentEmailInput').value = '';
+                            document.getElementById('parentEmailError').style.display = 'none';
+                        }
+                    </script>
                 </div>
 
                 <div class="login-footer" id="loginModalFooter"
@@ -1500,11 +1594,8 @@
                         style="background: none; border: none; color: #9CA3AF; text-decoration: underline; cursor: pointer; font-size: 0.9em;">
                         Continue without logging in
                     </button>
-                    <!-- INSTRUCTOR LOGIN LINK (Only visible in ONLINE mode) -->
-                    <div id="instructorLoginContainer" style="margin-top: 15px; font-size: 0.85em; display: none;">
-                        <a href="#" onclick="openInstructorLogin()" style="color: #4B5563; text-decoration: none;">Are
-                            you an instructor?</a>
-                    </div>
+                    <!-- INSTRUCTOR LOGIN LINK (REMOVED FROM HOMEPAGE) -->
+                    <div id="instructorLoginContainer" style="display: none;"></div>
                 </div>
             </div>
         </div>
@@ -3014,35 +3105,36 @@
 
                 if (isOpen) {
                     modal.classList.remove('active');
-                    // Reset to default view when closing
-                    setTimeout(() => {
-                        // Reset views
-                        document.getElementById('classLoginView').style.display = 'block';
+                    if (window.DEPLOYMENT_MODE === 'online') {
+                        // Reset online view
+                        document.getElementById('onlineParentView').style.display = 'block';
+                        document.getElementById('classLoginView').style.display = 'none';
                         document.getElementById('allStudentsView').style.display = 'none';
-                        document.getElementById('onlineParentView').style.display = 'none';
+                        document.getElementById('parentEmailStep').style.display = 'block';
+                        document.getElementById('parentChildSelectStep').style.display = 'none';
+                        document.getElementById('parentEmailInput').value = '';
+                    } else {
+                        // Normal offline reset
+                        startClassRotation();
+                        toggleLoginView('class');
                         document.getElementById('studentSearch').value = '';
-                    }, 300);
+                    }
                 } else {
                     modal.classList.add('active');
-
-                    // Check config to decide which view to show
-                    fetch('/api/config')
-                        .then(r => r.json())
-                        .then(config => {
-                            if (config.isOnline) {
-                                document.getElementById('classLoginView').style.display = 'none';
-                                document.getElementById('onlineParentView').style.display = 'block';
-                            } else {
-                                // Default offline behavior
-                                loadClassView();
-                                loadStudents();
-                            }
-                        })
-                        .catch(() => {
-                            // Fallback
-                            loadClassView();
-                            loadStudents();
-                        });
+                    if (window.DEPLOYMENT_MODE === 'online') {
+                        // FORCE ONLINE VIEW
+                        document.getElementById('onlineParentView').style.display = 'block';
+                        document.getElementById('classLoginView').style.display = 'none';
+                        document.getElementById('allStudentsView').style.display = 'none';
+                        setTimeout(() => document.getElementById('parentEmailInput')?.focus(), 100);
+                    } else {
+                        // OFFLINE VIEW
+                        document.getElementById('onlineParentView').style.display = 'none';
+                        document.getElementById('classLoginView').style.display = 'block';
+                        loadStudents();
+                        stopClassRotation();
+                        setTimeout(() => document.getElementById('studentSearch')?.focus(), 100);
+                    }
                 }
             }
 
@@ -3203,16 +3295,19 @@
                 const navbarUser = document.getElementById('navbarUser');
                 const navbarLoginBtn = document.getElementById('navbarLoginBtn');
                 const navbarLogoutBtn = document.getElementById('navbarLogoutBtn');
+                const navMyProjects = document.getElementById('navMyProjects');
 
                 if (currentStudent) {
                     navbarUser.textContent = `👤 ${currentStudent}`;
                     navbarUser.style.display = 'block';
                     navbarLoginBtn.style.display = 'none';
                     navbarLogoutBtn.style.display = 'inline-block';
+                    if (navMyProjects) navMyProjects.style.display = 'block';
                 } else {
                     navbarUser.style.display = 'none';
                     navbarLoginBtn.style.display = 'inline-block';
                     navbarLogoutBtn.style.display = 'none';
+                    if (navMyProjects) navMyProjects.style.display = 'none';
                 }
 
                 // Update Sidebar
@@ -3478,12 +3573,33 @@
             try {
                 const confResp = await fetch('/api/config');
                 const confData = await confResp.json();
+
+                // LOGIN FLOW CONFIGURATION
+                const modal = document.getElementById('loginModal');
+                const classView = document.getElementById('classLoginView');
+                const onlineView = document.getElementById('onlineParentView');
+                const instructorLink = document.getElementById('instructorLoginContainer');
+
+                // 1. ALWAYS HIDE INSTRUCTOR LINK ON HOMEPAGE
+                if (instructorLink) instructorLink.style.display = 'none';
+
                 if (confData.mode === 'online') {
-                    const loginContainer = document.getElementById('instructorLoginContainer');
-                    if (loginContainer) loginContainer.style.display = 'block';
+                    // ONLINE MODE: Default to Parent Email Login
+                    console.log('Online Mode detected: Defaulting to Parent Login');
+                    if (classView) classView.style.display = 'none';
+                    if (onlineView) onlineView.style.display = 'block';
+                    // Ensure global var is set for toggleLoginModal
+                    window.DEPLOYMENT_MODE = 'online';
+                } else {
+                    // OFFLINE MODE: Default to Class/Student Picker
+                    console.log('Offline Mode detected: Defaulting to Student Picker');
+                    if (classView) classView.style.display = 'block';
+                    if (onlineView) onlineView.style.display = 'none';
+                    window.DEPLOYMENT_MODE = 'offline';
                 }
+
             } catch (e) {
-                console.error('Failed to fetch config for instructor login logic:', e);
+                console.error('Failed to fetch config for login logic:', e);
             }
 
             await fetchDeploymentMode();
@@ -3505,15 +3621,23 @@
                 openInstructorLogin(); // Defined earlier in file
             }
             else if (modal && !currentStudent) {
-                // DESKTOP: Open Student Login
+                // DESKTOP: Open Login Modal
                 modal.classList.add('active');
-                loadStudents(); // Load student list
 
-                // Focus search box
-                setTimeout(() => {
-                    const search = document.getElementById('studentSearch');
-                    if (search) search.focus();
-                }, 500);
+                if (window.DEPLOYMENT_MODE === 'online') {
+                    // Focus email input for Online Mode
+                    setTimeout(() => {
+                        document.getElementById('parentEmailInput')?.focus();
+                    }, 500);
+                } else {
+                    // Offline Mode
+                    loadStudents(); // Load student list
+                    // Focus search box
+                    setTimeout(() => {
+                        const search = document.getElementById('studentSearch');
+                        if (search) search.focus();
+                    }, 500);
+                }
             } else if (currentStudent) {
                 // If already logged in, just load students in background
                 loadStudents();

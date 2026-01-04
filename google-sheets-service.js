@@ -1891,29 +1891,84 @@ async function updateInventory(itemId, kitName, newStatus, userEmail) {
 
 /**
  * Fetches rankings for the leaderboard
- * Currently derives data from fetchStudents()
- * 
- * Future improvement: Fetch specific Weekly/Monthly columns if they exist
+ * Calculates points from Project Log based on All Time, Month, and Week
  */
 async function getLeaderboard(forceRefresh = false) {
     try {
         console.log('Fetching leaderboard data...');
 
-        // Reuse student data which already has total points
+        // 1. Get Base Student Data (ID, Name, Headshot)
         const students = await fetchStudents(forceRefresh);
 
-        // Map to leaderboard structure
-        const leaderboard = students.map(s => ({
-            id: s.id,
-            name: s.loginName || s.name, // Use Login Name (Col C) if available
-            headshot: s.headshot,
-            email: s.email, // Include email but frontend won't show it unless we want to
-            totalPoints: s.totalPoints || 0,
-            // START TEMPORARY: Use Total Points for all scopes until we map AI/AJ
-            monthlyPoints: s.totalPoints || 0,
-            weeklyPoints: s.totalPoints || 0
-            // END TEMPORARY
-        }));
+        // 2. Get Project Log Data (All completions)
+        const projectLog = await fetchProjectLog(forceRefresh);
+
+        // 3. Initialize Points Map
+        // Map<StudentID, { total, monthly, weekly }>
+        const pointsMap = new Map();
+
+        // Initialize all students with 0 points
+        students.forEach(s => {
+            // Use ID from Column A
+            if (s.id) {
+                pointsMap.set(s.id, { total: 0, monthly: 0, weekly: 0 });
+            }
+        });
+
+        // 4. Calculate Points
+        const now = new Date();
+
+        // Calculate 30 Days Ago (for "This Month" rolling window)
+        const thirtyDaysAgo = new Date(now);
+        thirtyDaysAgo.setDate(now.getDate() - 30);
+
+        // Calculate 7 Days Ago (for "This Week" rolling window)
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(now.getDate() - 7);
+
+        projectLog.forEach(project => {
+            const sid = project.studentId;
+            const points = parseInt(project.points || '0', 10);
+            const dateStr = project.date; // Column B
+
+            if (!sid || !pointsMap.has(sid) || isNaN(points)) return;
+
+            // Update All Time
+            const stats = pointsMap.get(sid);
+            stats.total += points;
+
+            // Parse Date
+            if (dateStr) {
+                const pDate = new Date(dateStr);
+                // Check if valid date
+                if (!isNaN(pDate.getTime())) {
+                    // Check Month (Rolling 30 Days)
+                    if (pDate >= thirtyDaysAgo) {
+                        stats.monthly += points;
+                    }
+
+                    // Check Week (Rolling 7 Days)
+                    if (pDate >= sevenDaysAgo) {
+                        stats.weekly += points;
+                    }
+                }
+            }
+        });
+
+        // 5. Merge Data
+        const leaderboard = students.map(s => {
+            const stats = pointsMap.get(s.id) || { total: 0, monthly: 0, weekly: 0 };
+
+            return {
+                id: s.id,
+                name: s.loginName || s.name, // Use Login Name if available
+                headshot: s.headshot,
+                email: s.email,
+                totalPoints: stats.total,
+                monthlyPoints: stats.monthly,
+                weeklyPoints: stats.weekly
+            };
+        });
 
         // Sort by total points descending default
         leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
@@ -2237,13 +2292,69 @@ async function updateStudentFullDetails(studentId, newValues, userEmail) {
     return { success: true };
 }
 
+// ============================================================================
+// FUNCTION: Mark Project as Complete (or any status)
+// ============================================================================
+async function markProjectComplete(studentId, projectCode, videoLink, rating, instructorName, status = 'Completed', date = new Date()) {
+    try {
+        const client = await getGoogleSheetsClient();
+
+        // Format Date
+        const dateStr = date.toLocaleDateString('en-US'); // MM/DD/YYYY
+
+        // Split student ID if composite (email/name)
+        let studentName = studentId;
+        if (studentId.includes('/')) {
+            studentName = studentId.split('/')[1]; // Use the name part
+        }
+
+        // Prepare Row Data
+        // Order based on typical log: Timestamp, Date, Student Name, Project Code, Status, Instructor, Video, Rating
+        const values = [[
+            new Date().toISOString(), // TimestampA
+            dateStr,                  // DateB
+            studentName,              // Student NameC
+            projectCode,             // ProjectD
+            status,                  // StatusE
+            instructorName || 'System', // InstructorF
+            '',                      // NotesG
+            '',                      // H
+            '',                      // I
+            '',                      // J
+            '',                      // K
+            '',                      // L
+            '',                      // M
+            '',                      // N
+            '',                      // O
+            '',                      // P
+            videoLink || '',         // VideoQ
+            rating || ''             // RatingR
+        ]];
+
+        // Append to Sheet
+        const response = await client.spreadsheets.values.append({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: 'Project Log!A:R', // Adjust based on actual sheet columns
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: values }
+        });
+
+        // Invalidate Cache
+        progressCache = null;
+        lastProgressFetch = 0;
+
+        return { success: true, row: response.data.updates.updatedRange };
+
+    } catch (error) {
+        console.error('Error marking project complete:', error);
+        throw error;
+    }
+}
+
 module.exports = {
-    getGoogleSheetsClient,
-    getGoogleDriveClient,
-    syncHeadshots,
+    getStudents: fetchStudents,
     fetchStudents,
-    fetchProjectLog,
-    fetchStudentNamesForLogin,
+    syncHeadshots,
     getStudentProgress,
     getStudentProjects,
     getStudentProjectsByName,
@@ -2260,11 +2371,11 @@ module.exports = {
     clearCache,
     fetchInventory,
     updateInventory,
-    fetchInventory,
-    updateInventory,
     getLeaderboard,
     assignProject,
     deleteProjectEntry,
     fetchStudentFullDetails,
-    updateStudentFullDetails
+    updateStudentFullDetails,
+    markProjectComplete,
+    fetchStudentNamesForLogin
 };
