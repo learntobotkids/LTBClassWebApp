@@ -1378,12 +1378,14 @@
 
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link active">Projects</a></li>
+                <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
+                        Projects</a></li>
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
                 <!-- Teacher Panel Link Removed -->
-                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link">Analytics</a></li>
-                <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
+                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
+                        style="display: none;">Analytics</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -1913,8 +1915,15 @@
             // Function to update visibility of the filter checkbox
             function updateFilterVisibility() {
                 const filterControls = document.getElementById('filterControls');
+                const myProjectsLink = document.getElementById('navMyProjects');
+
                 if (filterControls) {
                     filterControls.style.display = currentStudent ? 'flex' : 'none';
+                }
+
+                if (myProjectsLink) {
+                    myProjectsLink.style.display = currentStudent ? 'block' : 'none';
+                    // Add mobile toggle behavior here if needed, or rely on mobile.css
                 }
             }
 

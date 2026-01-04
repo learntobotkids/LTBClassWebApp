@@ -635,12 +635,16 @@ async function fetchProjectList(forceRefresh = false) {
             const code = row[config.PROJECT_LIST_COLUMNS.CODE]; // Column A
             const name = row[config.PROJECT_LIST_COLUMNS.NAME]; // Column B
             const category = row[config.PROJECT_LIST_COLUMNS.CATEGORY]; // Column BF
+            const description = row[config.PROJECT_LIST_COLUMNS.DESCRIPTION]; // Column C
+            const studentActivity = row[config.PROJECT_LIST_COLUMNS.STUDENT_ACTIVITY]; // Column E
 
             if (code) {
-                // Return object { name, category }
+                // Return object { name, category, description, studentActivity }
                 projectMap.set(code.trim().toUpperCase(), {
                     name: name ? name.trim() : '',
-                    category: category ? category.trim() : 'Other'
+                    category: category ? category.trim() : 'Other',
+                    description: description ? description.trim() : '',
+                    studentActivity: studentActivity ? studentActivity.trim() : ''
                 });
             }
         });
@@ -727,6 +731,7 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
             const code = row[config.PROJECT_LIST_COLUMNS.CODE]; // Column A
             const name = row[config.PROJECT_LIST_COLUMNS.NAME]; // Column B
             const description = row[config.PROJECT_LIST_COLUMNS.DESCRIPTION]; // Column C
+            const studentActivity = row[config.PROJECT_LIST_COLUMNS.STUDENT_ACTIVITY]; // Column E
             const icon = row[config.PROJECT_LIST_COLUMNS.ICON]; // Column M
             const category = row[config.PROJECT_LIST_COLUMNS.CATEGORY]; // Column BF (index 57)
 
@@ -735,6 +740,7 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
                     id: code.trim().toUpperCase(),
                     name: name ? name.trim() : code.trim(),
                     description: description ? description.trim() : '',
+                    studentActivity: studentActivity ? studentActivity.trim() : '',
                     icon: icon ? icon.trim() : null,
                     category: category ? category.trim() : 'Uncategorized'
                 });
@@ -1080,11 +1086,16 @@ async function getStudentProjects(studentId, forceRefresh = false) {
             // Determine category based on status keywords
             if (statusLower.includes('completed')) {
                 // Completed project - include completion details
+                // Get extended details from projectMap
+                const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
+
                 completedProjects.push({
                     studentId: project.studentId, // Crucial: specific ID for this entry
                     id: project.projectName, // Frontend expects 'id'
                     name: displayName,
                     originalCode: project.projectName,
+                    description: projectInfo ? projectInfo.description : '', // New Field
+                    studentActivity: projectInfo ? projectInfo.studentActivity : '', // New Field
                     status: project.projectStatus,
                     email: project.studentEmail,
                     completedDate: project.completedDate,

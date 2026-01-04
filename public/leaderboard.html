@@ -35,7 +35,6 @@
             left: 0;
             right: 0;
             background: rgba(17, 24, 39, 0.9) !important;
-            /* Slightly more opaque for readability */
             backdrop-filter: blur(10px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
             z-index: 1000;
@@ -143,6 +142,7 @@
             font-weight: 800;
             background: linear-gradient(135deg, #FFF 0%, #9CA3AF 100%);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             margin-bottom: 10px;
             letter-spacing: -2px;
@@ -163,7 +163,6 @@
             margin-bottom: 50px;
             border: 1px solid rgba(255, 255, 255, 0.05);
             display: none;
-            /* Hidden until loaded */
         }
 
         .prize-header {
@@ -248,7 +247,7 @@
             display: flex;
             justify-content: center;
             gap: 15px;
-            margin-bottom: 60px;
+            margin-bottom: 30px;
         }
 
         .scope-btn {
@@ -286,7 +285,6 @@
             margin-bottom: 80px;
             gap: 20px;
             height: 350px;
-            /* Fixed height for alignment */
         }
 
         .podium-item {
@@ -615,13 +613,63 @@
             pointer-events: none;
         }
 
-        /* Controls */
-        .controls-wrapper {
+        /* Rewards Drawer */
+        .rewards-drawer {
+            position: fixed;
+            top: 70px;
+            /* Match navbar height */
+            right: -320px;
+            /* Width of drawer */
+            width: 320px;
+            height: calc(100vh - 70px);
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(15px);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 900;
+            padding: 20px;
+            overflow-y: auto;
             display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 30px;
-            /* Reduced margin to pull search closer */
+            flex-direction: column;
+        }
+
+        .rewards-drawer.open {
+            right: 0;
+        }
+
+        .drawer-toggle-btn {
+            position: fixed;
+            right: 0;
+            top: 150px;
+            background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+            color: white;
+            padding: 15px 10px 15px 15px;
+            border-radius: 12px 0 0 12px;
+            cursor: pointer;
+            z-index: 901;
+            font-weight: 700;
+            box-shadow: -4px 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s;
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            letter-spacing: 1px;
+            font-size: 0.9em;
+        }
+
+        .drawer-toggle-btn:hover {
+            transform: scale(1.05);
+            background: linear-gradient(135deg, #FDBA74 0%, #D97706 100%);
+        }
+
+        .drawer-toggle-btn.open {
+            right: 320px;
+        }
+
+        /* Adjust prize section for drawer */
+        .prize-section-drawer {
+            /* Inherit or override styles */
         }
     </style>
 </head>
@@ -633,38 +681,49 @@
                 <span class="navbar-logo">🤖</span>
                 <span>LearnToBot</span>
             </a>
-
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/my-projects.html" class="navbar-link">My Projects</a></li>
                 <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link active">Leaders</a></li>
-                <li><a href="/instructor-dashboard.html" class="navbar-link">Teacher Panel</a></li>
-                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link">Analytics</a></li>
-                <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
+                <!-- Teacher Panel Link Removed -->
+                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
+                        style="display: none;">Analytics</a></li>
             </ul>
-
             <div class="navbar-auth">
                 <a href="/" class="navbar-btn">Back to Projects</a>
             </div>
         </div>
     </nav>
-
     <div class="page-content">
         <div class="header-section">
             <h1 class="main-title">Hall of Fame</h1>
             <p class="subtitle">Celebrating our top achievers and coding masters</p>
         </div>
 
-        <!-- Prize Teaser Section -->
-        <div id="prizeSection" class="prize-section">
-            <div class="prize-header">
-                <div class="prize-title">🎁 Next Rewards</div>
-                <a href="/prizes.html" class="view-store-btn">View All Prizes →</a>
-            </div>
-            <div id="prizePreviewGrid" class="mini-prizes-grid">
+        <!-- Rewards Drawer Toggle -->
+        <div id="rewardsToggle" class="drawer-toggle-btn" onclick="toggleDrawer()">
+            🎁 NEXT REWARDS
+        </div>
+
+        <!-- Rewards Drawer Container -->
+        <div id="rewardsDrawer" class="rewards-drawer">
+            <h3
+                style="color:white; margin-bottom: 20px; font-size: 1.5em; border-bottom: 1px solid #374151; padding-bottom: 10px;">
+                🎁 Potential Prizes
+            </h3>
+            <p style="color: #9CA3AF; font-size: 0.9em; margin-bottom: 20px;">
+                Keep earning points to unlock these!
+            </p>
+
+            <!-- Prize Grid Moved Here -->
+            <div id="prizePreviewGrid" class="mini-prizes-grid" style="grid-template-columns: 1fr;">
                 <!-- Filled by JS -->
             </div>
+
+            <a href="/prizes.html" class="view-store-btn"
+                style="text-align: center; margin-top: 20px; display: block;">View All Prizes →</a>
         </div>
 
         <div class="controls-wrapper">
@@ -697,6 +756,7 @@
                 <a href="/prizes.html" class="btn-primary">View All Prizes</a>
             </div>
         </div>
+
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
@@ -745,17 +805,19 @@
             if (previewPrizes.length === 0) return;
 
             container.innerHTML = previewPrizes.map(prize => `
-                <div class="mini-prize-card" onclick="window.location.href='/prizes.html'">
-                    <img src="${prize['Prize Image']}" class="mini-prize-img" loading="lazy" onerror="this.src='https://via.placeholder.com/150?text=Prize'">
-                    <div class="mini-prize-info">
-                        <div class="mini-prize-name">${prize['Prize Name']}</div>
-                        <div class="mini-prize-points">${prize['Prize Points'] || '?'} PTS</div>
+                <div class="mini-prize-card" onclick="window.location.href='/prizes.html'" style="display: flex; align-items: center; padding: 10px;">
+                    <img src="${prize['Prize Image']}" class="mini-prize-img" loading="lazy" onerror="this.src='https://via.placeholder.com/150?text=Prize'" style="width: 60px; height: 60px; border-radius: 8px; margin-right: 15px;">
+                    <div class="mini-prize-info" style="padding: 0;">
+                        <div class="mini-prize-name" style="font-size: 1em; margin-bottom: 2px;">${prize['Prize Name']}</div>
+                        <div class="mini-prize-points" style="font-size: 0.9em;">${prize['Prize Points'] || '?'} PTS</div>
                     </div>
                 </div>
             `).join('');
+        }
 
-            // Show the section (it starts hidden or empty)
-            document.getElementById('prizeSection').style.display = 'block';
+        function toggleDrawer() {
+            document.getElementById('rewardsDrawer').classList.toggle('open');
+            document.getElementById('rewardsToggle').classList.toggle('open');
         }
 
         async function fetchLeaderboard() {
@@ -840,17 +902,9 @@
                 html += `<div class="rank-list-wrapper">`;
                 sorted.forEach((student, idx) => {
                     // Calculate TRUE rank from original data
-                    // Actually, let's just show their relative rank in this view or their score?
-                    // Better to find their real rank.
                     let realRank = -1;
-                    // We need original sorted list to find real rank.
-                    // Let's just reconstruct it cheaply:
-                    const fullSorted = [...leaderboardData]
-                        .sort((a, b) => getValue(b) - getValue(a))
-                        .filter(s => getValue(s) > 0);
-
+                    const fullSorted = [...leaderboardData].sort((a, b) => getValue(b) - getValue(a)).filter(s => getValue(s) > 0);
                     realRank = fullSorted.findIndex(s => s.id === student.id) + 1;
-
                     html += renderListItem(student, realRank);
                 });
                 html += `</div>`;
@@ -868,17 +922,17 @@
             const crown = student.rank === 1 ? '<div class="crown">👑</div>' : '';
 
             return `
-            <div class="podium-item podium-${student.rank}">
-                <div class="podium-avatar-wrapper">
-                    ${crown}
-                    <img src="${headshotSrc || '/api/placeholder/150/150'}" class="podium-avatar" onerror="${fallback}">
-                </div>
-                <div class="podium-base">
-                    <div class="podium-name">${student.name}</div>
-                    <div class="podium-points">${points.toLocaleString()} PTS</div>
-                    <div class="podium-rank">#${student.rank}</div>
-                </div>
-            </div>`;
+                <div class="podium-item podium-${student.rank}">
+                    <div class="podium-avatar-wrapper">
+                        ${crown}
+                        <img src="${headshotSrc || '/api/placeholder/150/150'}" class="podium-avatar" onerror="${fallback}">
+                    </div>
+                    <div class="podium-base">
+                        <div class="podium-name">${student.name}</div>
+                        <div class="podium-points">${points.toLocaleString()} PTS</div>
+                        <div class="podium-rank">#${student.rank}</div>
+                    </div>
+                </div>`;
         }
 
         function renderListItem(student, rank) {
@@ -891,14 +945,14 @@
             const delay = Math.min((rank - 1) * 0.05, 1.0); // Cap delay
 
             return `
-            <div class="rank-card" style="animation-delay: ${delay}s">
-                <div class="list-rank">#${rank}</div>
-                <img src="${headshotSrc || '/api/placeholder/50/50'}" class="list-avatar" onerror="${fallback}">
-                <div class="list-info">
-                    <div class="list-name">${student.name}</div>
-                </div>
-                <div class="list-points">${points.toLocaleString()}</div>
-            </div>`;
+                <div class="rank-card" style="animation-delay: ${delay}s">
+                    <div class="list-rank">#${rank}</div>
+                    <img src="${headshotSrc || '/api/placeholder/50/50'}" class="list-avatar" onerror="${fallback}">
+                    <div class="list-info">
+                        <div class="list-name">${student.name}</div>
+                    </div>
+                    <div class="list-points">${points.toLocaleString()}</div>
+                </div>`;
         }
 
         function getValue(student) {

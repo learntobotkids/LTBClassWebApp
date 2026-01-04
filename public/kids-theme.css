@@ -35,26 +35,59 @@ body {
     box-shadow: none !important;
 }
 
+/* Navbar Layout */
+.navbar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    padding: 0 20px;
+}
+
 .navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: #FFFFFF !important;
     text-transform: uppercase;
     font-weight: bold;
     letter-spacing: 1px;
+    text-decoration: none;
+    font-size: 1.5em;
 }
 
-.navbar-link {
-    color: #FFFFFF !important;
-    border-radius: var(--ltb-border-radius) !important;
-    font-weight: normal !important;
-    text-transform: uppercase;
-    font-size: 0.9em !important;
+.navbar-logo {
+    font-size: 1.5em;
 }
 
-.navbar-link:hover,
-.navbar-link.active {
-    color: var(--ltb-primary) !important;
-    background: transparent !important;
-    border-bottom: 2px solid var(--ltb-primary);
+.navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    list-style: none;
+    /* Critical fix for bullet points */
+    margin: 0;
+    padding: 0;
+}
+
+.navbar-auth {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.navbar-user {
+    color: #FFFFFF;
+    font-weight: 600;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    font-size: 0.95em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .navbar-btn {
@@ -64,6 +97,11 @@ body {
     text-transform: uppercase;
     font-weight: bold;
     box-shadow: none !important;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.9em;
 }
 
 .navbar-btn:hover {
