@@ -2377,5 +2377,6 @@ module.exports = {
     fetchStudentFullDetails,
     updateStudentFullDetails,
     markProjectComplete,
-    fetchStudentNamesForLogin
+    fetchStudentNamesForLogin,
+    getGoogleSheetsClient // Exporting for server.js usage
 };

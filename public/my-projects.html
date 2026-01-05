@@ -202,6 +202,53 @@
             color: #009FF5;
             background: rgba(0, 159, 245, 0.15);
         }
+
+        /* USER PROFILE PILL STYLES */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-name {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background-color: #111827;
+        }
     </style>
 </head>
 
@@ -217,7 +264,8 @@
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link active">My Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/student-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
+                </li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
                 <!-- Teacher Panel Link Removed -->
@@ -226,7 +274,18 @@
             </ul>
 
             <div class="navbar-auth">
-                <span id="userDisplay" class="navbar-user" style="display: none;"></span>
+                <div id="userProfilePill" class="user-profile-pill" style="display: none;">
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
+                    <div class="user-info">
+                        <span id="userNameDisplay" class="user-name">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
+                <span id="userDisplay" class="navbar-user" style="display: none;"></span> <!-- Legacy -->
                 <button id="loginBtn" class="navbar-btn" onclick="window.location.href='/'">Wait...</button>
             </div>
         </div>
@@ -263,13 +322,71 @@
         // Personalize Page Title
         document.querySelector('.page-title').textContent = `${currentStudent} Completed Projects`;
         document.title = `${currentStudent} Completed Projects - LearnToBot`;
-        document.getElementById('userDisplay').textContent = `👤 ${currentStudent}`;
-        document.getElementById('userDisplay').style.display = 'inline-block';
-        document.getElementById('loginBtn').textContent = 'Logout';
-        document.getElementById('loginBtn').onclick = () => {
+
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchUserProfile(); // [NEW]
+            loadMyProjects();
+        });
+
+        // [NEW] Update User Profile
+        async function fetchUserProfile() {
+            const currentStudent = localStorage.getItem('currentStudent');
+            if (!currentStudent) return;
+
+            // DOM Elements for Navbar
+            const pill = document.getElementById('userProfilePill');
+            const nameEl = document.getElementById('userNameDisplay');
+            const pointsEl = document.getElementById('userPointsDisplay');
+            const headshotEl = document.getElementById('userHeadshotDisplay');
+
+            // Show Pill immediately if logged in
+            if (pill) pill.style.display = 'flex';
+            if (nameEl) nameEl.textContent = currentStudent;
+
+            // Hide legacy elements
+            const legacyUser = document.getElementById('userDisplay');
+            if (legacyUser) legacyUser.style.display = 'none';
+            const loginBtn = document.getElementById('loginBtn');
+            if (loginBtn) {
+                loginBtn.textContent = 'Logout';
+                loginBtn.onclick = logout;
+            }
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (data.success && data.leaderboard) {
+                    const student = data.leaderboard.find(s => s.name === currentStudent);
+                    if (student) {
+                        if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
+
+                        if (headshotEl) {
+                            let headshotUrl = student.headshot;
+                            if (headshotUrl) {
+                                if (headshotUrl.includes('Child Names_Images/')) {
+                                    headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                                } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                    headshotUrl = 'headshots/' + headshotUrl;
+                                }
+                                headshotEl.src = headshotUrl;
+                                headshotEl.style.display = 'block';
+                            } else {
+                                headshotEl.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(student.name)}`;
+                                headshotEl.style.display = 'block';
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error updating navbar:', e);
+            }
+        }
+
+        function logout() {
             localStorage.removeItem('currentStudent');
             window.location.href = '/';
-        };
+        }
 
         async function loadMyProjects() {
             try {

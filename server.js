@@ -47,12 +47,14 @@ require('dotenv').config();
 // These are like importing tools from a toolbox - each one does something specific
 
 const express = require('express');        // Creates web server and handles web requests
+console.log('[DEBUG] Imported express');
 const path = require('path');              // Helps work with file/folder paths (works on Windows, Mac, Linux)
 const os = require('os');                  // For getting system info (and temp dir)
 const fs = require('fs');                  // Reading/writing files
 const csv = require('csv-parser');         // Tool for reading CSV files (simple spreadsheets)
 const { google } = require('googleapis');  // Google API client
 const multer = require('multer');          // Middleware for handling file uploads
+console.log('[DEBUG] Imported standard libs');
 
 // Configure Multer for file uploads (store in temp directory)
 const upload = multer({
@@ -61,10 +63,16 @@ const upload = multer({
 });
 const http = require('http');              // Creates HTTP server (the foundation of web servers)
 const socketIO = require('socket.io');     // Enables real-time, two-way communication (like walkie-talkies)
+
+console.log('[DEBUG] Importing google-sheets-service...');
 const googleSheetsService = require('./google-sheets-service'); // Our custom code for Google Sheets
+console.log('[DEBUG] Importing analytics-service...');
 const analyticsService = require('./analytics-service'); // [NEW] Analytics Logger
+console.log('[DEBUG] Importing google-sheets-config...');
 const config = require('./google-sheets-config'); // Configuration file
+console.log('[DEBUG] Importing child_process...');
 const { exec } = require('child_process'); // Execute system commands (to open folders)
+console.log('[DEBUG] Imports complete');
 
 // ============================================================================
 // STEP 2: CREATE THE MAIN APPLICATION OBJECTS
@@ -141,6 +149,7 @@ function findKidsFilesFolder() {
 
     // Filter out undefined/null and check if they exist
     for (const root of candidates) {
+        console.log(`Checking candidate root: ${root}`);
         if (root && fs.existsSync(root)) {
             // Check for the specific subfolder structure
             const fullPath = path.join(root, 'SHARED', 'FINAL KIDS FILES');
@@ -278,17 +287,7 @@ app.get('/teacher', (req, res) => {
     res.redirect('/teacher.html');
 });
 
-// ============================================================================
-// CONFIGURATION API - Exposes deployment mode to frontend
-// ============================================================================
-app.get('/api/config', (req, res) => {
-    const deploymentMode = process.env.DEPLOYMENT_MODE || 'offline';
-    res.json({
-        deploymentMode: deploymentMode,
-        isOnline: deploymentMode === 'online',
-        version: '1.0.0'
-    });
-});
+// [REMOVED DUPLICATE /api/config endpoint - See Step 11.5]
 
 // ============================================================================
 // STEP 9: HELPER FUNCTIONS FOR PROJECT DISCOVERY
@@ -787,11 +786,15 @@ app.get('/api/config', (req, res) => {
 
     // Determine mode based on PROJECT_FOLDER existence or explicit env var
     // If PROJECT_FOLDER is missing, we are definitely ONLINE
-    // If DEPLOYMENT_MODE is 'cloud', we are ONLINE
-    const isOnline = !fs.existsSync(PROJECT_FOLDER) || process.env.DEPLOYMENT_MODE === 'cloud';
+    // If DEPLOYMENT_MODE is 'cloud' or 'online', we are ONLINE
+    const envMode = (process.env.DEPLOYMENT_MODE || '').toLowerCase();
+    const isOnline = !fs.existsSync(PROJECT_FOLDER) || envMode === 'cloud' || envMode === 'online';
+
+    const modeString = isOnline ? 'online' : 'offline';
 
     res.json({
-        mode: isOnline ? 'online' : 'offline',
+        mode: modeString,           // Used by index.html inline logic
+        deploymentMode: modeString, // Used by fetchDeploymentMode
         isOnline: isOnline,
         projectFolderExists: fs.existsSync(PROJECT_FOLDER)
     });
@@ -886,18 +889,31 @@ app.post('/api/check-parent-email', async (req, res) => {
 
         // Clean up input email (trim and lowercase)
         const cleanEmail = email.trim().toLowerCase();
+        console.log(`[DEBUG] Checking parent email: "${cleanEmail}"`);
 
         // Get authenticated Sheets API client
         const sheets = await googleSheetsService.getGoogleSheetsClient();
 
         // Fetch just the columns we need using the SAFE configuration
         // Using config.STUDENT_NAMES_SHEET which is "Child Names"
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!B:G` // Fetch Columns B through G (G is Index 6 / 5 in result)
-        });
+        console.log(`[DEBUG] Fetching sheet: ${config.STUDENT_NAMES_SHEET}`);
+
+        let response;
+        try {
+            response = await sheets.spreadsheets.values.get({
+                spreadsheetId: config.SPREADSHEET_ID,
+                range: `${config.STUDENT_NAMES_SHEET}!B:G` // Fetch Columns B through G (G is Index 6 / 5 in result)
+            });
+        } catch (sheetError) {
+            console.error('[CRITICAL] Google Sheets API Error:', sheetError.message);
+            return res.json({
+                success: false,
+                message: `System Error: Could not access Google Sheet. (${sheetError.message})`
+            });
+        }
 
         const rows = response.data.values || [];
+        console.log(`[DEBUG] Sheet fetch success. Total rows found: ${rows.length}`);
 
         // Filter rows to find matches
         // Config indices are 0-based relative to the sheet
@@ -916,7 +932,12 @@ app.post('/api/check-parent-email', async (req, res) => {
             .filter(row => {
                 // Check Column B (Index 0 in our result)
                 const rowEmail = row[0] ? row[0].trim().toLowerCase() : '';
-                return rowEmail === cleanEmail;
+                // Use substring matching as requested ("even as a substring")
+                const isMatch = rowEmail.includes(cleanEmail);
+                if (isMatch) {
+                    console.log(`[DEBUG] Match found! Row email: "${rowEmail}" matches input: "${cleanEmail}"`);
+                }
+                return isMatch;
             })
             .map(row => ({
                 name: row[1] ? row[1].trim() : 'Unknown Name', // Column C
@@ -925,25 +946,24 @@ app.post('/api/check-parent-email', async (req, res) => {
             }));
 
         if (matchedChildren.length > 0) {
-            console.log(`Parent Email Match: ${cleanEmail} -> Found ${matchedChildren.length} kids`);
+            console.log(`[SUCCESS] Parent Email Match: ${cleanEmail} -> Found ${matchedChildren.length} kids`);
             res.json({
                 success: true,
                 children: matchedChildren
             });
         } else {
-            console.log(`Parent Email Failed: ${cleanEmail} -> No match found`);
-            // Add a polite message (maybe suggest contacting support)
+            console.log(`[FAILURE] Parent Email Failed: ${cleanEmail} -> 0 matches in ${rows.length} rows.`);
             res.json({
                 success: false,
-                message: 'No student accounts found for this email. Please check for typos or use the email you registered with.'
+                message: `No accounts found matching "${cleanEmail}". searched ${rows.length} records. Please check the email spelling.`
             });
         }
 
     } catch (error) {
-        console.error('Error checking parent email:', error);
+        console.error('[CRITICAL] Error checking parent email:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error while checking email. Please try again.'
+            message: `Server Connection Error: ${error.message}`
         });
     }
 });
@@ -2032,7 +2052,8 @@ app.get('/api/student-folders', (req, res) => {
         res.json({
             success: true,
             folders: folders,
-            count: folders.length
+            count: folders.length,
+            rootPath: KIDS_FILES_FOLDER // Expose root path for client-side copy
         });
     } catch (error) {
         console.error('!!! Critical Error in /api/student-folders:', error);

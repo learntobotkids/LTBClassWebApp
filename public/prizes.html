@@ -222,6 +222,93 @@
             margin: 20px;
             grid-column: 1 / -1;
         }
+
+        /* Locked State Styles */
+        .prize-card.locked {
+            opacity: 0.6;
+            filter: grayscale(0.8);
+            position: relative;
+        }
+
+        .prize-card.locked:hover {
+            transform: none;
+            box-shadow: none;
+            border-color: #374151;
+        }
+
+        .locked-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            flex-direction: column;
+        }
+
+        .points-needed-badge {
+            background: #EF4444;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 1.1em;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transform: rotate(-5deg);
+        }
+
+        /* USER PROFILE PILL (Copied from index.html) */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-name {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background-color: #111827;
+        }
     </style>
 </head>
 
@@ -236,7 +323,8 @@
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link">My Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/student-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
+                </li>
                 <li><a href="/prizes.html" class="navbar-link active">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
                 <!-- Teacher Panel Link Removed -->
@@ -245,6 +333,17 @@
             </ul>
 
             <div class="navbar-auth">
+                <div id="userProfilePill" class="user-profile-pill" style="display: none;">
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
+                    <div class="user-info">
+                        <span id="userNameDisplay" class="user-name">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
                 <a href="/" class="navbar-btn">Back to Projects</a>
             </div>
         </div>
@@ -268,58 +367,152 @@
         const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchPrizes();
+            initPage();
         });
 
-        async function fetchPrizes() {
+        async function initPage() {
             try {
-                const response = await fetch(SHEET_URL);
-                if (!response.ok) throw new Error('Failed to fetch prizes data');
+                // parallel fetch: prizes + user info
+                const [prizesData, userPoints] = await Promise.all([
+                    fetchPrizesData(),
+                    fetchUserPoints()
+                ]);
 
-                const csvText = await response.text();
+                renderPrizes(prizesData, userPoints);
 
+            } catch (error) {
+                console.error('Initialization Error:', error);
+                showError('Failed to load page data. Please try again.');
+            }
+        }
+
+        async function fetchUserPoints() {
+            const currentStudent = localStorage.getItem('currentStudent');
+            if (!currentStudent) return null;
+
+            // DOM Elements for Navbar
+            const pill = document.getElementById('userProfilePill');
+            const nameEl = document.getElementById('userNameDisplay');
+            const pointsEl = document.getElementById('userPointsDisplay');
+            const headshotEl = document.getElementById('userHeadshotDisplay');
+
+            // Show Pill immediately if logged in
+            if (pill) pill.style.display = 'flex';
+            if (nameEl) nameEl.textContent = currentStudent;
+
+            try {
+                const response = await fetch('/api/leaderboard');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const json = await response.json();
+
+                // Find the student
+                const student = json.leaderboard.find(s => s.name === currentStudent);
+
+                if (student) {
+                    // Update Navbar UI with Rich Data
+                    if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
+
+                    if (headshotEl) {
+                        let headshotUrl = student.headshot;
+                        if (headshotUrl) {
+                            if (headshotUrl.includes('Child Names_Images/')) {
+                                headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                            } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                headshotUrl = 'headshots/' + headshotUrl;
+                            }
+                            headshotEl.src = headshotUrl;
+                            headshotEl.style.display = 'block';
+                        } else {
+                            headshotEl.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(student.name)}`;
+                            headshotEl.style.display = 'block';
+                        }
+                    }
+
+                    return student.totalPoints || 0;
+                }
+
+                return 0;
+
+            } catch (e) {
+                console.error('Error fetching user points:', e);
+                return null;
+            }
+        }
+
+        async function fetchPrizesData() {
+            const response = await fetch(SHEET_URL);
+            if (!response.ok) throw new Error('Failed to fetch prizes data');
+
+            const csvText = await response.text();
+
+            return new Promise((resolve, reject) => {
                 Papa.parse(csvText, {
                     header: true,
                     skipEmptyLines: true,
                     complete: function (results) {
-                        renderPrizes(results.data);
+                        resolve(results.data);
                     },
                     error: function (error) {
-                        console.error('CSV Parsing Error:', error);
-                        showError('Failed to parse prizes data.');
+                        reject(error);
                     }
                 });
-
-            } catch (error) {
-                console.error('Fetch Error:', error);
-                showError('Failed to load prizes. Please try again later.');
-            }
+            });
         }
 
-        function renderPrizes(prizes) {
+        function renderPrizes(prizes, userPoints) {
             const grid = document.getElementById('prizesGrid');
             grid.innerHTML = '';
 
-            prizes.forEach(prize => {
-                // Check if prize has necessary data
-                if (!prize['Prize Name'] || !prize['Prize Image']) return;
+            // 1. Process and Sort Prizes
+            const processedPrizes = prizes
+                .map(prize => {
+                    const pointsStr = prize['Prize Points'] || '0';
+                    // Remove commas and parse
+                    const points = parseInt(pointsStr.replace(/,/g, ''), 10) || 0;
+                    return { ...prize, parsedPoints: points };
+                })
+                .filter(p => p['Prize Name'] && p['Prize Image']) // Filter invalid
+                .sort((a, b) => a.parsedPoints - b.parsedPoints); // Sort Increasing (Ascending)
 
-                const card = document.createElement('a'); // Change to anchor tag
-                card.className = 'prize-card';
-                card.href = prize['Prize Link'] || '#';
-                card.target = '_blank'; // Open in new tab
+            processedPrizes.forEach(prize => {
+                const points = prize.parsedPoints;
+                const isLoggedIn = userPoints !== null;
+                const isEligible = !isLoggedIn || (userPoints >= points);
 
-                // Fallback for missing points
-                const points = prize['Prize Points'] || '?';
+                // Determine card props
+                const href = isEligible ? (prize['Prize Link'] || '#') : 'javascript:void(0)';
+                const target = isEligible ? '_blank' : '';
+                const baseClass = 'prize-card';
+                const extraClass = isEligible ? '' : 'locked';
+
+                const card = document.createElement('a');
+                card.className = `${baseClass} ${extraClass}`;
+                card.href = href;
+                if (target) card.target = target;
+
+                let overlayHtml = '';
+                if (!isEligible) {
+                    const needing = points - userPoints;
+                    overlayHtml = `
+                        <div class="locked-overlay">
+                            <div class="points-needed-badge">
+                                +${needing.toLocaleString()} more needed
+                            </div>
+                        </div>
+                    `;
+                }
 
                 card.innerHTML = `
+                    ${overlayHtml}
                     <div class="prize-image-container">
                         <img src="${prize['Prize Image']}" alt="${prize['Prize Name']}" class="prize-image" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
                     </div>
                     <div class="prize-content">
                         <div class="prize-name">${prize['Prize Name']}</div>
                         <div>
-                            <span class="prize-points">💎 ${points} Points</span>
+                            <span class="prize-points">💎 ${points.toLocaleString()} Points</span>
                         </div>
                     </div>
                 `;
@@ -327,7 +520,7 @@
                 grid.appendChild(card);
             });
 
-            if (prizes.length === 0) {
+            if (processedPrizes.length === 0) {
                 grid.innerHTML = '<div class="loading">No prizes found.</div>';
             }
         }

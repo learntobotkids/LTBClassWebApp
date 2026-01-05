@@ -547,6 +547,59 @@
             }
         }
 
+        @keyframes shine {
+            100% {
+                left: 125%;
+            }
+        }
+
+        /* USER PROFILE PILL STYLES */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-name {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background-color: #111827;
+        }
+
         /* Responsive Fixes */
         @media (max-width: 768px) {
             .podium-container {
@@ -684,7 +737,8 @@
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link">My Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/student-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
+                </li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link active">Leaders</a></li>
                 <!-- Teacher Panel Link Removed -->
@@ -692,6 +746,17 @@
                         style="display: none;">Analytics</a></li>
             </ul>
             <div class="navbar-auth">
+                <div id="userProfilePill" class="user-profile-pill" style="display: none;">
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
+                    <div class="user-info">
+                        <span id="userNameDisplay" class="user-name">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
                 <a href="/" class="navbar-btn">Back to Projects</a>
             </div>
         </div>
@@ -767,9 +832,64 @@
         const PRIZES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
 
         document.addEventListener('DOMContentLoaded', () => {
+            fetchUserProfile(); // [NEW] Update Navbar
             fetchLeaderboard();
             fetchPrizesPreview();
         });
+
+        // [NEW] Update User Profile in Navbar
+        async function fetchUserProfile() {
+            const currentStudent = localStorage.getItem('currentStudent');
+            if (!currentStudent) return;
+
+            // DOM Elements for Navbar
+            const pill = document.getElementById('userProfilePill');
+            const nameEl = document.getElementById('userNameDisplay');
+            const pointsEl = document.getElementById('userPointsDisplay');
+            const headshotEl = document.getElementById('userHeadshotDisplay');
+
+            // Show Pill immediately if logged in
+            if (pill) pill.style.display = 'flex';
+            if (nameEl) nameEl.textContent = currentStudent;
+
+            try {
+                // We can reuse the same API call or wait for fetchLeaderboard
+                // But typically fetchLeaderboard updates the whole list. 
+                // Let's do a quick fetch or hook into the main data if available.
+                // For simplicity/independence, we'll fetch again or wait.
+                // Actually, since fetchLeaderboard is called right after, we can just use the data FROM it if we restructure.
+                // But simpler to just separate concerns. The browser will cache the request if it's identical or we just make two.
+
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (data.success && data.leaderboard) {
+                    const student = data.leaderboard.find(s => s.name === currentStudent);
+                    if (student) {
+                        // Update Navbar UI with Rich Data
+                        if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
+
+                        if (headshotEl) {
+                            let headshotUrl = student.headshot;
+                            if (headshotUrl) {
+                                if (headshotUrl.includes('Child Names_Images/')) {
+                                    headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                                } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                    headshotUrl = 'headshots/' + headshotUrl;
+                                }
+                                headshotEl.src = headshotUrl;
+                                headshotEl.style.display = 'block';
+                            } else {
+                                headshotEl.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(student.name)}`;
+                                headshotEl.style.display = 'block';
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error updating navbar profile:', e);
+            }
+        }
 
         // Search Handler
         function handleSearch() {

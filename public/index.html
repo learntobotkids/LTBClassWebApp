@@ -146,6 +146,61 @@
             background: #DC2626;
         }
 
+        /* NEW USER PROFILE PILL STYLES */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 10px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-profile-pill:hover {
+            border-color: #3B82F6;
+            background: rgba(31, 41, 55, 0.95);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            /* Amber-400 */
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #userNameDisplay {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background-color: #111827;
+        }
+
         .page-content {
             padding: 20px;
             margin-right: 320px;
@@ -1380,7 +1435,8 @@
                 <li><a href="/" class="navbar-link active">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
                         Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/student-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
+                </li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
                 <!-- Teacher Panel Link Removed -->
@@ -1389,7 +1445,21 @@
             </ul>
 
             <div class="navbar-auth">
+                <div id="userProfilePill" class="user-profile-pill" style="display: none;">
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
+                    <div class="user-info">
+                        <span id="userNameDisplay">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
+
                 <span class="navbar-user" id="navbarUser" style="display: none;"></span>
+                <!-- Legacy, keeping hidden just in case -->
+
                 <button class="navbar-btn" id="navbarLoginBtn" onclick="toggleLoginModal()">Login</button>
                 <button class="navbar-btn logout" id="navbarLogoutBtn" onclick="logout()"
                     style="display: none;">Logout</button>
@@ -1419,6 +1489,20 @@
             <button id="open-my-folder-btn" class="sidebar-action-btn" onclick="openCurrentStudentFolder()">
                 📂 Open My Folder
             </button>
+
+            <!-- New: Copy Path Feature -->
+            <div id="folder-path-container"
+                style="display: none; margin-top: 10px; background: #374151; padding: 10px; border-radius: 8px;">
+                <div style="font-size: 0.8em; color: #9CA3AF; margin-bottom: 5px;">Folder Path:</div>
+                <div style="display: flex; gap: 5px;">
+                    <input type="text" id="folder-path-input" readonly
+                        style="width: 100%; background: #1F2937; border: 1px solid #4B5563; color: white; padding: 5px; border-radius: 4px; font-size: 0.8em;">
+                    <button onclick="copyFolderPath()" title="Copy Path"
+                        style="background: #3B82F6; border: none; color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
+                        📋
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div id="folder-list-container">
@@ -1483,7 +1567,7 @@
                         <div id="parentEmailError"
                             style="color: #EF4444; margin-bottom: 15px; text-align: center; display: none;"></div>
 
-                        <button onclick="checkParentEmail()"
+                        <button id="findKidsBtn" onclick="checkParentEmail()"
                             style="width: 100%; background: #3B82F6; color: white; padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1.1em; transition: background 0.2s;">
                             Find My Kids
                         </button>
@@ -1491,7 +1575,8 @@
 
                     <!-- Step 2: Select Child -->
                     <div id="parentChildSelectStep" style="display: none;">
-                        <h3 style="color: white; margin-bottom: 15px; text-align: center;">Select Student</h3>
+                        <h3 style="color: white !important; margin-bottom: 15px; text-align: center;">Select Student
+                        </h3>
                         <div id="foundChildrenList"
                             style="display: flex; flex-direction: column; gap: 10px; max-height: 50vh; overflow-y: auto;">
                             <!-- Children buttons will go here -->
@@ -1503,89 +1588,7 @@
                         </button>
                     </div>
 
-                    <script>
-                        async function checkParentEmail() {
-                            const emailInput = document.getElementById('parentEmailInput');
-                            const errorDiv = document.getElementById('parentEmailError');
-                            const email = emailInput.value.trim();
 
-                            if (!email) {
-                                errorDiv.textContent = 'Please enter an email address.';
-                                errorDiv.style.display = 'block';
-                                return;
-                            }
-
-                            // Show loading state
-                            errorDiv.style.display = 'none';
-                            const btn = document.querySelector('#parentEmailStep button');
-                            const originalText = btn.innerText;
-                            btn.innerText = 'Searching...';
-                            btn.disabled = true;
-
-                            try {
-                                const response = await fetch('/api/check-parent-email', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ email })
-                                });
-
-                                const data = await response.json();
-
-                                if (data.success && data.children.length > 0) {
-                                    showFoundChildren(data.children);
-                                } else {
-                                    errorDiv.textContent = data.message || 'No students found with this email.';
-                                    errorDiv.style.display = 'block';
-                                }
-
-                            } catch (err) {
-                                console.error('Error checking email:', err);
-                                errorDiv.textContent = 'Connection error. Please try again.';
-                                errorDiv.style.display = 'block';
-                            } finally {
-                                btn.innerText = originalText;
-                                btn.disabled = false;
-                            }
-                        }
-
-                        function showFoundChildren(children) {
-                            document.getElementById('parentEmailStep').style.display = 'none';
-                            document.getElementById('parentChildSelectStep').style.display = 'block';
-
-                            const list = document.getElementById('foundChildrenList');
-                            list.innerHTML = '';
-
-                            children.forEach(child => {
-                                const btn = document.createElement('div');
-                                btn.className = 'student-item'; // Reuse existing class for styling
-                                btn.style.display = 'flex';
-                                btn.style.alignItems = 'center';
-                                btn.style.justifyContent = 'space-between'; // Keep arrow on right
-                                btn.onclick = () => handleLogin(child.name); // Reuse existing login logic
-
-                                // Initials logic
-                                const initial = child.name ? child.name.charAt(0).toUpperCase() : '?';
-
-                                btn.innerHTML = `
-                                    <div style="display: flex; align-items: center; gap: 15px;">
-                                        <div class="student-initial" style="background: #3B82F6; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid #60A5FA;">${initial}</div>
-                                        <div style="text-align: left;">
-                                            <div class="student-name" style="font-weight: 600; color: white;">${child.name}</div>
-                                        </div>
-                                    </div>
-                                    <span style="color: #6B7280;">→</span>
-                                `;
-                                list.appendChild(btn);
-                            });
-                        }
-
-                        function resetParentLogin() {
-                            document.getElementById('parentEmailStep').style.display = 'block';
-                            document.getElementById('parentChildSelectStep').style.display = 'none';
-                            document.getElementById('parentEmailInput').value = '';
-                            document.getElementById('parentEmailError').style.display = 'none';
-                        }
-                    </script>
                 </div>
 
                 <div class="login-footer" id="loginModalFooter"
@@ -2691,6 +2694,10 @@
 
                     if (data.success) {
                         allStudentFolders = data.folders;
+                        // Capture root path
+                        if (data.rootPath) {
+                            window.serverRootPath = data.rootPath;
+                        }
                         renderSidebarList(allStudentFolders, 'folder');
                     } else {
                         list.innerHTML = `<li style="padding:10px; color:#EF4444;">${data.error || 'Failed to load folders'}</li>`;
@@ -2724,7 +2731,7 @@
                         <li style="padding:15px; color:#60A5FA; text-align:center;">
                             <div style="font-size: 2em; margin-bottom: 10px;">☁️</div>
                             <div>Files available on Google Drive</div>
-                            <div style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">Click "Open My Folder" above</div>
+                            <div style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">Click above or copy path and open in another tab to open the OneDrive Folder</div>
                         </li>
                      `;
                     return;
@@ -2863,9 +2870,42 @@
                 const folderName = window.currentStudentFolder || currentStudent;
                 if (folderName) {
                     openFolder(folderName);
+
+                    // Show path if we have the root path
+                    if (window.serverRootPath) {
+                        const fullPath = window.serverRootPath + '/' + folderName; // Simple concatenation, adjust for OS separator if needed but '/' usually works for display
+                        const pathContainer = document.getElementById('folder-path-container');
+                        const pathInput = document.getElementById('folder-path-input');
+
+                        // Fix for Windows paths if needed, but display usually is fine
+                        // We'll replace forward slashes with backslashes if it looks like Windows
+                        let displayPath = fullPath;
+                        if (window.serverRootPath.includes('\\')) {
+                            displayPath = fullPath.replace(/\//g, '\\');
+                        }
+
+                        pathInput.value = displayPath;
+                        pathContainer.style.display = 'block';
+                    }
                 } else {
                     alert('No student folder identified.');
                 }
+            }
+
+            // Copy Path Function
+            function copyFolderPath() {
+                const copyText = document.getElementById("folder-path-input");
+                copyText.select();
+                copyText.setSelectionRange(0, 99999); // For mobile devices
+                navigator.clipboard.writeText(copyText.value).then(() => {
+                    // Visual feedback
+                    const btn = document.querySelector('#folder-path-container button');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '✅';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                    }, 1500);
+                });
             }
 
             // Open folder on client (Protocol Handler)
@@ -2996,9 +3036,7 @@
                 const emailInput = document.getElementById('parentEmailInput');
                 const email = emailInput.value.trim();
                 const btn = document.getElementById('findKidsBtn');
-                const errorDiv = document.getElementById('parentCheckError');
-                const resultsContainer = document.getElementById('foundKidsList');
-                const buttonsContainer = document.getElementById('kidsButtonsContainer');
+                const errorDiv = document.getElementById('parentEmailError'); // CORRECTED ID
 
                 if (!email) {
                     errorDiv.textContent = 'Please enter an email address.';
@@ -3011,7 +3049,6 @@
                 btn.disabled = true;
                 btn.style.opacity = '0.7';
                 errorDiv.style.display = 'none';
-                resultsContainer.style.display = 'none';
 
                 try {
                     const response = await fetch('/api/check-parent-email', {
@@ -3021,18 +3058,20 @@
                     });
 
                     const data = await response.json();
+                    console.log('[DEBUG] Parent Check Response:', data);
 
                     if (data.success) {
                         // Success! Show children
                         renderFoundChildren(data.children);
                     } else {
                         // Failed
+                        console.warn('[DEBUG] Parent Check Failed:', data.message);
                         errorDiv.textContent = data.message || 'No account found for this email.';
                         errorDiv.style.display = 'block';
                     }
                 } catch (error) {
                     console.error('Error checking email:', error);
-                    errorDiv.textContent = 'Server error. Please try again.';
+                    errorDiv.textContent = 'Server error: ' + error.message;
                     errorDiv.style.display = 'block';
                 } finally {
                     btn.textContent = 'Find My Kids';
@@ -3042,8 +3081,7 @@
             }
 
             function renderFoundChildren(children) {
-                const resultsContainer = document.getElementById('foundKidsList');
-                const buttonsContainer = document.getElementById('kidsButtonsContainer');
+                const buttonsContainer = document.getElementById('foundChildrenList'); // CORRECTED ID
 
                 buttonsContainer.innerHTML = ''; // Clear previous
 
@@ -3065,11 +3103,11 @@
                     btn.onmouseout = () => { btn.style.background = '#1F2937'; btn.style.borderColor = '#374151'; };
 
                     btn.innerHTML = `
-                        <div style="width: 40px; height: 40px; background: #3B82F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em;">
+                        <div style="width: 40px; height: 40px; background: #3B82F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2em; color: white !important;">
                             ${child.name.charAt(0)}
                         </div>
                         <div>
-                            <div style="font-weight: bold; font-size: 1.1em;">${child.name}</div>
+                            <div style="font-weight: bold; font-size: 1.1em; color: white !important;">${child.name}</div>
                             <div style="color: #9CA3AF; font-size: 0.9em;">Parent: ${child.parentName}</div>
                         </div>
                     `;
@@ -3086,7 +3124,16 @@
                     buttonsContainer.appendChild(btn);
                 });
 
-                resultsContainer.style.display = 'block';
+                // Switch to selection view
+                document.getElementById('parentEmailStep').style.display = 'none';
+                document.getElementById('parentChildSelectStep').style.display = 'block';
+            }
+
+            function resetParentLogin() {
+                document.getElementById('parentEmailStep').style.display = 'block';
+                document.getElementById('parentChildSelectStep').style.display = 'none';
+                document.getElementById('parentEmailInput').value = '';
+                document.getElementById('parentEmailError').style.display = 'none';
             }
 
             // Init Check
@@ -3289,22 +3336,77 @@
                 return '#' + '00000'.substring(0, 6 - c.length) + c;
             }
 
-            // Update login button
-            function updateLoginButton() {
-                // Update navbar
-                const navbarUser = document.getElementById('navbarUser');
+            // Update login button and User Profile Display
+            async function updateLoginButton() {
+                // Update navbar elements
+                const navbarUser = document.getElementById('navbarUser'); // Legacy
+                const userProfilePill = document.getElementById('userProfilePill');
+                const userPointsDisplay = document.getElementById('userPointsDisplay');
+                const userNameDisplay = document.getElementById('userNameDisplay');
+                const userHeadshotDisplay = document.getElementById('userHeadshotDisplay');
+
                 const navbarLoginBtn = document.getElementById('navbarLoginBtn');
                 const navbarLogoutBtn = document.getElementById('navbarLogoutBtn');
                 const navMyProjects = document.getElementById('navMyProjects');
 
                 if (currentStudent) {
-                    navbarUser.textContent = `👤 ${currentStudent}`;
-                    navbarUser.style.display = 'block';
+                    // LOGGED IN STATE
+
+                    // 1. Show Pill, Hide Login Btn
+                    if (userProfilePill) userProfilePill.style.display = 'flex';
+                    if (navbarUser) navbarUser.style.display = 'none'; // Hide legacy
                     navbarLoginBtn.style.display = 'none';
                     navbarLogoutBtn.style.display = 'inline-block';
                     if (navMyProjects) navMyProjects.style.display = 'block';
+
+                    // 2. Set Name immediately
+                    if (userNameDisplay) userNameDisplay.textContent = currentStudent;
+
+                    // 3. Fetch Full Profile (Points & Headshot)
+                    try {
+                        const response = await fetch('/api/leaderboard');
+                        const data = await response.json();
+
+                        if (data.success && data.leaderboard) {
+                            const student = data.leaderboard.find(s => s.name === currentStudent);
+
+                            if (student) {
+                                // Update Points
+                                if (userPointsDisplay) {
+                                    userPointsDisplay.textContent = (student.totalPoints || 0).toLocaleString();
+                                }
+
+                                // Update Headshot
+                                if (userHeadshotDisplay) {
+                                    let headshotUrl = student.headshot;
+
+                                    // Fix URL if needed (copied from other parts of app)
+                                    if (headshotUrl) {
+                                        if (headshotUrl.includes('Child Names_Images/')) {
+                                            headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                            headshotUrl = 'headshots/' + headshotUrl;
+                                        }
+
+                                        userHeadshotDisplay.src = headshotUrl;
+                                        userHeadshotDisplay.style.display = 'block';
+                                    } else {
+                                        // No headshot? Use UI Avatars or hide
+                                        // userHeadshotDisplay.style.display = 'none';
+                                        userHeadshotDisplay.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(currentStudent)}`;
+                                        userHeadshotDisplay.style.display = 'block';
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Failed to fetch user profile for navbar:', e);
+                    }
+
                 } else {
-                    navbarUser.style.display = 'none';
+                    // LOGGED OUT STATE
+                    if (userProfilePill) userProfilePill.style.display = 'none';
+                    if (navbarUser) navbarUser.style.display = 'none';
                     navbarLoginBtn.style.display = 'inline-block';
                     navbarLogoutBtn.style.display = 'none';
                     if (navMyProjects) navMyProjects.style.display = 'none';
@@ -3621,17 +3723,15 @@
                 openInstructorLogin(); // Defined earlier in file
             }
             else if (modal && !currentStudent) {
-                // DESKTOP: Open Login Modal
-                modal.classList.add('active');
-
                 if (window.DEPLOYMENT_MODE === 'online') {
-                    // Focus email input for Online Mode
-                    setTimeout(() => {
-                        document.getElementById('parentEmailInput')?.focus();
-                    }, 500);
+                    // ONLINE MODE: Do NOT auto-open login modal
+                    // User must click "Login" manually
+                    console.log('Online Mode: Suppressing auto-login modal');
                 } else {
-                    // Offline Mode
+                    // OFFLINE MODE: Open Student Login automatically
+                    modal.classList.add('active');
                     loadStudents(); // Load student list
+
                     // Focus search box
                     setTimeout(() => {
                         const search = document.getElementById('studentSearch');
