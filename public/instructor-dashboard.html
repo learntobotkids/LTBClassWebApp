@@ -854,93 +854,162 @@
         }
 
         let todaySearchTerm = '';
+        let selectedServiceGroup = null;
 
         function renderToday(container) {
             // Setup Structure if not exists
             const wrapperId = 'today-view-wrapper';
-            if (!document.getElementById(wrapperId)) {
-                const count = studentsData ? studentsData.length : 0;
-                // Search Bar HTML
-                const searchBarHtml = `
-                <div style="padding: 10px 15px; background: white; border-bottom: 1px solid #eee; position: sticky; top: 0; z-index: 10;">
-                    <input type="text" 
-                           id="todaySearchInput"
-                           placeholder="Search ${count} Students..." 
-                           value="${todaySearchTerm}"
-                           oninput="handleTodaySearch(this.value)"
-                           style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none;">
-                </div>
-                `;
 
-                container.innerHTML = `
-                    <div id="${wrapperId}">
-                        ${searchBarHtml}
-                        <div id="today-list-container"></div>
-                    </div>
-                `;
+            // Note: Clear and rebuild container to handle view switching cleanly
+            container.innerHTML = `<div id="${wrapperId}" style="height: 100%; display: flex; flex-direction: column;"></div>`;
+            const wrapper = document.getElementById(wrapperId);
+
+            if (!selectedServiceGroup) {
+                renderServiceGroups(wrapper);
             } else {
-                // Ensure input value matches state (in case of tab switch back)
-                const input = document.getElementById('todaySearchInput');
-                if (input) {
-                    if (input.value !== todaySearchTerm) {
-                        input.value = todaySearchTerm;
-                    }
-                    // Update placeholder count dynamically
-                    const count = studentsData ? studentsData.length : 0;
-                    input.placeholder = `Search ${count} Students...`;
-                }
+                renderTodayList(wrapper);
             }
-
-            renderTodayList();
-
-            // Expose Search Handler
-            window.handleTodaySearch = (val) => {
-                todaySearchTerm = val;
-                renderTodayList();
-            };
         }
 
-        function renderTodayList() {
-            const container = document.getElementById('today-list-container');
-            if (!container) return;
+        function renderServiceGroups(container) {
+            if (!studentsData || studentsData.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No classes found for today</h3>
+                        <p>Check the scheduled bookings.</p>
+                    </div>`;
+                return;
+            }
 
-            try {
-                if (!studentsData || studentsData.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <h3>No classes found for today</h3>
-                            <p>Check the scheduled bookings.</p>
-                        </div>`;
-                    return;
+            // Group by Service Title
+            const groups = {};
+            // Initialize 'All'
+            groups['All'] = studentsData;
+
+            studentsData.forEach(s => {
+                const title = s.serviceTitle || 'Other';
+                if (!groups[title]) {
+                    groups[title] = [];
                 }
+                groups[title].push(s);
+            });
 
-                // Filter Data
+            // HTML Generation
+            let html = '<div style="background: white; border-top: 1px solid #e5e7eb;">';
+
+            // Helper for row rendering
+            const renderGroupRow = (title, count) => {
+                const safeTitle = title.replace(/'/g, "\\'");
+                return `
+                <div onclick="selectServiceGroup('${safeTitle}')" 
+                     style="display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #E5E7EB; cursor: pointer; transition: background 0.2s;"
+                     onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='white'">
+                    
+                    <div style="font-size: 16px; font-weight: 500; color: #111827;">
+                        ${title}
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #E5E7EB; color: #374151; padding: 2px 8px; border-radius: 12px; font-size: 13px; font-weight: 600;">
+                            ${count}
+                        </span>
+                        <i class="fas fa-chevron-right" style="color: #9CA3AF; font-size: 14px;"></i>
+                    </div>
+                </div>
+                `;
+            };
+
+            // Order: 'All' first, then alphabetical for the rest
+            const sortedKeys = Object.keys(groups).filter(k => k !== 'All').sort();
+
+            // Render 'All'
+            html += renderGroupRow('All', groups['All'].length);
+
+            // Render others
+            sortedKeys.forEach(key => {
+                html += renderGroupRow(key, groups[key].length);
+            });
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        function selectServiceGroup(groupName) {
+            selectedServiceGroup = groupName;
+            // Clear search when switching groups usually makes sense, OR keep it? 
+            // Let's keep it to allow searching across groups effectively if they switch back to All
+            // For now, let's just re-render.
+            render();
+            window.scrollTo(0, 0);
+        }
+
+        function clearServiceGroup() {
+            selectedServiceGroup = null;
+            render();
+        }
+
+        function renderTodayList(container) {
+            // Filter Data based on selected Group
+            let filteredStudents = studentsData;
+            if (selectedServiceGroup && selectedServiceGroup !== 'All') {
+                filteredStudents = studentsData.filter(s => (s.serviceTitle || 'Other') === selectedServiceGroup);
+            }
+
+            // Search Filter (applied on top of group)
+            if (todaySearchTerm) {
                 const term = todaySearchTerm.toLowerCase();
-                const filtered = studentsData.filter(s => {
+                filteredStudents = filteredStudents.filter(s => {
                     const name = (s.studentName || '').toLowerCase();
                     const note = (s.note || '').toLowerCase();
                     const project = (s.currentProject || '').toLowerCase();
                     return name.includes(term) || note.includes(term) || project.includes(term);
                 });
+            }
 
-                if (filtered.length === 0) {
-                    container.innerHTML = `<div class="empty-state">No students found matching "${todaySearchTerm}"</div>`;
-                    return;
-                }
+            // Build UI
+            // 1. Header with Back Button and Search
+            let headerHtml = `
+            <div style="background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 10;">
+                <div style="padding: 10px 15px; display: flex; align-items: center; gap: 10px;">
+                    <button onclick="clearServiceGroup()" style="background: none; border: none; font-size: 16px; color: #4B5563; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <div style="font-weight: 600; font-size: 16px; color: #111827; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex-grow: 1;">
+                        ${selectedServiceGroup} (${filteredStudents.length})
+                    </div>
+                </div>
+                <div style="padding: 0 15px 10px 15px;">
+                    <input type="text" 
+                           id="todaySearchInput"
+                           placeholder="Search students..." 
+                           value="${todaySearchTerm}"
+                           oninput="handleTodaySearch(this.value)"
+                           style="width: 100%; padding: 10px 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none;">
+                </div>
+            </div>
+            `;
 
-                let html = '<div style="background: white; border-top: 1px solid #e5e7eb; padding-bottom: 80px;">';
+            // 2. Student List
+            if (filteredStudents.length === 0) {
+                container.innerHTML = `
+                    ${headerHtml}
+                    <div class="empty-state">No students found.</div>
+                `;
+                return;
+            }
 
-                filtered.forEach(student => {
-                    const isCheckedIn = student.checkedIn === true;
-                    const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
-                    const checkContent = isCheckedIn ? '✓' : '';
+            let listHtml = '<div style="background: white; padding-bottom: 80px;">';
+            filteredStudents.forEach(student => {
+                const isCheckedIn = student.checkedIn === true;
+                const checkBtnClass = isCheckedIn ? 'check-btn' : 'check-btn unchecked';
+                const checkContent = isCheckedIn ? '✓' : '';
 
-                    const rawName = student.studentName || 'Unknown Student';
-                    const safeName = rawName.replace(/'/g, "\\'");
-                    const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
-                    const currentProject = student.currentProject || 'No Active Project';
+                const rawName = student.studentName || 'Unknown Student';
+                const safeName = rawName.replace(/'/g, "\\'");
+                const safeId = (student.studentId || '').toString().replace(/'/g, "\\'");
+                const currentProject = student.currentProject || 'No Active Project';
 
-                    html += `
+                listHtml += `
                     <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
                         ${renderHeadshot(student.headshot, rawName, student.studentId)}
                         
@@ -968,14 +1037,28 @@
                         </div>
                     </div>
                     `;
-                });
-                html += '</div>';
+            });
+            listHtml += '</div>';
 
-                container.innerHTML = html;
-            } catch (e) {
-                console.error('Render Error:', e);
-                container.innerHTML = `<div class="empty-state" style="color:red">Render Error: ${e.message}</div>`;
+            container.innerHTML = headerHtml + listHtml;
+
+            // Restore focus if searching
+            const input = document.getElementById('todaySearchInput');
+            if (input && document.activeElement !== input && todaySearchTerm) {
+                // Only restore if we have a term (active search), otherwise it might be annoying on initial load?
+                // Actually initial load won't map to this input if we just built it.
+                const len = todaySearchTerm.length;
+                input.focus();
+                if (len > 0) input.setSelectionRange(len, len);
             }
+
+            // Expose Search Handler
+            window.handleTodaySearch = (val) => {
+                todaySearchTerm = val;
+                // We must call render() to trigger the full pipeline or call a sub-function
+                // Calling render() is safest to iterate
+                render();
+            };
         }
 
         async function toggleAttendance(rowIndex, newStatus) {
@@ -1068,6 +1151,9 @@
                                 <button onclick="event.stopPropagation(); openStudentEditModal('${safeId}')" style="background:none; border:none; font-size: 20px; cursor: pointer; padding: 10px;">
                                     ✏️
                                 </button>
+                                <button onclick="event.stopPropagation(); openNoteModal('${safeId}')" style="background:none; border:none; font-size: 20px; cursor: pointer; padding: 10px;">
+                                    ℹ️
+                                </button>
                             </div>
                         </div>
                         `;
@@ -1102,6 +1188,110 @@
                 container.innerHTML = `<div class="empty-state"><h3>Failed to load students</h3><p>${e.message}</p></div>`;
             }
         }
+
+        // ============================================================================
+        // NOTE MODAL
+        // ============================================================================
+        window.openNoteModal = async function (studentId) {
+            // Remove existing modal if any
+            const existing = document.getElementById('noteModal');
+            if (existing) existing.remove();
+
+            // Find current data for this student
+            let currentNote = '';
+            try {
+                // We could fetch from API, or use loaded data if we had it stored globally better. 
+                // Since `renderAllStudents` fetches fresh data locally, we don't have global access easily unless we change scoping.
+                // Safest is to fetch fresh details or re-fetch 'all-kids' logic is heavy.
+                // Let's rely on checking if we can get it from the DOM or fetch it.
+                // Actually, fetching student detail is best practice to ensure fresh data.
+
+                // Show LOADING state
+                const modal = document.createElement('div');
+                modal.id = 'noteModal';
+                modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:4000; display:flex; justify-content:center; align-items:center;';
+
+                modal.innerHTML = `
+                    <div style="background:white; width:90%; max-width:500px; border-radius:12px; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                        <div style="padding:15px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center; background:#f8f9fa;">
+                            <h3 style="margin:0; color:#333;">Student Note</h3>
+                            <button onclick="document.getElementById('noteModal').remove()" style="border:none; background:none; font-size:24px; cursor:pointer;">&times;</button>
+                        </div>
+                        <div style="padding:20px;">
+                            <textarea id="studentNoteText" style="width:100%; height:150px; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:inherit; resize:vertical;" placeholder="Enter note here...">Loading...</textarea>
+                        </div>
+                         <div style="padding:15px; border-top:1px solid #eee; background:#f8f9fa; text-align:right;">
+                            <button onclick="document.getElementById('noteModal').remove()" style="padding:8px 16px; border:1px solid #ccc; background:white; border-radius:6px; margin-right:10px; cursor:pointer;">Cancel</button>
+                            <button id="saveNoteBtn" onclick="saveNote('${studentId}')" style="padding:8px 20px; border:none; background:#2563EB; color:white; border-radius:6px; font-weight:bold; cursor:pointer;" disabled>Save Data</button>
+                        </div>
+                    </div>
+                 `;
+                document.body.appendChild(modal);
+
+                // Now Fetch Data to pre-fill
+                // We can use the student-detail endpoint or all-kids.
+                // all-kids is cleaner field-wise.
+                const res = await fetch('/api/all-kids');
+                const data = await res.json();
+
+                if (data.success) {
+                    const s = data.kids.find(k => k.id === studentId);
+                    if (s) {
+                        currentNote = s.note || '';
+                        const txt = document.getElementById('studentNoteText');
+                        if (txt) {
+                            txt.value = currentNote;
+                            document.getElementById('saveNoteBtn').disabled = false;
+                        }
+                    }
+                }
+
+            } catch (e) {
+                console.error("Error loading note:", e);
+                alert("Could not load note.");
+                document.getElementById('noteModal').remove();
+            }
+        };
+
+        window.saveNote = async function (studentId) {
+            const txt = document.getElementById('studentNoteText');
+            const btn = document.getElementById('saveNoteBtn');
+            if (!txt || !btn) return;
+
+            const noteContent = txt.value;
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            try {
+                const res = await fetch('/api/update-student-note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        studentId: studentId,
+                        note: noteContent
+                    })
+                });
+
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                alert('Note saved successfully!');
+                document.getElementById('noteModal').remove();
+
+                // Refresh list
+                const listContainer = document.getElementById('allStudentsList');
+                if (listContainer) {
+                    if (typeof switchTab === 'function') {
+                        switchTab('all-students'); // properly re-fetch
+                    }
+                }
+
+            } catch (e) {
+                alert('Save Failed: ' + e.message);
+                btn.disabled = false;
+                btn.innerText = 'Save Data';
+            }
+        };
 
         // ============================================================================
         // EDIT STUDENT MODAL
@@ -1145,24 +1335,108 @@
 
                 // Column Permissions Configuration
                 const readOnlyIndices = [0, 1, 2, 3, 4, 33]; // A, B, C, D, E, AH
-                // N=13, Z=25, AA=26, AD=29, AF=31, AG=32
-                // Hide: 13-29 (N-AD), 31-32 (AF-AG)
-                const hiddenIndices = [];
-                for (let i = 13; i <= 29; i++) hiddenIndices.push(i);
-                hiddenIndices.push(31, 32);
+
+                // Fields to HIDE
+                // F(5), H(7), I(8), J(9), K(10)
+                // Range N(13)-AD(29) was hiding everything, but we need N(13) and AC(28).
+                // So let's hide O(14) - AD(29) generally, plus the specific ones.
+                const hiddenIndices = [5, 7, 8, 9, 10];
+                for (let i = 14; i <= 29; i++) hiddenIndices.push(i);
+                hiddenIndices.push(31, 32); // AF, AG
+
+                // EXCEPTION: Show Column AC (Index 28) which is inside our hidden range [14-29]
+                const showIndices = [28];
 
                 headers.forEach((header, index) => {
                     const value = row[index] || '';
                     const safeValue = value.replace(/"/g, '&quot;');
 
-                    if (hiddenIndices.includes(index)) {
-                        // Render hidden input to preserve value on save
+                    // Hidden fields logic
+                    if (hiddenIndices.includes(index) && !showIndices.includes(index)) {
                         formHtml += `<input type="hidden" class="edit-student-input" data-index="${index}" value="${safeValue}">`;
                         return;
                     }
 
                     const isReadOnly = readOnlyIndices.includes(index);
                     const readOnlyAttr = isReadOnly ? 'readonly disabled style="background:#f0f0f0; color:#888; cursor: not-allowed;"' : '';
+
+                    // === CUSTOM RENDERERS ===
+
+                    // 1. ACTIVE? (Index 12 / M)
+                    if (index === 12) {
+                        const activeOptions = ["active", "paused"];
+                        const optionsHtml = activeOptions.map(opt =>
+                            `<option value="${opt}" ${opt.toLowerCase() === value.toLowerCase() ? 'selected' : ''}>${opt}</option>`
+                        ).join('');
+
+                        formHtml += `
+                        <div>
+                            <label style="display:block; font-weight:600; font-size:12px; color:#555; margin-bottom:4px;">${header}</label>
+                            <select class="edit-student-input" data-index="${index}" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:14px; background:white;">
+                                <option value="">-- Select Status --</option>
+                                ${optionsHtml}
+                                ${!activeOptions.includes(value.toLowerCase()) && value ? `<option value="${safeValue}" selected>${value} (Custom)</option>` : ''}
+                            </select>
+                        </div>`;
+                        return;
+                    }
+
+                    // 2. PREFERENCE (Index 13 / N)
+                    if (index === 13) {
+                        const prefOptions = ["Building", "Coding", "Both", "Doesn't know"];
+                        const optionsHtml = prefOptions.map(opt =>
+                            `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`
+                        ).join('');
+
+                        formHtml += `
+                        <div>
+                            <label style="display:block; font-weight:600; font-size:12px; color:#555; margin-bottom:4px;">${header}</label>
+                            <select class="edit-student-input" data-index="${index}" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:14px; background:white;">
+                                <option value="">-- Select Preference --</option>
+                                ${optionsHtml}
+                                ${!prefOptions.includes(value) && value ? `<option value="${safeValue}" selected>${value} (Custom)</option>` : ''}
+                            </select>
+                        </div>`;
+                        return;
+                    }
+
+                    // 3. TRACK (Index 28 / AC)
+                    if (index === 28) {
+                        const trackOptions = [
+                            "TRACK_GAME_DEV_SCRATCH",
+                            "TRACK_INTRO_TO_AI",
+                            "TRACK_PYTHON_ADVANCED",
+                            "TRACK_PYTHON_BASICS",
+                            "TRACK_SCRATCH_ADVANCED",
+                            "TRACK_SCRATCH_BASICS",
+                            "TRACK-PYBASICS", "TRACK-PYBOT", "TRACK-GAMES", "TRACK-STARTING",
+                            "TRACK-PYGAMES", "TRACK-BUILDING", "TRACK-TEST",
+                            "HALF-5-SCR-BASICS-Y", "HALF-5-SCR-O", "HALF-5-PYTH-O",
+                            "ALL-5-SCR-O", "ALL-5-PYTH-O", "ALL-3-PYTH-O",
+                            "HALF-3-SCR-O", "HALF-3-SCR-Y", "ALL-5-SCR-Y",
+                            "TRIAL-YOUNGER", "TRIAL-PYTHON-O"
+                        ];
+
+                        const optionsHtml = trackOptions.map(opt =>
+                            `<option value="${opt}" ${opt === value ? 'selected' : ''}>${opt}</option>`
+                        ).join('');
+
+                        formHtml += `
+                        <div>
+                            <label style="display:block; font-weight:600; font-size:12px; color:#555; margin-bottom:4px;">${header} (System Track)</label>
+                            <select 
+                                class="edit-student-input" 
+                                data-index="${index}"
+                                style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; font-size:14px; background:white;">
+                                <option value="">-- Select Track --</option>
+                                ${optionsHtml}
+                                <!-- Allow retaining value if it's not in the list -->
+                                ${!trackOptions.includes(value) && value ? `<option value="${safeValue}" selected>${value} (Custom)</option>` : ''}
+                            </select>
+                        </div>
+                        `;
+                        return;
+                    }
 
                     formHtml += `
                         <div>

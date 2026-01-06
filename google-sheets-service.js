@@ -1533,10 +1533,10 @@ async function fetchAllKids(forceRefresh = false) {
         console.log('Fetching All Kids data from Google Sheets...');
         const sheets = await getGoogleSheetsClient();
 
-        // Fetch Columns A through I (Headshot is I)
+        // Fetch Columns A through AH (Total Points is AH)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!A:I`,
+            range: `${config.STUDENT_NAMES_SHEET}!A:AH`,
         });
 
         rows = response.data.values || [];
@@ -1560,18 +1560,76 @@ async function fetchAllKids(forceRefresh = false) {
         .filter(row => row[config.ALL_KIDS_COLUMNS.NAME]) // Must have name
         .map(row => ({
             id: row[config.ALL_KIDS_COLUMNS.ID] || '',
-            id: row[config.ALL_KIDS_COLUMNS.ID] || '',
             name: row[config.ALL_KIDS_COLUMNS.NAME] || '',
             parentName: row[config.ALL_KIDS_COLUMNS.PARENT_NAME] || '',
             email: row[config.ALL_KIDS_COLUMNS.EMAIL] || '',
             headshot: row[config.ALL_KIDS_COLUMNS.HEADSHOT] || '',
-            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10),
-            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10),
+            note: row[config.ALL_KIDS_COLUMNS.NOTE] || '',
             totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10)
         }));
 
     console.log(`Fetched ${kids.length} kids for All Kids page (${source})`);
     return kids;
+}
+
+/**
+ * Updates the note for a specific student in the "Child Names" sheet
+ * 
+ * @param {string} studentId - The ID of the student
+ * @param {string} note - The new note text
+ * @returns {Promise<Object>} - Success status
+ */
+async function updateStudentNote(studentId, note) {
+    console.log(`Updating note for student ${studentId}...`);
+
+    // 1. Fetch all students to find the row index
+    // We need fresh data to ensure row indices are correct, but can rely on cache if recently updated
+    // For now, let's just fetch IDs to be safe/fast? 
+    // Actually simpler to just fetch all students (row A) to map ID to Row Index.
+
+    try {
+        const sheets = await getGoogleSheetsClient();
+
+        // Fetch just Column A (IDs) to find the row
+        const response = await sheets.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.STUDENT_NAMES_SHEET}!A:A`,
+        });
+
+        const rows = response.data.values || [];
+        // Find row index where Column A matches studentId
+        // rows[0] is header, so index 0 corresponds to Sheet Row 1.
+
+        const rowIndex = rows.findIndex(row => row[0] && row[0].trim() === studentId.trim());
+
+        if (rowIndex === -1) {
+            throw new Error(`Student ID ${studentId} not found in sheet.`);
+        }
+
+        // Sheet Row Number (1-based) = rowIndex + 1
+        const sheetRow = rowIndex + 1;
+        const columnLetter = config.STUDENT_COLUMNS.NOTE; // 'X'
+
+        // Update the specific cell
+        await sheets.spreadsheets.values.update({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.STUDENT_NAMES_SHEET}!${columnLetter}${sheetRow}`,
+            valueInputOption: 'RAW',
+            resource: {
+                values: [[note]]
+            }
+        });
+
+        // Invalidate caches that might hold student data
+        studentsCache = null;
+
+        console.log(`✅ Updated note for student ${studentId} at row ${sheetRow}`);
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error updating student note:', error);
+        throw error;
+    }
 }
 
 

@@ -264,6 +264,7 @@ module.exports = {
         PARENT_NAME: 4,     // Column E: Parent First Name (or F for Last)
         EMAIL: 1,           // Column B: Parent Email
         HEADSHOT: 8,        // Column I: Headshot
+        NOTE: 23,           // Column X: Note for child
         TOTAL_POINTS: 33    // Column AH: Total Points (All Time)
     },
 

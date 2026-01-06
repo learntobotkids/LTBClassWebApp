@@ -2518,8 +2518,28 @@ app.get('/api/server-status', (req, res) => {
     res.json({
         success: true,
         startTime: SERVER_START_TIME,
-        uptime: Date.now() - SERVER_START_TIME
     });
+});
+
+/**
+ * POST /api/update-student-note
+ * Updates the note for a specific student
+ */
+app.post('/api/update-student-note', async (req, res) => {
+    try {
+        const { studentId, note } = req.body;
+
+        if (!studentId) {
+            return res.status(400).json({ success: false, error: 'Student ID is required' });
+        }
+
+        const result = await googleSheetsService.updateStudentNote(studentId, note || '');
+        res.json(result);
+
+    } catch (error) {
+        console.error('Error updating note:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 // ============================================================================
