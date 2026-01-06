@@ -15,26 +15,35 @@
     <script src="analytics.js"></script>
 
     <style>
+        body {
+            background: #071F4E;
+            background: linear-gradient(135deg, #071F4E 0%, #051838 100%);
+            min-height: 100vh;
+            color: #E5E7EB;
+        }
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 20px;
+            padding-top: 90px;
+            /* Account for fixed navbar */
         }
 
         .page-header {
             margin-bottom: 40px;
-            border-bottom: 1px solid #E5E7EB;
+            border-bottom: 1px solid rgba(229, 231, 235, 0.2);
             padding-bottom: 20px;
         }
 
         .page-title {
             font-size: 2em;
-            color: #071F4E;
+            color: #FFFFFF;
             margin-bottom: 10px;
         }
 
         .page-subtitle {
-            color: #6B7280;
+            color: #9CA3AF;
             font-size: 1.1em;
         }
 
@@ -280,7 +289,10 @@
                         <span id="userPointsDisplay">0</span>
                     </div>
                     <div class="user-info">
-                        <span id="userNameDisplay" class="user-name">Student</span>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                            <span id="userNameDisplay" class="user-name">Student</span>
+                            <span id="userIdDisplay" style="font-size: 0.7em; color: #9CA3AF; display: none;"></span>
+                        </div>
                         <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
                             onerror="this.style.display='none'">
                     </div>
@@ -397,6 +409,15 @@
 
                 if (!json.success) {
                     throw new Error(json.error || 'Failed to load projects');
+                }
+
+                // [NEW] Display Unique Child ID
+                if (json.data && json.data.studentId) {
+                    const idEl = document.getElementById('userIdDisplay');
+                    if (idEl) {
+                        idEl.textContent = `ID: ${json.data.studentId}`;
+                        idEl.style.display = 'block';
+                    }
                 }
 
                 // We only want completed projects for this page

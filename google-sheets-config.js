@@ -46,8 +46,9 @@ module.exports = {
      *
      * Can be set via environment variable SPREADSHEET_ID
      */
-    SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1W6ojeogcA__vqYcQvwpav07rP9g5rAMpYXvHHY3sRKM',
-
+    //SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1W6ojeogcA__vqYcQvwpav07rP9g5rAMpYXvHHY3sRKM',
+    // SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1mkfyTOrcflampKY_BG13yjst7-AfEK4Oxvl-VU9BFME', // Potentially reading old env?
+    SPREADSHEET_ID: '1mkfyTOrcflampKY_BG13yjst7-AfEK4Oxvl-VU9BFME', // HARDCODED FORCE NEW SHEET
     // ========================================================================
     // GOOGLE DRIVE CONFIGURATION
     // ========================================================================
@@ -231,6 +232,7 @@ module.exports = {
         DESCRIPTION: 2,     // Column C: What kids Learn in this project
         STUDENT_ACTIVITY: 4,// Column E: What child did in this project
         ICON: 12,           // Column M: Project Icon/Cover Image URL
+        POINTS: 55,         // Column BD: Points (0-indexed, BD=55)
         CATEGORY: 57        // Column BF: Type of Project (0-indexed, A=0, BF=57)
     },
 

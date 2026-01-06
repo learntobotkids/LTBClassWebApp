@@ -385,9 +385,14 @@ async function fetchProjectLog(forceRefresh = false) {
 
     // Check if we can use cached data
     const cacheAge = now - lastProgressFetch;
-    if (!forceRefresh && progressCache && cacheAge < config.CACHE_DURATION) {
+    // DISABLE CACHE IN ONLINE MODE
+    const isOnline = process.env.MODE === 'ONLINE' || process.env.MODE === 'CLOUD';
+
+    if (!forceRefresh && !isOnline && progressCache && cacheAge < config.CACHE_DURATION) {
         console.log('Returning cached progress data');
         return progressCache;
+    } else if (isOnline) {
+        console.log(`[CACHE SKIPPED] Online Mode active (${process.env.MODE}). Fetching fresh data.`);
     }
 
     try {
@@ -397,6 +402,7 @@ async function fetchProjectLog(forceRefresh = false) {
         const sheets = await getGoogleSheetsClient();
 
         // Fetch data from Project Log sheet
+        console.log(`[DEBUG] Fetching Project Log from Sheet ID: ${config.SPREADSHEET_ID}`);
         // Range "A:AC" means columns A through AC (all columns we need)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
@@ -439,7 +445,7 @@ async function fetchProjectLog(forceRefresh = false) {
         console.log(`Fetched ${projects.length} project log entries`);
         return projects;
     } catch (error) {
-        console.error('Error fetching project log:', error.message);
+        console.error('Error fetching project log:', error);
 
         // If fetch failed but we have old cached data, return it
         if (progressCache) {
@@ -447,6 +453,11 @@ async function fetchProjectLog(forceRefresh = false) {
             return progressCache;
         }
 
+        // DISABLED FALLBACK FOR DEBUGGING
+        console.error('CRITICAL: GOOGLE SHEET FETCH FAILED. THROWING ERROR INSTEAD OF FALLBACK.');
+        throw error;
+
+        /*
         // Try Offline Master DB
         console.warn('⚠️ Google API failed. Trying local Master DB...');
         const localDB = getLocalMasterDB();
@@ -480,6 +491,7 @@ async function fetchProjectLog(forceRefresh = false) {
         }
 
         throw error;
+        */
     }
 }
 
@@ -637,14 +649,16 @@ async function fetchProjectList(forceRefresh = false) {
             const category = row[config.PROJECT_LIST_COLUMNS.CATEGORY]; // Column BF
             const description = row[config.PROJECT_LIST_COLUMNS.DESCRIPTION]; // Column C
             const studentActivity = row[config.PROJECT_LIST_COLUMNS.STUDENT_ACTIVITY]; // Column E
+            const points = row[config.PROJECT_LIST_COLUMNS.POINTS]; // Column BD
 
             if (code) {
-                // Return object { name, category, description, studentActivity }
+                // Return object { name, category, description, studentActivity, points }
                 projectMap.set(code.trim().toUpperCase(), {
                     name: name ? name.trim() : '',
                     category: category ? category.trim() : 'Other',
                     description: description ? description.trim() : '',
-                    studentActivity: studentActivity ? studentActivity.trim() : ''
+                    studentActivity: studentActivity ? studentActivity.trim() : '',
+                    points: points ? parseInt(points.replace(/\D/g, '') || '0', 10) : 0
                 });
             }
         });
@@ -742,6 +756,7 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
                     description: description ? description.trim() : '',
                     studentActivity: studentActivity ? studentActivity.trim() : '',
                     icon: icon ? icon.trim() : null,
+                    points: row[config.PROJECT_LIST_COLUMNS.POINTS] ? parseInt(row[config.PROJECT_LIST_COLUMNS.POINTS].replace(/\D/g, '') || '0', 10) : 0,
                     category: category ? category.trim() : 'Uncategorized'
                 });
             }
@@ -1101,50 +1116,60 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                     completedDate: project.completedDate,
                     type: project.projectType,
                     rating: project.rating,
-                    points: project.points,
+                    points: project.points || (projectInfo ? projectInfo.points : 0), // Prefer log points, fallback to def
                     videoLink: project.videoLink, // Includes public link if available
                     uniqueId: project.uniqueId // Pass row index for deletion
                 });
             } else if (statusLower.includes('progress') || statusLower.includes('working')) {
-                // In-progress project (treat as assigned for now or separate?)
-                // User didn't specify, but "In Progress" is usually active. 
-                // Let's keep it in "Assigned" or distinct. 
-                // User said: "Assigned", "Next Project", "Completed".
-                // "In Progress" fits best with "Assigned" (Active).
+                // In-progress project
+                const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
+
                 inProgressProjects.push({
                     studentId: project.studentId, // Crucial: specific ID for this entry
                     id: project.projectName, // Frontend expects 'id'
                     name: displayName,
                     originalCode: project.projectName,
+                    description: projectInfo ? projectInfo.description : '',
+                    studentActivity: projectInfo ? projectInfo.studentActivity : '',
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType,
+                    points: projectInfo ? projectInfo.points : 0, // Add Points!
                     uniqueId: project.uniqueId // Pass row index
                 });
             } else if (statusLower === 'next' || statusLower.includes('next project')) {
                 // Next Project (matches "Next", "Next Project", "next project", etc.)
+                const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
+
                 nextProjects.push({
                     studentId: project.studentId,
                     id: project.projectName,
                     name: displayName,
                     originalCode: project.projectName,
+                    description: projectInfo ? projectInfo.description : '',
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType,
                     date: project.date,
+                    points: projectInfo ? projectInfo.points : 0, // Add Points!
                     uniqueId: project.uniqueId // Pass row index
                 });
             } else if (statusLower.includes('assigned') || statusLower.includes('assign')) {
                 // Newly assigned project
+                const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
+
                 assignedProjects.push({
                     studentId: project.studentId, // Crucial: specific ID for this entry
                     id: project.projectName, // Frontend expects 'id'
                     name: displayName,
                     originalCode: project.projectName,
+                    description: projectInfo ? projectInfo.description : '',
+                    studentActivity: projectInfo ? projectInfo.studentActivity : '',
                     status: project.projectStatus,
                     type: project.projectType,
                     assignType: project.assignType,
                     date: project.date, // Needed for sorting by latest assignment
+                    points: projectInfo ? projectInfo.points : 0, // Add Points!
                     uniqueId: project.uniqueId // Pass row index for deletion
                 });
             }
@@ -2355,6 +2380,7 @@ module.exports = {
     getStudents: fetchStudents,
     fetchStudents,
     syncHeadshots,
+    fetchProjectLog, // Exported for debugging
     getStudentProgress,
     getStudentProjects,
     getStudentProjectsByName,

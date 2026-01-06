@@ -526,7 +526,7 @@ function findProjects(currentPath, categoryPath = []) {
  *   categoryHierarchy: {...}      // Category tree structure
  * }
  */
-app.get('/api/projects', (req, res) => {
+app.get('/api/projects', async (req, res) => {
     try {
         let projects = [];
 
@@ -598,6 +598,93 @@ app.get('/api/projects', (req, res) => {
 
         // Sort projects alphabetically by name
         projects.sort((a, b) => a.name.localeCompare(b.name));
+
+        // [NEW] MERGE WITH GOOGLE SHEETS DATA (For Points, etc.)
+        try {
+            // Fetch detailed info (Points, Description, etc.) from Google Sheet
+            const sheetProjects = await googleSheetsService.fetchAllProjectsDetailed();
+
+            // Create a lookup map for faster merging
+            // Sheet IDs are like "PROJ101", "AI001", "GAME100"
+            const sheetProjectMap = new Map();
+            sheetProjects.forEach(p => {
+                // Key is the ID/Code directly from the sheet
+                if (p.id) {
+                    sheetProjectMap.set(p.id.toUpperCase(), p);
+
+                    // ALSO match by number if standard format "PROJ101" -> "101"
+                    // purely as a fallback for simple cases, but prioritize full match
+                    const match = p.id.match(/^PROJ(\d+)$/i);
+                    if (match) {
+                        sheetProjectMap.set(match[1], p);
+                    }
+                }
+            });
+
+            // Merge data into our file-system projects
+            // File System Names are like "AI001 - Chatbot" or "101 - Intro"
+            projects = projects.map(p => {
+                let sheetData = null;
+
+                // STRATEGY 1: Extract "CODE" from "CODE - Name" pattern
+                // Matches "AI001", "GAME100", "101" from strings like "AI001 - Title"
+                const prefixMatch = p.name.match(/^([A-Z0-9]+)\s*-\s*/i);
+                if (prefixMatch) {
+                    const code = prefixMatch[1].toUpperCase();
+                    sheetData = sheetProjectMap.get(code);
+                }
+
+                // STRATEGY 2: "Clean Start" Fuzzy Match (Handle "Game 003 - Title" matching "GAME003")
+                // Only do this if Strategy 1 failed
+                if (!sheetData) {
+                    // Remove all non-alphanumeric chars from file name
+                    const cleanName = p.name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); // "GAME003SIMPLESHOOTER"
+
+                    // Iterate through all sheet codes and see if cleanName starts with one
+                    // We sort sheet codes by length descending to match longest possible code first (e.g. avoid matching "PRO" instead of "PROJECT")
+                    // Note: This is an O(N*M) operation but N (files) and M (sheet rows) are small (under 1000).
+
+                    for (const [code, data] of sheetProjectMap.entries()) {
+                        // Normalize code: "PROJ 101" -> "PROJ101"
+                        const cleanCode = code.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+                        // Check for match
+                        if (cleanName.startsWith(cleanCode)) {
+                            sheetData = data;
+                            break;
+                        }
+                    }
+                }
+
+                // STRATEGY 3: If no match, try matching just the 3-digit number (Legacy/Fallback)
+                // Only do this if Strategy 1 & 2 failed
+                if (!sheetData) {
+                    const numberMatch = p.name.match(/(\d{3})/);
+                    if (numberMatch) {
+                        sheetData = sheetProjectMap.get(numberMatch[1]);
+                    }
+                }
+
+                if (sheetData) {
+                    // Merge fields, preferring Sheet data for metadata
+                    return {
+                        ...p,
+                        points: sheetData.points || 0,
+                        description: sheetData.description || p.name, // Use Sheet desc if available
+                        icon: sheetData.icon || p.icon,
+                        sheetId: sheetData.id
+                    };
+                }
+
+                return { ...p, points: 0 }; // Default to 0 if no match
+            });
+
+            console.log(`[MERGE] Merged points for ${projects.length} projects`);
+
+        } catch (mergeError) {
+            console.error('[MERGE ERROR] Failed to merge sheet data:', mergeError);
+            // Don't fail the whole request, just continue with basic file info
+        }
 
         // Build category structures for frontend filtering
         const topLevelCategories = new Set();    // PYTHON, SCRATCH, etc.

@@ -17,7 +17,8 @@
 
         body {
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #111827;
+            background: #071F4E;
+            background: linear-gradient(135deg, #071F4E 0%, #051838 100%);
             min-height: 100vh;
             padding-top: 90px;
             /* 70px navbar + 20px spacing */
@@ -28,7 +29,9 @@
             top: 0;
             left: 0;
             right: 0;
-            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
+            background: rgba(7, 31, 78, 0.95);
+            /* #071F4E with opacity */
+            backdrop-filter: blur(10px);
             border-bottom: 2px solid #3B82F6;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             z-index: 1000;
@@ -809,8 +812,9 @@
         }
 
         .video-count {
-            color: #9CA3AF;
-            font-weight: 600;
+            color: #D97706;
+            /* Darker Amber/Orange for better visibility on white */
+            font-weight: 700;
         }
 
         .loading {
@@ -1288,7 +1292,9 @@
             border: 1px solid transparent;
             transition: all 0.2s ease;
             cursor: pointer;
-            background: rgba(31, 41, 55, 0.5);
+            background: rgba(31, 41, 55, 0.95);
+            /* Darker background for better contrast */
+            border: 1px solid #4B5563;
         }
 
         .sidebar-list-item:hover {
@@ -1300,7 +1306,8 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            color: #E5E7EB;
+            color: #F3F4F6;
+            /* Brighter white for text */
             font-weight: 500;
         }
 
@@ -1866,6 +1873,7 @@
                                 videos: parts.map(part => part.youtubeUrl),
                                 videoCount: parts.length,
                                 icon: p.icon || null,  // Use icon from Column M
+                                points: p.points || 0, // Points
                                 pdf: null
                             };
                         });
@@ -2190,7 +2198,7 @@
                                         ${project.description ? `<div class="project-description" style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">${project.description.substring(0, 60)}${project.description.length > 60 ? '...' : ''}</div>` : ''}
                                         ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
                                         <div class="project-meta">
-                                            <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                            <span class="video-count" style="color: #D97706;">💎 ${project.points || 0} Points</span>
                                             ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
                                         </div>
                                     </div>
@@ -2235,6 +2243,7 @@
                             ...project,
                             icon: fullProject.icon || project.icon,
                             videoCount: fullProject.videoCount || project.videoCount || 0,
+                            points: fullProject.points || project.points || 0,
                             category: fullProject.category || project.category
                         };
                     }
@@ -2281,7 +2290,7 @@
                                 ${project.notFound ? '<div class="project-category" style="color: #F59E0B;">⚠️ Project folder not found</div>' :
                                 (project.category ? `<div class="project-category">${project.category}</div>` : '')}
                                 <div class="project-meta">
-                                    <span class="video-count">📹 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
+                                    <span class="video-count" style="color: #D97706;">💎 ${project.points || 0} Points</span>
                                     ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
                                 </div>
                             </div>
@@ -3709,20 +3718,21 @@
             // Initialize Staging Environment
             console.log('Staging environment initialized');
 
-            // MOBILE DETECTION: Force Instructor Login
-            const isMobile = window.innerWidth <= 768; // Simple check matching CSS breakpoint
+            // MOBILE DETECTION: Force Instructor Login - DISABLED PER USER REQUEST
+            // const isMobile = window.innerWidth <= 768; 
 
             // Ensure login modal is active
             // Ensure login modal is active ONLY if not logged in
             const modal = document.getElementById('loginModal');
 
-            if (isMobile) {
-                // FORCE INSTRUCTOR LOGIN ON MOBILE
-                console.log('Mobile device detected - Opening Instructor Login');
-                if (modal) modal.classList.remove('active'); // Ensure student modal is closed
-                openInstructorLogin(); // Defined earlier in file
-            }
-            else if (modal && !currentStudent) {
+            // if (isMobile) {
+            //     // FORCE INSTRUCTOR LOGIN ON MOBILE
+            //     console.log('Mobile device detected - Opening Instructor Login');
+            //     if (modal) modal.classList.remove('active'); // Ensure student modal is closed
+            //     openInstructorLogin(); // Defined earlier in file
+            // }
+            // else 
+            if (modal && !currentStudent) {
                 if (window.DEPLOYMENT_MODE === 'online') {
                     // ONLINE MODE: Do NOT auto-open login modal
                     // User must click "Login" manually
