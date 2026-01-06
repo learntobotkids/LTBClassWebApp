@@ -16,6 +16,119 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* --- CUSTOM DROPDOWN STYLES --- */
+        .custom-select-container {
+            position: relative;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            /* Base font size explicitly set */
+        }
+
+        .custom-select-trigger {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            /* Bigger padding for touch */
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+            font-size: 18px;
+            /* Bigger Text Request */
+            color: #333;
+            font-weight: 500;
+        }
+
+        .custom-select-trigger:hover {
+            border-color: #bbbbbb;
+            background: #fafafa;
+        }
+
+        .custom-select-trigger .arrow {
+            color: #666;
+            transition: transform 0.2s;
+        }
+
+        .custom-select-container.open .custom-select-trigger {
+            border-color: #4ECDC4;
+            box-shadow: 0 0 0 3px rgba(78, 205, 196, 0.2);
+        }
+
+        .custom-select-container.open .arrow {
+            transform: rotate(180deg);
+        }
+
+        .custom-select-options {
+            position: absolute;
+            top: 110%;
+            /* Slight gap */
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            max-height: 350px;
+            /* Taller scroll area */
+            overflow-y: auto;
+            z-index: 3000;
+            /* Ensure above modal */
+            display: none;
+            scrollbar-width: thin;
+        }
+
+        .custom-select-container.open .custom-select-options {
+            display: block;
+            animation: fadeIn 0.15s ease-out;
+        }
+
+        .custom-select-optgroup {
+            padding: 12px 16px 5px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #fdfdfd;
+            position: sticky;
+            top: 0;
+        }
+
+        .custom-select-option {
+            padding: 16px 20px;
+            /* Generous touch target */
+            font-size: 17px;
+            color: #333;
+            border-bottom: 1px solid #f5f5f5;
+            transition: background 0.1s;
+        }
+
+        .custom-select-option:last-child {
+            border-bottom: none;
+        }
+
+        .custom-select-option:hover {
+            background-color: #f0fdfc;
+            /* Light teal tint */
+            color: #2c7a7b;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* --- UPDATED CSS FOR MINIMALIST DESIGN --- */
 
         body {
@@ -2003,6 +2116,7 @@
             // Fetch Project List & Student History Concurrently
             let allProjects = [];
             let existingHistory = new Set();
+            let studentTrack = ''; // Defined here to resolve scope issue
 
             try {
                 const [listRes, historyRes] = await Promise.all([
@@ -2029,6 +2143,11 @@
                         addToSet(student.assignedProjects);
                         addToSet(student.inProgressProjects);
                         addToSet(student.completedProjects);
+
+                        // Capture Track safely inside the scope
+                        if (student.track) {
+                            studentTrack = student.track.trim().toLowerCase();
+                        }
                     }
                 }
 
@@ -2039,7 +2158,44 @@
             }
 
             // Filter Projects
-            const availableProjects = allProjects.filter(p => !existingHistory.has(p.code.trim().toUpperCase()));
+            // Filter Projects
+            // NOTE: The API returns 'id' for the project code, not 'code'
+            // NEW CONDITIONAL: Check if Student's Track (Column AC) is in Project's Recommended Matrix (Column BE)
+
+            // Get student track from historyData (we added it in backend) or fallback
+            // historyData.student is the object wrapping lists + metadata
+            // But wait, the API structure is: { success: true, student: { track: "...", assignedProjects: [...] } }
+            // Let's check where 'track' lives. It should be on 'student' object.
+
+            // NEW CONDITIONAL: Check if Student's Track (Column AC) is in Project's Recommended Matrix (Column BE)
+
+            // studentTrack is already populated above
+            console.log(`[AssignModal] Filtering for Student Track: "${studentTrack}"`);
+
+            const availableProjects = allProjects.filter(p => {
+                // 1. Check ID exists
+                if (!p.id) return false;
+
+                // 2. Check if already done/assigned
+                if (existingHistory.has(p.id.trim().toUpperCase())) return false;
+
+                // 3. Check Track Compatibility
+                // If student has a track, project MUST include it in recommendedTracks
+                const projTracks = (p.recommendedTracks || '').toLowerCase();
+
+                // User Rule: "Show each project if the TRACK of the child... is included as a substring in Column BE"
+                // If student has NO track, do we show all? Or none?
+                // Assuming show all if no track assigned (fallback), OR show none? 
+                // Let's assume strict: if track exists, enforce it.
+
+                if (studentTrack) {
+                    if (!projTracks.includes(studentTrack)) {
+                        return false; // Track mismatch
+                    }
+                }
+
+                return true;
+            });
 
             // Group by Category
             const grouped = {};
@@ -2053,22 +2209,21 @@
             // Sort categories logic: Maybe standard ones first?
             const sortedCategories = Object.keys(grouped).sort();
 
-            let optionsHtml = '<option value="" disabled selected>Choose a project...</option>';
-
-            sortedCategories.forEach(cat => {
-                optionsHtml += `< optgroup label = "${cat}" > `;
-                grouped[cat].forEach(p => {
-                    optionsHtml += `< option value = "${p.code}" > ${p.code} - ${p.name}</option > `;
-                });
-                optionsHtml += `</optgroup > `;
-            });
+            let optionsHtml = '';
 
             if (availableProjects.length === 0) {
-                optionsHtml = '<option disabled>No new projects available</option>';
+                optionsHtml = '<div style="padding:20px; text-align:center; color:#888;">No projects available</div>';
+            } else {
+                sortedCategories.forEach(cat => {
+                    optionsHtml += `<div class="custom-select-optgroup">${cat}</div>`;
+                    grouped[cat].forEach(p => {
+                        optionsHtml += `<div class="custom-select-option" onclick="selectCustomOption('${p.id}', '${p.id} - ${p.name.replace(/'/g, "\\'")}')">${p.id} - ${p.name}</div>`;
+                    });
+                });
             }
 
             const modalHtml = `
-                < div id = "assignProjectModal" style = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;" >
+                <div id="assignProjectModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2500; display: flex; align-items: center; justify-content: center;">
                     <div style="background: white; border-radius: 12px; padding: 25px; width: 90%; max-width: 450px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
                         <h3 style="margin-top: 0; margin-bottom: 20px; color: #333; font-size: 20px;">Assign New Project</h3>
                         <div style="display: flex; align-items: center; margin-bottom: 20px; background: #f8f9fa; padding: 10px; border-radius: 8px;">
@@ -2078,11 +2233,22 @@
                                 <div style="font-weight: 600; font-size: 16px;">${studentName}</div>
                         </div>
 
+
                         <div style="margin-bottom: 25px;">
                             <label style="display: block; font-size: 14px; font-weight: 500; color: #555; margin-bottom: 8px;">Select Project to Assign</label>
-                            <select id="assignProjectSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ccc; font-size: 16px; background: white;">
-                                ${optionsHtml}
-                            </select>
+                            
+                            <!-- Custom Select Structure -->
+                            <div class="custom-select-container" id="customProjectSelectContainer">
+                                <div class="custom-select-trigger" onclick="toggleCustomProjectSelect()">
+                                    <span id="customSelectLabel">Choose a project...</span>
+                                    <i class="fas fa-chevron-down arrow"></i>
+                                </div>
+                                <div class="custom-select-options">
+                                    ${optionsHtml}
+                                </div>
+                                <input type="hidden" id="assignProjectSelect" value="">
+                            </div>
+
                         </div>
 
                         <div style="display: flex; gap: 15px;">
@@ -2375,7 +2541,7 @@
                 const safeHeadshot = headshotUrl || '/api/placeholder/40/40';
                 const assignBtnHtml = `
                 <div style="padding: 15px 15px 5px;">
-                    <button onclick="openAssignModal('${studentId}', '${studentName.replace(/'/g, "\\'")}', '${safeHeadshot}')" 
+                    <button onclick="openAssignModal('${studentId}', '${studentName.replace(/'/g, "\\'").replace(/"/g, '&quot;')}', '${safeHeadshot}')" 
                         style="width: 100%; background: #db3236; color: white; border: none; padding: 14px; border-radius: 8px; font-weight: 700; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; box-shadow: 0 4px 6px rgba(219, 50, 54, 0.2);">
                         <i class="fas fa-plus-circle"></i> Assign New Project
                     </button>
@@ -2716,6 +2882,37 @@
         };
     </script>
     <script>
+        // Custom Dropdown Logic
+        window.toggleCustomProjectSelect = function () {
+            const container = document.getElementById('customProjectSelectContainer');
+            if (container) container.classList.toggle('open');
+        };
+
+        window.selectCustomOption = function (value, label) {
+            // Update Hidden Input (Logic uses this)
+            document.getElementById('assignProjectSelect').value = value;
+
+            // Update Display Label
+            document.getElementById('customSelectLabel').innerText = label;
+            document.getElementById('customSelectLabel').style.color = '#333';
+            document.getElementById('customSelectLabel').style.fontWeight = '600';
+
+            // Close Dropdown
+            document.getElementById('customProjectSelectContainer').classList.remove('open');
+
+            // Prevent event bubbling
+            if (event) event.stopPropagation();
+        };
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (e) {
+            const container = document.getElementById('customProjectSelectContainer');
+            // Check if click is outside container
+            if (container && !container.contains(e.target)) {
+                container.classList.remove('open');
+            }
+        });
+
         function handleInstructorLogout() {
             if (confirm('Are you sure you want to logout?')) {
                 localStorage.removeItem('instructorLoggedIn');
@@ -2739,7 +2936,10 @@
                 }
             }
 
-        // ... rest of initialization ...
+            // ... rest of initialization ...
+            // ... rest of initialization ...
+        });
+
         // Fetch and display Data Source ID
         /*
         document.addEventListener('DOMContentLoaded', () => {
@@ -2766,8 +2966,7 @@
         });
         */
     </script>
+
 </body>
 
 </html>
-<!-- FORCE SYNC -->
-```

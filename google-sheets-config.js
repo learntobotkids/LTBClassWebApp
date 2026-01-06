@@ -233,6 +233,7 @@ module.exports = {
         STUDENT_ACTIVITY: 4,// Column E: What child did in this project
         ICON: 12,           // Column M: Project Icon/Cover Image URL
         POINTS: 55,         // Column BD: Points (0-indexed, BD=55)
+        RECOMMENDED_TRACK: 56, // Column BE: Recommended Tracks
         CATEGORY: 57        // Column BF: Type of Project (0-indexed, A=0, BF=57)
     },
 

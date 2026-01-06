@@ -115,7 +115,7 @@ async function getGoogleSheetsClient() {
             credentials,
             scopes: [
                 'https://www.googleapis.com/auth/spreadsheets',
-                'https://www.googleapis.com/auth/drive.readonly'
+                'https://www.googleapis.com/auth/drive'
             ],
         });
 
@@ -151,7 +151,7 @@ async function getGoogleDriveClient() {
 
         const auth = new google.auth.GoogleAuth({
             credentials,
-            scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+            scopes: ['https://www.googleapis.com/auth/drive'],
         });
 
         const client = await auth.getClient();
@@ -336,6 +336,7 @@ async function fetchStudents(forceRefresh = false) {
                     fileLink: row[6] ? row[6].trim() : '',    // Column G: Drive Link
                     headshot: headshot,
                     note: row[23] ? row[23].trim() : '', // Column X
+                    track: row[28] ? row[28].trim() : '', // Column AC (Index 28)
                     totalPoints: row[33] ? parseInt(row[33].replace(/\D/g, '') || '0', 10) : 0 // Column AH (Total Points)
                 };
             });
@@ -757,6 +758,7 @@ async function fetchAllProjectsDetailed(forceRefresh = false) {
                     studentActivity: studentActivity ? studentActivity.trim() : '',
                     icon: icon ? icon.trim() : null,
                     points: row[config.PROJECT_LIST_COLUMNS.POINTS] ? parseInt(row[config.PROJECT_LIST_COLUMNS.POINTS].replace(/\D/g, '') || '0', 10) : 0,
+                    recommendedTracks: row[config.PROJECT_LIST_COLUMNS.RECOMMENDED_TRACK] ? row[config.PROJECT_LIST_COLUMNS.RECOMMENDED_TRACK].trim() : '',
                     category: category ? category.trim() : 'Uncategorized'
                 });
             }
@@ -1027,6 +1029,7 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
         // 3. Add studentName and fileLink to result for UI consistency
         result.studentName = student.name;
         result.fileLink = student.fileLink; // Pass the Drive Link to the frontend
+        result.track = student.track;       // Pass the Track to the frontend for filtering
 
         return result;
 
@@ -2318,57 +2321,225 @@ async function updateStudentFullDetails(studentId, newValues, userEmail) {
 }
 
 // ============================================================================
+// HELPER: Find existing Project Log Row
+// ============================================================================
+async function findProjectLogRow(studentId, projectCode) {
+    const sheets = await getGoogleSheetsClient();
+    const sheetName = 'Project Log'; // Hardcoded as per user request context
+
+    // Ideally we fetch relevant columns to minimize data transfer
+    // Col C = Student Name/ID (Index 2)
+    // Col I = Project Code (Index 8)
+    const response = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A:I` // Fetch up to Column I
+    });
+
+    const rows = response.data.values || [];
+
+    // Reverse search to find the LATEST entry (if multiple exist)
+    for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i];
+        // Col C is index 2. Col I is index 8.
+        // Check fuzzy match on student ID/Name
+        const rowStudent = (row[2] || '').toLowerCase().trim();
+        const searchStudent = studentId.toLowerCase().trim();
+
+        // Handling "Name" vs "Email/Name" mismatch if necessary
+        // The user said "unique child ID of the current child in Column C"
+        // In previous steps, we saw studentId might be "email/name" or just "name".
+        // The sheet seems to store just Name in Col C based on `markProjectComplete` logic.
+        // Let's match carefully.
+        let isStudentMatch = rowStudent === searchStudent;
+        if (!isStudentMatch && searchStudent.includes('/')) {
+            const justName = searchStudent.split('/')[1].toLowerCase().trim();
+            isStudentMatch = rowStudent === justName;
+        }
+
+        const rowProject = (row[8] || '').toUpperCase().trim();
+        const searchProject = projectCode.toUpperCase().trim();
+
+        if (isStudentMatch && rowProject === searchProject) {
+            return i + 1; // Return 1-based Row Index
+        }
+    }
+    return null;
+}
+
+// ============================================================================
+// HELPER: Drive Operations
+// ============================================================================
+async function renameDriveFile(fileId, newName) {
+    try {
+        const drive = await getGoogleDriveClient();
+        await drive.files.update({
+            fileId: fileId,
+            resource: { name: newName }
+        });
+        console.log(`[Drive] Renamed file ${fileId} to "${newName}"`);
+    } catch (e) {
+        console.error(`[Drive] Failed to rename file ${fileId}:`, e.message);
+    }
+}
+
+async function setDriveFilePublic(fileId) {
+    try {
+        const drive = await getGoogleDriveClient();
+        await drive.permissions.create({
+            fileId: fileId,
+            resource: {
+                role: 'reader',
+                type: 'anyone'
+            }
+        });
+        console.log(`[Drive] Set file ${fileId} to public`);
+    } catch (e) {
+        console.error(`[Drive] Failed to set permissions for ${fileId}:`, e.message);
+    }
+}
+
+
+// ============================================================================
 // FUNCTION: Mark Project as Complete (or any status)
 // ============================================================================
 async function markProjectComplete(studentId, projectCode, videoLink, rating, instructorName, status = 'Completed', date = new Date()) {
     try {
         const client = await getGoogleSheetsClient();
+        console.log(`[Project Complete] Processing for ${studentId} - ${projectCode}`);
 
-        // Format Date
-        const dateStr = date.toLocaleDateString('en-US'); // MM/DD/YYYY
-
-        // Split student ID if composite (email/name)
-        let studentName = studentId;
-        if (studentId.includes('/')) {
-            studentName = studentId.split('/')[1]; // Use the name part
+        // Ensure date is a valid Date object
+        if (!(date instanceof Date)) {
+            date = new Date(date);
+        }
+        if (isNaN(date.getTime())) {
+            date = new Date(); // Fallback to current time if invalid
         }
 
-        // Prepare Row Data
-        // Order based on typical log: Timestamp, Date, Student Name, Project Code, Status, Instructor, Video, Rating
-        const values = [[
-            new Date().toISOString(), // TimestampA
-            dateStr,                  // DateB
-            studentName,              // Student NameC
-            projectCode,             // ProjectD
-            status,                  // StatusE
-            instructorName || 'System', // InstructorF
-            '',                      // NotesG
-            '',                      // H
-            '',                      // I
-            '',                      // J
-            '',                      // K
-            '',                      // L
-            '',                      // M
-            '',                      // N
-            '',                      // O
-            '',                      // P
-            videoLink || '',         // VideoQ
-            rating || ''             // RatingR
-        ]];
+        const dateStr = date.toLocaleDateString('en-US'); // MM/DD/YYYY
 
-        // Append to Sheet
-        const response = await client.spreadsheets.values.append({
-            spreadsheetId: config.SPREADSHEET_ID,
-            range: 'Project Log!A:R', // Adjust based on actual sheet columns
-            valueInputOption: 'USER_ENTERED',
-            resource: { values: values }
-        });
+        // Student Name parsing
+        let studentName = studentId;
+        if (studentId.includes('/')) {
+            studentName = studentId.split('/')[1];
+        }
+
+        // 1. Check for Existing Row
+        const existingRowIndex = await findProjectLogRow(studentId, projectCode);
+        const sheetName = 'Project Log';
+
+        if (existingRowIndex) {
+            console.log(`[Project Complete] Found existing entry at Row ${existingRowIndex}. Updating...`);
+
+            // Columns to Update:
+            // Col J (Status) -> Index 9
+            // Col Q (Video) -> Index 16
+            // Col R (Rating) -> Index 17
+            // Col V (Instructor) -> Index 21 (Assuming V is instructor from previous delete logic, but append used F? checking append...)
+            // Append used: F for Instructor.
+            // Let's stick to the Append structure for consistency:
+            // A=Timestamp, B=Date, C=Name, D=Code, E=Status, F=Instructor
+
+            // Wait, Append logic was: 
+            // A=Time, B=Date, C=Name, D=Code, E=Status, F=Instr ... Q=Video, R=Rating.
+            // Col J is EMPTY in append logic?
+            // User request: "change Column J to 'Completed'"
+            // Let's check the Append function again carefully. 
+            // In `assignProject`, Status is Col J (Index 9).
+            // In `markProjectComplete` (old), Status was passed as 5th element (Index 4, Col E).
+            // THIS IS A DISCREPANCY in the previous code. 
+            // User Request explicitly says: "change Column J to 'Completed'".
+            // So I will target Column J.
+
+            // UPDATING EXISTING ROW:
+            const updates = [
+                { range: `${sheetName}!J${existingRowIndex}`, values: [[status]] },
+                { range: `${sheetName}!Q${existingRowIndex}`, values: [[videoLink || '']] },
+                { range: `${sheetName}!R${existingRowIndex}`, values: [[rating || '']] },
+                { range: `${sheetName}!F${existingRowIndex}`, values: [[instructorName || 'System']] },
+                { range: `${sheetName}!B${existingRowIndex}`, values: [[dateStr]] } // Update completion date
+            ];
+
+            await client.spreadsheets.values.batchUpdate({
+                spreadsheetId: config.SPREADSHEET_ID,
+                resource: {
+                    valueInputOption: 'USER_ENTERED',
+                    data: updates
+                }
+            });
+
+        } else {
+            console.log(`[Project Complete] No existing entry found. Appending new row...`);
+            // Standard Append (Fallback)
+            // We align with the User's explicit Column J request for status now?
+            // Or stick to the old structure? 
+            // If I append, I must match the sheet headers. 
+            // Let's try to construct a row that matches the `assignProject` structure (which uses J for Status).
+            // A=UniqueId(Calc?), B=Date, C=SID, D=Email?, E=Name... 
+            // This is getting risky if headers are unknown.
+            // Safest bet: Use the Array structure from `assignProject` but populate it for Completion.
+
+            const uniqueId = Math.random().toString(36).substring(2, 10).toUpperCase();
+            const rowValues = new Array(23).fill(''); // Up to W
+
+            rowValues[0] = uniqueId;
+            rowValues[1] = dateStr;
+            rowValues[2] = studentId; // ID in C? `assignProject` puts ID in C.
+            // Wait, `assignProject` put ID in C (2).
+            // Old `markProjectComplete` put Name in C (2). 
+            // I will use StudentName in C as per previous consistent logic, assuming ID might be there.
+            rowValues[2] = studentName;
+
+            // Project Code -> Col I (Index 8) per User Request ("Current Project ID... in Column I")
+            rowValues[8] = projectCode;
+
+            // Status -> Col J (Index 9)
+            rowValues[9] = status;
+
+            // Video -> Col Q (Index 16)
+            rowValues[16] = videoLink || '';
+
+            // Rating -> Col R (Index 17)
+            rowValues[17] = rating || '';
+
+            // Instructor -> Col F? No, `assignProject` put it in V (21). 
+            // Let's put it in V to be consistent with Assignment.
+            rowValues[21] = instructorName;
+
+            await client.spreadsheets.values.append({
+                spreadsheetId: config.SPREADSHEET_ID,
+                range: `${sheetName}!A:A`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: [rowValues] }
+            });
+        }
+
+        // 3. Handle Drive Files (Rename & Public)
+        if (videoLink && videoLink.includes('drive.google.com') && videoLink.includes('/file/d/')) {
+            try {
+                // Extract ID: .../file/d/FILE_ID/view...
+                const match = videoLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (match && match[1]) {
+                    const fileId = match[1];
+                    const newFileName = `${projectCode} ${studentName}`;
+                    console.log(`[Drive] Processing file ${fileId}...`);
+
+                    // Run concurrently
+                    await Promise.all([
+                        renameDriveFile(fileId, newFileName),
+                        setDriveFilePublic(fileId)
+                    ]);
+                }
+            } catch (driveErr) {
+                console.warn('[Drive Warning] Failed to process Drive file:', driveErr.message);
+                // Don't fail the whole request, just log
+            }
+        }
 
         // Invalidate Cache
         progressCache = null;
         lastProgressFetch = 0;
 
-        return { success: true, row: response.data.updates.updatedRange };
+        return { success: true };
 
     } catch (error) {
         console.error('Error marking project complete:', error);

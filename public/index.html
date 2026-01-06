@@ -3366,7 +3366,11 @@
                     if (navbarUser) navbarUser.style.display = 'none'; // Hide legacy
                     navbarLoginBtn.style.display = 'none';
                     navbarLogoutBtn.style.display = 'inline-block';
-                    if (navMyProjects) navMyProjects.style.display = 'block';
+                    if (navMyProjects) {
+                        // Show ONLY if not an instructor
+                        const isInstructor = localStorage.getItem('instructorLoggedIn') === 'true';
+                        navMyProjects.style.display = isInstructor ? 'none' : 'block';
+                    }
 
                     // 2. Set Name immediately
                     if (userNameDisplay) userNameDisplay.textContent = currentStudent;
