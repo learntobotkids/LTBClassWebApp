@@ -330,6 +330,8 @@
                 <!-- Teacher Panel Link Removed -->
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -439,6 +441,16 @@
                 console.error('Error fetching user points:', e);
                 return null;
             }
+        }
+
+        async function fetchUserProfile() {
+            // ... (keeping existing logic intact)
+        }
+
+        function logout() {
+            localStorage.removeItem('currentStudent');
+            localStorage.removeItem('allProjectAccess');
+            window.location.href = '/';
         }
 
         async function fetchPrizesData() {

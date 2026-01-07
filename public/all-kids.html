@@ -271,6 +271,53 @@
                 transform: translateY(0);
             }
         }
+
+        /* USER PROFILE PILL STYLES */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-name {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background-color: #111827;
+        }
     </style>
 </head>
 
@@ -293,9 +340,22 @@
                 <!-- Teacher Panel Link Removed -->
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
+                <div id="userProfilePill" class="user-profile-pill" style="display: none;">
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
+                    <div class="user-info">
+                        <span id="userNameDisplay" class="user-name">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
                 <a href="/" class="navbar-btn">Back to Home</a>
             </div>
         </div>
@@ -417,8 +477,69 @@
             `;
         }
 
+        // [NEW] Update User Profile
+        async function fetchUserProfile() {
+            const currentStudent = localStorage.getItem('currentStudent');
+            if (!currentStudent) return;
+
+            // DOM Elements for Navbar
+            const pill = document.getElementById('userProfilePill');
+            const nameEl = document.getElementById('userNameDisplay');
+            const pointsEl = document.getElementById('userPointsDisplay');
+            const headshotEl = document.getElementById('userHeadshotDisplay');
+
+            // Show Pill immediately if logged in
+            if (pill) pill.style.display = 'flex';
+            if (nameEl) nameEl.textContent = currentStudent;
+
+            try {
+                // Fetch basic leaderboard data for points/headshot
+                const response = await fetch('/api/leaderboard');
+                const data = await response.json();
+
+                if (data.success && data.leaderboard) {
+                    const student = data.leaderboard.find(s => s.name === currentStudent);
+                    if (student) {
+                        if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
+
+                        if (headshotEl) {
+                            let headshotUrl = student.headshot;
+                            if (headshotUrl) {
+                                if (headshotUrl.includes('Child Names_Images/')) {
+                                    headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                                } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                    headshotUrl = 'headshots/' + headshotUrl;
+                                }
+                                headshotEl.src = headshotUrl;
+                                headshotEl.style.display = 'block';
+                            } else {
+                                headshotEl.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(student.name)}`;
+                                headshotEl.style.display = 'block';
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Error updating navbar:', e);
+            }
+        }
+
+        async function fetchUserProfile() {
+            // ... (existing code, keeping it intact effectively via tool logic, but I'll simpler append logout before it or after)
+            // Actually I'll append logout before fetchUserProfile
+        }
+
+        function logout() {
+            localStorage.removeItem('currentStudent');
+            localStorage.removeItem('allProjectAccess');
+            window.location.href = '/';
+        }
+
         // Initialize
-        document.addEventListener('DOMContentLoaded', loadAllKids);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllKids();
+            fetchUserProfile();
+        });
     </script>
     <script src="mobile-nav.js"></script>
 </body>

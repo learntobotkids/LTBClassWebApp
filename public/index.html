@@ -429,6 +429,7 @@
         }
 
         .tabs-container {
+            /* protected-content handled via ID in JS or manually adding class to div */
             max-width: 1200px;
             margin: 0 auto 30px;
             display: flex;
@@ -1019,7 +1020,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
+            z-index: 3100;
             align-items: center;
             justify-content: center;
         }
@@ -1424,11 +1425,62 @@
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
         }
+
+        /* [NEW] Zero-Flicker Protection: Hide content by default */
+        .protected-content {
+            display: none !important;
+        }
+
+        #initialLoader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #111827;
+            z-index: 3000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: opacity 0.5s;
+        }
+
+        #loginGate {
+            display: none;
+            /* Shown by JS if needed */
+        }
     </style>
 </head>
 
 <body>
-    <nav class="navbar">
+    <!-- 1. Initial Loading Screen (Visible by default) -->
+    <div id="initialLoader">
+        <div style="font-size: 4em; animation: bounce 1s infinite;">🤖</div>
+        <div style="margin-top: 20px; color: #9CA3AF;">Loading Class...</div>
+    </div>
+
+    <!-- 2. Login Gate (Hidden by default, shown if Auth fails) -->
+    <div id="loginGate">
+        <div
+            style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle at center, #1F2937 0%, #111827 100%); z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white;">
+            <div style="font-size: 5em; margin-bottom: 20px; animation: bounce 2s infinite;">🤖</div>
+            <h1
+                style="font-size: 3em; font-weight: 800; margin-bottom: 10px; text-shadow: 0 4px 10px rgba(0,0,0,0.5); color: white !important;">
+                Welcome to LearnToBot</h1>
+            <p style="color: #9CA3AF; font-size: 1.2em; margin-bottom: 40px;">Please login to access your projects and
+                classes.</p>
+            <!-- FIXED: Calls toggleLoginModal() and proper Z-Index -->
+            <button onclick="toggleLoginModal()" class="action-btn"
+                style="padding: 15px 40px; font-size: 1.3em; box-shadow: 0 10px 30px rgba(59, 130, 246, 0.5);">
+                🚀 Student Login
+            </button>
+            <div style="margin-top: 20px; font-size: 0.9em; opacity: 0.6;">Protected Class Area</div>
+        </div>
+    </div>
+
+    <nav class="navbar protected-content">
         <div class="navbar-container">
             <a href="/" class="navbar-brand">
                 <span class="navbar-logo">🤖</span>
@@ -1436,7 +1488,7 @@
             </a>
 
             <!-- Hamburger Button -->
-            <button class="mobile-menu-btn" onclick="toggleMenu()">☰</button>
+            <!-- Mobile menu button handled by mobile-nav.js -->
 
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link active">Projects</a></li>
@@ -1747,23 +1799,23 @@
             }
         </script>
 
-        <div class="header">
+        <div class="header protected-content">
             <h1>🤖 LearnToBot Class</h1>
             <p>Choose a project to get started</p>
         </div>
 
         <!-- Marquee Section -->
-        <div id="leaderboardMarquee" class="marquee-container" style="display: none;">
+        <div id="leaderboardMarquee" class="marquee-container protected-content" style="display: none;">
             <div class="marquee-content" id="marqueeContent">
                 <!-- Content injected by JS -->
             </div>
         </div>
 
-        <div class="leaderboard-link-wrapper">
+        <div class="leaderboard-link-wrapper protected-content">
             <a href="/leaderboard.html" class="view-leaderboard-btn">🏆 View Full Leaderboard</a>
         </div>
 
-        <div class="search-container">
+        <div class="search-container protected-content">
             <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search projects..." />
             <div class="search-dropdown" id="searchDropdown"></div>
         </div>
@@ -1783,10 +1835,10 @@
             </label>
         </div>
 
-        <div id="tabsContainer" class="tabs-container"></div>
-        <div id="subTabsContainer" class="tabs-container" style="display: none;"></div>
+        <div id="tabsContainer" class="tabs-container protected-content"></div>
+        <div id="subTabsContainer" class="tabs-container protected-content" style="display: none;"></div>
 
-        <div id="content">
+        <div id="content" class="protected-content">
             <div class="loading">Loading projects...</div>
         </div>
 
@@ -1806,6 +1858,50 @@
                     console.warn('[LTB] Could not fetch config, defaulting to offline mode');
                     DEPLOYMENT_MODE = 'offline';
                 }
+
+                // [NEW] Gating Logic for Online Mode
+                initializeAccess();
+            }
+
+            function initializeAccess() {
+                const loader = document.getElementById('initialLoader');
+                const gate = document.getElementById('loginGate');
+                const contentElements = document.querySelectorAll('.protected-content');
+
+                const student = localStorage.getItem('currentStudent');
+                const instructor = localStorage.getItem('instructorLoggedIn');
+                const isOnline = (DEPLOYMENT_MODE === 'online');
+                const isLoggedIn = !!(student || instructor);
+
+                // Simulate small delay for smooth transition or instant if ready
+                setTimeout(() => {
+                    if (isOnline && !isLoggedIn) {
+                        // BLOCK: Show Gate, Hide Loader
+                        console.log('[Access Control] Online & Guest -> Gated');
+                        gate.style.display = 'block';
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.style.display = 'none', 500);
+                    } else {
+                        // ALLOW: Reveal Content, Hide Loader
+                        console.log('[Access Control] Authorized/Offline -> Revealing Content');
+                        contentElements.forEach(el => el.style.display = ''); // Reset display to CSS default
+                        // Ensure some specfic elements like subtabs stay hidden if logic dictates, 
+                        // but 'protected-content' class removed display:none
+
+                        // We need to override the !important from CSS class
+                        // Best way: Remove the class or set inline style display: block (for block elements)
+
+                        contentElements.forEach(el => {
+                            el.classList.remove('protected-content');
+                            // Or simpler: el.style.display = 'block' / 'flex' depending on element
+                            // Removing the class is cleanest if CSS 'display:none' was attached to the class
+                        });
+
+                        gate.style.display = 'none';
+                        loader.style.opacity = '0';
+                        setTimeout(() => loader.style.display = 'none', 500);
+                    }
+                }, 300); // Short delay to ensure config loaded
             }
 
             // ========================================================================
@@ -2391,11 +2487,10 @@
                         <div class="search-result-icon">${iconHTML}</div>
                         <div class="search-result-details">
                             <div class="search-result-id">${project.id}</div>
-                            <div class="search-result-name">${project.name}</div>
-                        </div>
-                        <div class="search-result-meta">
-                            <span>🎬 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>
-                            <span>📄 ${pdfCount} PDF${pdfCount !== 1 ? 's' : ''}</span>
+                            <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 0.85em; color: #6B7280;">
+                                <span>📂 ${project.category}</span>
+                                ${canShowVideos() ? `<span>🎬 ${project.videoCount} video${project.videoCount !== 1 ? 's' : ''}</span>` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -2657,6 +2752,14 @@
 
                 // Save all project access permission
                 localStorage.setItem('allProjectAccess', allProjectAccess ? 'yes' : 'no');
+
+                // [NEW] In ONLINE mode, reload to clear the Login Gate
+                // Check global DEPLOYMENT_MODE variable
+                if (typeof DEPLOYMENT_MODE !== 'undefined' && DEPLOYMENT_MODE === 'online') {
+                    console.log('[Login] Online Mode -> Reloading to unlock gate...');
+                    window.location.reload();
+                    return;
+                }
 
                 updateLoginButton();
 
@@ -3193,11 +3296,21 @@
                         document.getElementById('onlineParentView').style.display = 'block';
                         document.getElementById('classLoginView').style.display = 'none';
                         document.getElementById('allStudentsView').style.display = 'none';
+
+                        // [NEW] Hide "Continue without logging in" for Online Mode
+                        const skipBtn = document.getElementById('skipLoginBtn');
+                        if (skipBtn) skipBtn.style.display = 'none';
+
                         setTimeout(() => document.getElementById('parentEmailInput')?.focus(), 100);
                     } else {
                         // OFFLINE VIEW
                         document.getElementById('onlineParentView').style.display = 'none';
                         document.getElementById('classLoginView').style.display = 'block';
+
+                        // [NEW] Show "Continue without logging in" for Offline Mode
+                        const skipBtn = document.getElementById('skipLoginBtn');
+                        if (skipBtn) skipBtn.style.display = 'block'; // Or inline based on CSS
+
                         loadStudents();
                         stopClassRotation();
                         setTimeout(() => document.getElementById('studentSearch')?.focus(), 100);
@@ -3478,8 +3591,21 @@
                 socket.emit('page-change', { page: 'Projects Home' });
             });
 
+            // [NEW] Helper to check video permissions
+            function canShowVideos() {
+                // If offline, always allow
+                if (typeof DEPLOYMENT_MODE === 'undefined' || DEPLOYMENT_MODE !== 'online') return true;
+                // If online, only allow if logged in
+                const student = localStorage.getItem('currentStudent');
+                const instructor = localStorage.getItem('instructorLoggedIn');
+                return !!(student || instructor);
+            }
+
             // Demo Video Hover Logic
             function playDemoVideo(card) {
+                // SECURITY CHECK: Only play if allowed
+                if (!canShowVideos()) return;
+
                 const demoUrl = card.getAttribute('data-demo-url');
                 if (!demoUrl) return;
 
@@ -3780,7 +3906,7 @@
         });
     </script>
     <script src="mode-indicator.js"></script>
-    <script src="mobile-nav.js"></script>
+    <!-- mobile-nav.js is loaded at the end with versioning -->
     <!-- Marquee Logic -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {

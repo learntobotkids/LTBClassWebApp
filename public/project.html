@@ -27,6 +27,53 @@
             flex-direction: column;
             align-items: center;
         }
+
+        /* USER PROFILE PILL STYLES */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 15px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .user-name {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background-color: #111827;
+        }
     </style>
 </head>
 
@@ -38,32 +85,36 @@
                 <span>LearnToBot</span>
             </a>
 
-            <!-- Hamburger Button (Mobile Only) -->
-            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            <!-- Mobile menu handled by mobile-nav.js -->
 
-            <ul class="navbar-menu" id="mobileMenu">
-                <li><a href="/" class="navbar-link active">Projects</a></li>
+            <ul class="navbar-menu">
+                <li><a href="/" class="navbar-link">Projects</a></li>
+                <li><a href="/my-projects.html" class="navbar-link">My Projects</a></li>
                 <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
-                <li><a href="/instructor-dashboard.html" class="navbar-link">Teacher Panel</a></li>
-                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link">Analytics</a></li>
-                <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
+                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
+                        style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
+                <div id="userProfilePill" class="user-profile-pill" style="display: none;">
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
+                    <div class="user-info">
+                        <span id="userNameDisplay" class="user-name">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
+                    </div>
+                </div>
                 <a href="/" class="navbar-btn">Back to Projects</a>
             </div>
         </div>
     </nav>
-
-    <script>
-        // Mobile Menu Toggle
-        function toggleMobileMenu() {
-            const menu = document.getElementById('mobileMenu');
-            menu.classList.toggle('mobile-open');
-        }
-    </script>
 
     <div class="page-content">
         <div class="header">
@@ -107,12 +158,65 @@
             // Initialize the page
             (async function init() {
                 await fetchDeploymentMode();
+                fetchUserProfile(); // [NEW]
                 if (!projectId) {
                     showError('No project ID specified');
                 } else {
                     loadProject();
                 }
             })();
+
+            function logout() {
+                localStorage.removeItem('currentStudent');
+                localStorage.removeItem('allProjectAccess');
+                window.location.href = '/';
+            }
+
+            // [NEW] Update User Profile
+            async function fetchUserProfile() {
+                const currentStudent = localStorage.getItem('currentStudent');
+                if (!currentStudent) return;
+
+                // DOM Elements for Navbar
+                const pill = document.getElementById('userProfilePill');
+                const nameEl = document.getElementById('userNameDisplay');
+                const pointsEl = document.getElementById('userPointsDisplay');
+                const headshotEl = document.getElementById('userHeadshotDisplay');
+
+                // Show Pill immediately if logged in
+                if (pill) pill.style.display = 'flex';
+                if (nameEl) nameEl.textContent = currentStudent;
+
+                try {
+                    const response = await fetch('/api/leaderboard');
+                    const data = await response.json();
+
+                    if (data.success && data.leaderboard) {
+                        const student = data.leaderboard.find(s => s.name === currentStudent);
+                        if (student) {
+                            if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
+
+                            if (headshotEl) {
+                                let headshotUrl = student.headshot;
+                                if (headshotUrl) {
+                                    if (headshotUrl.includes('Child Names_Images/')) {
+                                        headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
+                                    } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                        headshotUrl = 'headshots/' + headshotUrl;
+                                    }
+                                    headshotEl.src = headshotUrl;
+                                    headshotEl.style.display = 'block';
+                                } else {
+                                    headshotEl.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(student.name)}`;
+                                    headshotEl.style.display = 'block';
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error updating navbar:', e);
+                }
+            }
 
             async function loadProject() {
                 try {
@@ -308,6 +412,25 @@
             // ONLINE MODE DISPLAY: Clean YouTube player + Part Cards
             // ========================================================================
             function displayProjectOnline() {
+                // SECURITY CHECK: If online and not logged in, block content
+                const student = localStorage.getItem('currentStudent');
+                const instructor = localStorage.getItem('instructorLoggedIn');
+                if (!student && !instructor) {
+                    const content = document.getElementById('content');
+                    content.innerHTML = `
+                        <div style="text-align: center; padding: 50px 20px; color: white;">
+                            <div style="font-size: 4em; margin-bottom: 20px;">🔒</div>
+                            <h2 style="margin-bottom: 15px;">Login Required</h2>
+                            <p style="color: #9CA3AF; margin-bottom: 30px;">
+                                This project video is private using paid software. <br>
+                                Please login with your student account to access the materials.
+                            </p>
+                            <a href="/" class="navbar-btn" style="padding: 12px 30px; font-size: 1.1em;">Go to Login</a>
+                        </div>
+                    `;
+                    return;
+                }
+
                 const content = document.getElementById('content');
                 const parts = currentProject.parts || [];
 

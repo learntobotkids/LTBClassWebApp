@@ -744,6 +744,8 @@
                 <!-- Teacher Panel Link Removed -->
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
             <div class="navbar-auth">
                 <div id="userProfilePill" class="user-profile-pill" style="display: none;">
@@ -830,6 +832,12 @@
         let leaderboardData = [];
         let searchTerm = '';
         const PRIZES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
+
+        function logout() {
+            localStorage.removeItem('currentStudent');
+            localStorage.removeItem('allProjectAccess');
+            window.location.href = '/';
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchUserProfile(); // [NEW] Update Navbar

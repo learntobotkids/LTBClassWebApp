@@ -9,6 +9,118 @@
     <link rel="stylesheet" href="mobile.css">
     <script src="analytics.js"></script>
     <style>
+        /* Navbar Styles from Index.html (Overrides kids-theme.css) */
+        .navbar {
+            background: rgba(7, 31, 78, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid #3B82F6 !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        .navbar-brand {
+            color: #E5E7EB;
+        }
+
+        .navbar-brand:hover {
+            color: #3B82F6;
+            transform: scale(1.05);
+        }
+
+        .navbar-link {
+            color: #9CA3AF;
+            font-weight: 600;
+            padding: 8px 10px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .navbar-link:hover {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .navbar-link.active {
+            color: #3B82F6;
+            background: rgba(59, 130, 246, 0.15);
+        }
+
+        .navbar-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #3B82F6;
+        }
+
+        .navbar-btn {
+            background: #3B82F6 !important;
+            box-shadow: none;
+            transition: all 0.3s ease;
+        }
+
+        .navbar-btn:hover {
+            background: #2563EB !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+        }
+
+        /* User Profile Pill */
+        .user-profile-pill {
+            display: flex;
+            align-items: center;
+            background: rgba(31, 41, 55, 0.8);
+            border: 1px solid #374151;
+            border-radius: 30px;
+            padding: 5px 15px;
+            gap: 15px;
+            margin-right: 10px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .user-profile-pill:hover {
+            border-color: #3B82F6;
+            background: rgba(31, 41, 55, 0.95);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .user-points {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #FBBF24;
+            font-weight: 700;
+            font-size: 1.05em;
+            border-right: 1px solid #4B5563;
+            padding-right: 15px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #userNameDisplay {
+            color: #E5E7EB;
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .user-headshot-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3B82F6;
+            background: #1F2937;
+        }
+
         /* Page Specific Styles */
         .progress-header {
             background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
@@ -324,21 +436,34 @@
                 <span>LearnToBot</span>
             </a>
 
-            <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+            <!-- Mobile menu button handled by mobile-nav.js -->
 
             <!-- Menu items will be populated/managed by mobile-nav.js but we put base structure -->
-            <ul class="navbar-menu" id="mobileMenu">
+            <!-- Standardized Menu from index.html -->
+            <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
-                <li><a href="/child-progress.html" class="navbar-link active">My Progress</a></li>
-                <!-- Other links -->
+                <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
+                        Projects</a></li>
+                <li><a href="/child-progress.html" class="navbar-link active">Student Progress</a>
+                </li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
+                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
+                        style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
                 <div id="userProfilePill" class="user-profile-pill" style="display: none;">
-                    <span id="userPointsDisplay" class="user-points">0 XP</span>
+                    <div class="user-points">
+                        <span class="points-icon">💎</span>
+                        <span id="userPointsDisplay">0</span>
+                    </div>
                     <div class="user-info">
-                        <img id="userHeadshotNav" src="" alt="User" class="user-headshot-nav">
                         <span id="userNameDisplay">Student</span>
+                        <img id="userHeadshotDisplay" src="" alt="Profile" class="user-headshot-nav"
+                            onerror="this.style.display='none'">
                     </div>
                 </div>
                 <button id="authBtn" class="navbar-btn" onclick="handleAuth()">Login</button>
@@ -630,6 +755,12 @@
         }
 
         // Initialize
+        function logout() {
+            localStorage.removeItem('currentStudent');
+            localStorage.removeItem('allProjectAccess');
+            window.location.href = '/';
+        }
+
         document.addEventListener('DOMContentLoaded', loadPageData);
     </script>
 </body>

@@ -96,8 +96,24 @@
         width: 100%;
         display: block;
         padding: 12px 15px !important;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(255, 255, 255, 0.1);
+        /* Slightly more visible */
         border-radius: 10px !important;
+        color: #ffffff !important;
+        /* Force White Text */
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .navbar-link:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .logout-link {
+        color: #FF6B6B !important;
+        /* Soft Red */
+        margin-top: 10px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     /* Grid System Overrides - Force Single Column */
