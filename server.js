@@ -987,9 +987,10 @@ app.post('/api/check-parent-email', async (req, res) => {
 
         let response;
         try {
+            // UPDATED: Fetch A:G to include ID (Column A)
             response = await sheets.spreadsheets.values.get({
                 spreadsheetId: config.SPREADSHEET_ID,
-                range: `${config.STUDENT_NAMES_SHEET}!B:G` // Fetch Columns B through G (G is Index 6 / 5 in result)
+                range: `${config.STUDENT_NAMES_SHEET}!A:G`
             });
         } catch (sheetError) {
             console.error('[CRITICAL] Google Sheets API Error:', sheetError.message);
@@ -1006,19 +1007,20 @@ app.post('/api/check-parent-email', async (req, res) => {
         // Config indices are 0-based relative to the sheet
         // But our fetch range starts at B (Column 1)
 
-        // Response array indices:
-        // 0 -> Column B (Email)
-        // 1 -> Column C (Child Name)
-        // 2 -> Column D (Child Age)
-        // 3 -> Column E (Parent Name)
-        // 4 -> Column F (Last Name?)
-        // 5 -> Column G (Child File Link)
+        // Response array indices (A:G):
+        // 0 -> Column A (ID) - NEW
+        // 1 -> Column B (Email)
+        // 2 -> Column C (Child Name)
+        // 3 -> Column D (Child Age)
+        // 4 -> Column E (Parent Name)
+        // 5 -> Column F (Parent Last Name)
+        // 6 -> Column G (Child File Link)
 
         const matchedChildren = rows
             .slice(1) // Skip header
             .filter(row => {
-                // Check Column B (Index 0 in our result)
-                const rowEmail = row[0] ? row[0].trim().toLowerCase() : '';
+                // Check Column B (Index 1)
+                const rowEmail = row[1] ? row[1].trim().toLowerCase() : '';
                 // Use substring matching as requested ("even as a substring")
                 const isMatch = rowEmail.includes(cleanEmail);
                 if (isMatch) {
@@ -1027,9 +1029,10 @@ app.post('/api/check-parent-email', async (req, res) => {
                 return isMatch;
             })
             .map(row => ({
-                name: row[1] ? row[1].trim() : 'Unknown Name', // Column C
-                parentName: row[3] ? row[3].trim() : 'Parent',  // Column E
-                fileLink: row[5] ? row[5].trim() : ''           // Column G
+                id: row[0] ? row[0].trim() : '',                 // Column A (ID)
+                name: row[2] ? row[2].trim() : 'Unknown Name',   // Column C
+                parentName: row[4] ? row[4].trim() : 'Parent',   // Column E
+                fileLink: row[6] ? row[6].trim() : ''            // Column G
             }));
 
         if (matchedChildren.length > 0) {
@@ -1052,6 +1055,52 @@ app.post('/api/check-parent-email', async (req, res) => {
             success: false,
             message: `Server Connection Error: ${error.message}`
         });
+    }
+});
+
+// ============================================================================
+// NEW: CHILD PROGRESS PAGE SUMMARY ENDPOINT
+// ============================================================================
+app.get('/api/student-summary/:studentId', async (req, res) => {
+    try {
+        const studentId = req.params.studentId;
+        console.log(`[API] Fetching summary for Student ID: ${studentId}`);
+
+        // 1. Get Project Data (Points, Current Project)
+        const projectData = await googleSheetsService.getStudentProjects(studentId, true); // Force refresh for accuracy
+
+        // 2. Get Next Class (from Bookings)
+        // We fetch all bookings and filter for this student and future dates
+        const allBookings = await googleSheetsService.fetchBookingInfo(true);
+
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Start of today
+
+        // Find bookings for this student
+        const studentBookings = allBookings.filter(b =>
+            b.studentId === studentId ||
+            (b.studentName && b.studentName.toLowerCase() === projectData.studentName.toLowerCase())
+        );
+
+        // Sort by date (ascending)
+        studentBookings.sort((a, b) => new Date(a.classDate) - new Date(b.classDate));
+
+        // Find next upcoming class (today or future)
+        const nextBooking = studentBookings.find(b => new Date(b.classDate) >= now);
+
+        res.json({
+            success: true,
+            stats: {
+                totalPoints: projectData.totalPoints,
+                completedCount: projectData.totalCompleted,
+                nextClass: nextBooking ? nextBooking.classDate : 'No upcoming classes',
+                nextClassTitle: nextBooking ? nextBooking.serviceTitle : '-'
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching student summary:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -1656,6 +1705,25 @@ app.post('/api/sync-students', async (req, res) => {
  * - completedProjects: Projects student has finished
  * - totalPoints: Sum of points earned
  */
+/**
+ * GET /api/resolve-id/:studentName
+ * Helper to resolve student Name to ID using Google Sheets Service
+ */
+app.get('/api/resolve-id/:studentName', async (req, res) => {
+    try {
+        const studentName = req.params.studentName;
+        const data = await googleSheetsService.getStudentProjectsByName(studentName);
+        if (data && data.studentId) {
+            res.json({ success: true, studentId: data.studentId });
+        } else {
+            res.status(404).json({ success: false, message: 'Student ID not found' });
+        }
+    } catch (error) {
+        console.error('Error resolving ID:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 app.get('/api/student-assignments/:studentName', (req, res) => {
     try {
         const studentName = req.params.studentName;

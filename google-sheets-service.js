@@ -1028,6 +1028,7 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
 
         // 3. Add studentName and fileLink to result for UI consistency
         result.studentName = student.name;
+        result.studentId = student.id; // NEW: Return resolved ID
         result.fileLink = student.fileLink; // Pass the Drive Link to the frontend
         result.track = student.track;       // Pass the Track to the frontend for filtering
 
@@ -1085,9 +1086,20 @@ async function getStudentProjects(studentId, forceRefresh = false) {
         };
 
         // Filter to only this student's projects (by ID)
-        const studentProjects = projects.filter(project =>
-            project.studentId === studentId
-        );
+        console.log(`[DEBUG] Filtering ${projects.length} projects for Student ID: "${studentId}"`);
+        if (projects.length > 0) {
+            console.log(`[DEBUG] Sample Project ID from log: "${projects[0].studentId}"`);
+        }
+
+        const studentProjects = projects.filter(project => {
+            // Loose equality to catch number/string mismatches
+            // formatting both to string and trim
+            const pId = String(project.studentId).trim();
+            const sId = String(studentId).trim();
+            return pId === sId;
+        });
+
+        console.log(`[DEBUG] Found ${studentProjects.length} matching projects.`);
 
         // Categorize projects by status
         const completedProjects = [];

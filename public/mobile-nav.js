@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const navbarContainer = document.querySelector('.navbar-container');
     const navbarMenu = document.querySelector('.navbar-menu');
 
+    // Run auth check regardless of menu creation
+    updateAuthUI();
+
     // Don't run if we already have a mobile menu button or if critical elements are missing
     if (!navbarContainer || !navbarMenu || document.querySelector('.mobile-menu-btn')) return;
 
@@ -36,9 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     console.log('[Mobile Nav] Initialized');
-
-    // Run auth check
-    updateAuthUI();
 });
 
 // GLOBAL AUTH UI HANDLER
@@ -89,6 +89,22 @@ function updateAuthUI() {
         loginBtn.textContent = 'Login';
         loginBtn.onclick = handleGlobalLogin;
         navbarAuth.appendChild(loginBtn);
+    }
+
+    // NEW: Toggle "My Progress" Link Visibility
+    const progressLink = document.querySelector('a[href*="child-progress.html"], a[href*="student-progress.html"]');
+    console.log('[Mobile Nav] Updating Progress Link. Student:', student, 'Link found:', !!progressLink);
+
+    if (progressLink) {
+        // Unhide the link itself first (it has inline style="display:none")
+        progressLink.style.display = (student) ? 'inline-block' : 'none';
+
+        // Also handle parent LI if it exists (for layout)
+        const parentLi = progressLink.parentElement;
+        if (parentLi && parentLi.tagName === 'LI') {
+            console.log('[Mobile Nav] Updating parent LI display to:', (student) ? 'block' : 'none');
+            parentLi.style.display = (student) ? 'block' : 'none';
+        }
     }
 }
 

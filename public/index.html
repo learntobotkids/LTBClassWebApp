@@ -1442,7 +1442,7 @@
                 <li><a href="/" class="navbar-link active">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
                         Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
+                <li><a href="/child-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
                 </li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
@@ -2634,9 +2634,19 @@
             });
 
             // Select a student
-            function selectStudent(studentName, fileLink = null, allProjectAccess = false) {
+            function selectStudent(studentName, fileLink = null, allProjectAccess = false, studentId = null) {
+                console.log('[Login Debug] selectStudent called with:', { studentName, fileLink, allProjectAccess, studentId });
                 currentStudent = studentName;
                 localStorage.setItem('currentStudent', studentName);
+
+                // NEW: Store Student ID
+                if (studentId) {
+                    console.log('[Login Debug] Saving studentId:', studentId);
+                    localStorage.setItem('studentId', studentId);
+                } else {
+                    console.warn('[Login Debug] No studentId provided! Clearing storage.');
+                    localStorage.removeItem('studentId');
+                }
 
                 // Save file link if provided
                 if (fileLink) {
@@ -3123,8 +3133,9 @@
 
                     btn.onclick = () => {
                         // Login Logic
+                        console.log('[Login Debug] Clicking child button:', child);
                         // Pass the fileLink if available
-                        selectStudent(child.name, child.fileLink);
+                        selectStudent(child.name, child.fileLink, false, child.id);
 
                         // We might want to unlock screen first
                         isBlockingModal = false;
@@ -3833,7 +3844,7 @@
             wrapper.style.display = 'block';
         }
     </script>
-    <script src="mobile-nav.js"></script>
+    <script src="mobile-nav.js?v=2"></script>
 </body>
 
 </html>
