@@ -768,6 +768,11 @@
             margin: 0;
         }
 
+        /* New rule for project image hover effect */
+        .project-card:hover .project-image {
+            transform: scale(1.05);
+        }
+
         .project-icon {
             width: 100%;
             height: 200px;
@@ -778,6 +783,16 @@
             justify-content: center;
             color: #E5E7EB;
             font-size: 3em;
+            margin-bottom: 15px;
+            /* Added from instruction */
+            transition: transform 0.3s ease;
+            /* Added from instruction */
+        }
+
+        /* New rule for project icon hover effect */
+        .project-card:hover .project-icon {
+            transform: scale(1.15);
+            /* Make icon bigger on hover */
         }
 
         .project-icon img {
@@ -1031,13 +1046,28 @@
         }
 
         .modal {
-            background: #1F2937;
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             padding: 30px;
-            border-radius: 20px;
+            border-radius: 24px;
             width: 90%;
-            max-width: 800px;
-            border: 2px solid #374151;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            max-width: 600px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: modalFadeIn 0.3s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
         }
 
         /* Header */
@@ -1054,13 +1084,35 @@
         }
 
         .close-modal {
-            background: none;
-            border: none;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: #9CA3AF;
-            font-size: 2em;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5em;
+            /* Check if X needs sizing adjustment */
             cursor: pointer;
-            padding: 0;
+            transition: all 0.2s ease;
             line-height: 1;
+            outline: none;
+            /* Remove blue outline */
+        }
+
+        .close-modal:hover {
+            background: rgba(239, 68, 68, 0.2);
+            /* Red tint on hover */
+            color: #EF4444;
+            border-color: #EF4444;
+            transform: rotate(90deg);
+        }
+
+        .close-modal:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
         }
 
         .close-modal:hover {
@@ -1426,6 +1478,55 @@
             box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
         }
 
+        /* Ghost Button for 'Continue without logging in' */
+        #skipLoginBtn {
+            background: transparent;
+            color: #9CA3AF;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 20px;
+            width: 100%;
+            text-align: center;
+            display: block;
+            /* Ensure it behaves like a block */
+            outline: none;
+        }
+
+        #skipLoginBtn:hover {
+            color: #E5E7EB;
+            border-color: #4B5563;
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-1px);
+        }
+
+        #skipLoginBtn:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(75, 85, 99, 0.4);
+        }
+
+        /* Search Box Refinement */
+        .search-box {
+            background: rgba(17, 24, 39, 0.8) !important;
+            border: 1px solid #374151 !important;
+            border-radius: 12px !important;
+            padding: 16px !important;
+            color: white !important;
+            font-size: 1.1em !important;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .search-box:focus {
+            outline: none !important;
+            border-color: #3B82F6 !important;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+        }
+
         /* [NEW] Zero-Flicker Protection: Hide content by default */
         .protected-content {
             display: none !important;
@@ -1583,30 +1684,24 @@
 
                 <!-- VIEW 1: CLASS VIEW (Default for Offline) -->
                 <div id="classLoginView">
-                    <div class="date-header" id="modalDateDisplay"></div>
-                    <div id="classGridContainer" style="max-height: 60vh; overflow-y: auto; padding-right: 10px;">
-                        <div class="loading">Loading today's classes...</div>
+                    <!-- SEARCH BAR (Always Visible) -->
+                    <input type="text" id="studentSearch" class="search-box" placeholder="🔍 Search for your name..."
+                        autocomplete="off" style="margin-bottom: 15px;">
+
+                    <!-- SECTION A: TODAY'S CLASSES (Default) -->
+                    <div id="todayClassesSection">
+                        <div class="date-header" id="modalDateDisplay"></div>
+                        <div id="classGridContainer" style="max-height: 55vh; overflow-y: auto; padding-right: 10px;">
+                            <div class="loading">Loading today's classes...</div>
+                        </div>
                     </div>
-                    <div
-                        style="text-align: center; margin-top: 20px; border-top: 1px solid #374151; padding-top: 15px;">
-                        <p style="color: #9CA3AF; margin-bottom: 10px;">Don't see your name?</p>
-                        <button class="search-all-btn" onclick="toggleLoginView('search')">
-                            🔍 Search All Students
-                        </button>
-                    </div>
+
+                    <!-- SECTION B: SEARCH RESULTS (Hidden by default) -->
+                    <div id="studentList" class="student-list"
+                        style="display: none; max-height: 55vh; overflow-y: auto;"></div>
                 </div>
 
-                <!-- VIEW 2: SEARCH VIEW (Hidden) -->
-                <div id="allStudentsView" style="display: none;">
-                    <div style="text-align: center; margin-bottom: 15px;">
-                        <button class="back-btn" onclick="toggleLoginView('class')">
-                            ← Back to Classes
-                        </button>
-                    </div>
-                    <input type="text" id="studentSearch" class="search-box" placeholder="Search for your name..."
-                        autocomplete="off">
-                    <div id="studentList" class="student-list" style="max-height: 50vh;"></div>
-                </div>
+                <!-- REMOVED: Separate Search View -->
 
                 <!-- VIEW 3: ONLINE PARENT LOGIN (New) -->
                 <div id="onlineParentView" style="display: none;">
@@ -2173,7 +2268,10 @@
                 }
 
                 // Otherwise, treat as local filename
-                return `/projects/${encodeURIComponent(projectId)}/${encodeURIComponent(icon)}`;
+                // Fix: Split ID by '/' and encode each segment to preserve directory structure
+                // Encoded slashes (%2F) are treated as part of the filename by express.static, not directory separators
+                const safePath = projectId.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                return `/projects/${safePath}/${encodeURIComponent(icon)}`;
             }
 
             // Show message when clicking a locked project
@@ -2253,9 +2351,26 @@
                     const inProgress = currentStudent && studentProgress && isProjectInProgress(project.name);
                     const isCompleted = currentStudent && studentProgress && isProjectCompleted(project.name);
 
-                    // Find demo video (case-insensitive check for 'demo' in filename)
-                    const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
-                    const demoUrl = demoVideo ? `/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
+                    // Find demo video
+                    // Priority 1: Explicit server-identified demoVideo (Offline Mode)
+                    // Priority 2: Scan videos array for 'demo' (Online/Legacy Mode)
+                    let demoUrl = '';
+                    if (project.demoVideo) {
+                        // Use encodeURIComponent for each segment separately to be safe with path issues
+                        const safeId = project.id.split('/').map(s => encodeURIComponent(s)).join('/');
+                        demoUrl = `/projects/${safeId}/${encodeURIComponent(project.demoVideo)}`;
+                    } else if (project.videos) {
+                        const demoVid = project.videos.find(v => v.toLowerCase().includes('demo'));
+                        if (demoVid) {
+                            // Online URLs are just strings, Offline paths need construction
+                            if (demoVid.startsWith('http')) {
+                                demoUrl = demoVid; // It's a YouTube link or similar (unlikely for "demo" name check, but possible)
+                            } else {
+                                const safeId = project.id.split('/').map(s => encodeURIComponent(s)).join('/');
+                                demoUrl = `/projects/${safeId}/${encodeURIComponent(demoVid)}`;
+                            }
+                        }
+                    }
 
                     // Determine badge based on status
                     let badgeHTML = '';
@@ -2291,11 +2406,9 @@
                                     </div>
                                     <div class="project-info">
                                         <div class="project-name">${project.name}</div>
-                                        ${project.description ? `<div class="project-description" style="font-size: 0.8em; color: #9CA3AF; margin-top:5px;">${project.description.substring(0, 60)}${project.description.length > 60 ? '...' : ''}</div>` : ''}
                                         ${project.category ? `<div class="project-category">${project.category}</div>` : ''}
                                         <div class="project-meta">
                                             <span class="video-count" style="color: #D97706;">💎 ${project.points || 0} Points</span>
-                                            ${project.pdf ? '<span class="pdf-badge">PDF</span>' : ''}
                                         </div>
                                     </div>
                                 </div>
@@ -2718,14 +2831,27 @@
                 `}).join('');
             }
 
-            // Search students
+            // Search students (Unified Logic)
             document.getElementById('studentSearch').addEventListener('input', (e) => {
-                const searchTerm = e.target.value.toLowerCase();
-                const filtered = allStudents.filter(student => {
-                    const name = typeof student === 'object' ? student.name : student;
-                    return name.toLowerCase().includes(searchTerm);
-                });
-                renderStudentList(filtered);
+                const searchTerm = e.target.value.toLowerCase().trim();
+                const todaySection = document.getElementById('todayClassesSection');
+                const listSection = document.getElementById('studentList');
+
+                if (searchTerm === '') {
+                    // EMPTY SEARCH -> SHOW TODAY'S CLASSES
+                    todaySection.style.display = 'block';
+                    listSection.style.display = 'none';
+                } else {
+                    // ACTIVE SEARCH -> SHOW LIST
+                    todaySection.style.display = 'none';
+                    listSection.style.display = 'block';
+
+                    const filtered = allStudents.filter(student => {
+                        const name = typeof student === 'object' ? student.name : student;
+                        return name.toLowerCase().includes(searchTerm);
+                    });
+                    renderStudentList(filtered);
+                }
             });
 
             // Select a student
@@ -2762,6 +2888,11 @@
                 }
 
                 updateLoginButton();
+
+                // Trigger Global Auth UI Update (from mobile-nav.js)
+                if (typeof updateAuthUI === 'function') {
+                    updateAuthUI();
+                }
 
                 // Hide modal
                 document.getElementById('loginModal').classList.remove('active');
@@ -3263,12 +3394,9 @@
             checkOnlineMode();
 
 
-            // Toggle login modal (Modified to respect blocking)
+            // Toggle login modal
             function toggleLoginModal() {
-                if (isBlockingModal) {
-                    // Do nothing if in blocking mode
-                    return;
-                }
+                if (isBlockingModal) return;
 
                 const modal = document.getElementById('loginModal');
                 const isOpen = modal.classList.contains('active');
@@ -3279,25 +3407,28 @@
                         // Reset online view
                         document.getElementById('onlineParentView').style.display = 'block';
                         document.getElementById('classLoginView').style.display = 'none';
-                        document.getElementById('allStudentsView').style.display = 'none';
                         document.getElementById('parentEmailStep').style.display = 'block';
                         document.getElementById('parentChildSelectStep').style.display = 'none';
                         document.getElementById('parentEmailInput').value = '';
                     } else {
-                        // Normal offline reset
+                        // NORMAL OFFLINE RESET
                         startClassRotation();
-                        toggleLoginView('class');
-                        document.getElementById('studentSearch').value = '';
+                        // Reset Search
+                        const search = document.getElementById('studentSearch');
+                        const todaySection = document.getElementById('todayClassesSection');
+                        const listSection = document.getElementById('studentList');
+
+                        if (search) search.value = '';
+                        if (todaySection) todaySection.style.display = 'block';
+                        if (listSection) listSection.style.display = 'none';
                     }
                 } else {
                     modal.classList.add('active');
                     if (window.DEPLOYMENT_MODE === 'online') {
-                        // FORCE ONLINE VIEW
+                        // ONLINE VIEW
                         document.getElementById('onlineParentView').style.display = 'block';
                         document.getElementById('classLoginView').style.display = 'none';
-                        document.getElementById('allStudentsView').style.display = 'none';
 
-                        // [NEW] Hide "Continue without logging in" for Online Mode
                         const skipBtn = document.getElementById('skipLoginBtn');
                         if (skipBtn) skipBtn.style.display = 'none';
 
@@ -3307,35 +3438,30 @@
                         document.getElementById('onlineParentView').style.display = 'none';
                         document.getElementById('classLoginView').style.display = 'block';
 
-                        // [NEW] Show "Continue without logging in" for Offline Mode
                         const skipBtn = document.getElementById('skipLoginBtn');
-                        if (skipBtn) skipBtn.style.display = 'block'; // Or inline based on CSS
+                        if (skipBtn) skipBtn.style.display = 'block';
 
-                        loadStudents();
+                        loadStudents(); // Load for search
                         stopClassRotation();
-                        setTimeout(() => document.getElementById('studentSearch')?.focus(), 100);
+
+                        // FOCUS SEARCH BAR IMMEDIATELY
+                        setTimeout(() => {
+                            const search = document.getElementById('studentSearch');
+                            if (search) search.focus();
+                        }, 100);
                     }
                 }
             }
 
-            // Switch between Class View, All Students View, and back
+            // NO-OP or Minimal Reset (Kept to prevent breaking existing calls)
             function toggleLoginView(view) {
-                const classView = document.getElementById('classLoginView');
-                const searchView = document.getElementById('allStudentsView');
-                const onlineView = document.getElementById('onlineParentView');
-                const searchInput = document.getElementById('studentSearch');
-
-                // Reset all
-                classView.style.display = 'none';
-                searchView.style.display = 'none';
-                if (onlineView) onlineView.style.display = 'none';
-
+                // We barely use this now, but if called, just ensure search is reset if 'class'
                 if (view === 'class') {
-                    classView.style.display = 'block';
-                } else if (view === 'search') {
-                    searchView.style.display = 'block';
-                    renderStudentList(allStudents);
-                    setTimeout(() => searchInput.focus(), 100);
+                    const search = document.getElementById('studentSearch');
+                    if (search) {
+                        search.value = '';
+                        search.dispatchEvent(new Event('input')); // Trigger reset logic
+                    }
                 }
             }
 

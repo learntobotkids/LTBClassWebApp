@@ -454,6 +454,12 @@ function findProjects(currentPath, categoryPath = []) {
                 // Look for PDF instruction file
                 const pdf = files.find(f => f.endsWith('.pdf'));
 
+                // Look for DEMO video file (any MP4/MOV with "demo" in the name)
+                const demoVideo = files.find(f =>
+                    f.toLowerCase().includes('demo') &&
+                    (f.endsWith('.mp4') || f.endsWith('.mov'))
+                );
+
                 // Calculate relative path from PROJECT_FOLDER
                 // This becomes the project's unique ID
                 const relativePath = path.relative(PROJECT_FOLDER, currentPath);
@@ -475,6 +481,7 @@ function findProjects(currentPath, categoryPath = []) {
                     videos: videos,                         // Array of video paths
                     icon: icon || null,                     // Icon filename or null
                     pdf: pdf || null,                       // PDF filename or null
+                    demoVideo: demoVideo || null,           // Demo video filename or null
                     videoCount: videos.length               // Count for display
                 });
             }
@@ -1387,6 +1394,48 @@ app.get('/api/sync-headshots', async (req, res) => {
 });
 
 /**
+ * GET /api/admin/sync-all
+ * Force refreshes all cached data from Google Sheets and syncs headshots
+ */
+app.get('/api/admin/sync-all', async (req, res) => {
+    try {
+        console.log('🔄 Starting Full Admin Sync...');
+        const results = {};
+
+        // 1. Students (Child Names)
+        await googleSheetsService.fetchStudents(true);
+        results.students = 'Synced';
+
+        // 2. Instructors
+        await googleSheetsService.fetchInstructors(true);
+        results.instructors = 'Synced';
+
+        // 3. Bookings (Today's Classes)
+        await googleSheetsService.fetchBookingInfo(true);
+        results.bookings = 'Synced';
+
+        // 4. Project List (Code Map)
+        await googleSheetsService.fetchProjectList(true);
+        results.projectList = 'Synced';
+
+        // 5. Master Database (Offline Backup)
+        await googleSheetsService.syncMasterDatabase();
+        results.masterDB = 'Synced';
+
+        // 6. Headshots
+        const headshotRes = await googleSheetsService.syncHeadshots();
+        results.headshots = headshotRes;
+
+        console.log('✅ Full Admin Sync Complete');
+        res.json({ success: true, results });
+
+    } catch (error) {
+        console.error('❌ Admin Sync Failed:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * GET /api/google-sheets/student-names
  * API Endpoint: Get list of students (for login dropdown) from Google Sheets
  */
@@ -1636,7 +1685,9 @@ app.post('/api/sync-students', async (req, res) => {
 
             // Build basic project data object
             const projectData = {
+                id: project.id || project.projectName, // FIX: Use ID mapping so frontend links work
                 name: project.projectName,
+                originalCode: project.projectName,
                 status: project.projectStatus,
                 type: project.projectType,
                 assignType: project.assignType

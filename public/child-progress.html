@@ -319,7 +319,8 @@
         /* Typography & Layout */
         .timeline-date {
             font-size: 0.8em;
-            color: #9CA3AF;
+            color: #E5E7EB;
+            /* Lighter/Brighter gray */
             margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -334,7 +335,8 @@
         }
 
         .timeline-desc {
-            color: #D1D5DB;
+            color: #F3F4F6;
+            /* Nearly white for max visibility */
             font-size: 0.95em;
             line-height: 1.5;
             margin-top: 5px;
@@ -350,59 +352,146 @@
         }
 
         .concept-tag {
-            background: rgba(59, 130, 246, 0.15);
-            color: #60A5FA;
-            font-size: 0.75em;
+            background: rgba(59, 130, 246, 0.3);
+            /* Lighter background */
+            color: #FFFFFF;
+            /* White text for max contrast */
+            font-size: 0.8em;
+            /* Slightly larger */
             font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 4px;
+            padding: 6px 12px;
+            border-radius: 6px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            border: 1px solid rgba(59, 130, 246, 0.2);
-        }
-
-        /* Points Badge */
-        .points-badge {
-            background: #2D3748;
-            /* Darker bg */
-            color: #48BB78;
-            /* Green text */
-            font-weight: bold;
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            white-space: nowrap;
-            border: 1px solid #48BB78;
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            /* Shadow for readability */
         }
 
         /* Video Grid */
         .video-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+            padding: 20px 0;
         }
 
         .video-card {
             background: #1F2937;
-            border-radius: 12px;
+            border-radius: 16px;
             overflow: hidden;
             border: 1px solid #374151;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
         }
 
         .video-card:hover {
             transform: translateY(-5px);
             border-color: #3B82F6;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
         }
 
-        .video-thumb {
+        .video-card .video-thumb {
             width: 100%;
-            height: 150px;
+            height: 160px;
             background: #111827;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
+            overflow: hidden;
+        }
+
+        .video-card:hover .video-thumb img {
+            transform: scale(1.05);
+        }
+
+        .video-card .video-thumb-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.3);
+            transition: background 0.2s;
+        }
+
+        .video-card:hover .video-thumb-overlay {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .video-card .play-icon-large {
+            font-size: 3.5em;
+            color: rgba(255, 255, 255, 0.9);
+            z-index: 2;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.5));
+            transition: transform 0.2s;
+        }
+
+        .video-card:hover .play-icon-large {
+            transform: scale(1.1);
+            color: #fff;
+        }
+
+        .video-play-btn {
+            margin-top: 15px;
+            background: rgba(59, 130, 246, 0.1);
+            color: #60A5FA;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+
+        .video-card:hover .video-play-btn {
+            background: #3B82F6;
+            color: white;
+            border-color: #3B82F6;
+        }
+
+        /* Video Preview Thumb */
+        .video-preview-thumb {
+            width: 180px;
+            /* Larger width */
+            height: 110px;
+            /* Larger height */
+            background: #000;
+            border-radius: 8px;
+            border: 2px solid #374151;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+            align-self: center;
+            /* Center vertically relative to content */
+        }
+
+        .video-preview-thumb:hover {
+            transform: scale(1.05);
+            border-color: #3B82F6;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-preview-thumb-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(45deg, rgba(59, 130, 246, 0.3), transparent);
+        }
+
+        .video-preview-play-icon {
+            font-size: 2.5em;
+            /* Larger icon */
+            z-index: 2;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+            color: rgba(255, 255, 255, 0.9);
         }
 
         .play-icon {
@@ -423,6 +512,91 @@
         .video-date {
             color: #6B7280;
             font-size: 0.85em;
+        }
+
+        /* Video Modal Styles */
+        .video-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .video-modal.active {
+            opacity: 1;
+        }
+
+        .modal-content {
+            position: relative;
+            width: 90%;
+            max-width: 900px;
+            background: #1F2937;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .video-modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 15px 20px;
+            background: #111827;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #374151;
+        }
+
+        .modal-title {
+            color: #E5E7EB;
+            font-size: 1.1em;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: transparent;
+            border: none;
+            color: #9CA3AF;
+            font-size: 1.5em;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: white;
+        }
+
+        .video-container {
+            position: relative;
+            padding-bottom: 56.25%;
+            /* 16:9 Aspect Ratio */
+            height: 0;
+            background: black;
+        }
+
+        .video-container iframe,
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
@@ -515,6 +689,19 @@
         <div class="video-grid" id="videoGridContainer">
             <!-- Videos will be injected here -->
             <p style="text-align:center; width:100%; color:#9CA3AF;">Loading videos...</p>
+        </div>
+    </div>
+
+    <!-- Video Modal -->
+    <div id="videoModal" class="video-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">Project Video</h3>
+                <button class="modal-close" onclick="closeVideoModal()">×</button>
+            </div>
+            <div class="video-container" id="modalVideoContainer">
+                <!-- Video/Iframe injected here -->
+            </div>
         </div>
     </div>
 
@@ -630,7 +817,7 @@
                 const dateStr = p.completedDate ? new Date(p.completedDate).toLocaleDateString() : 'Finished';
                 // Use 'studentActivity' for "What child did"
                 // Use 'description' for Tags/Learning Concepts
-                const el = createTimelineItem(p.name, dateStr, 'Completed', 'completed', p.studentActivity, p.description, p.points);
+                const el = createTimelineItem(p.name, dateStr, 'Completed', 'completed', p.studentActivity, p.description, p.points, p.videoLink);
                 container.appendChild(el);
             });
 
@@ -660,7 +847,7 @@
             }
         }
 
-        function createTimelineItem(title, date, statusText, statusClass, activity, concepts, points) {
+        function createTimelineItem(title, date, statusText, statusClass, activity, concepts, points, videoLink) {
             const div = document.createElement('div');
             // 'locked' projects are upcoming/next projects with greyed out style
             const isLocked = statusClass === 'locked';
@@ -694,55 +881,148 @@
             // Points Badge (only for completed)
             const pointsHtml = points ? `<div class="points-badge">+${points} XP</div>` : '';
 
-            // Dot Class
-            // We need to ensure the dot has the right 'color class' appended
-            // statusClass is like 'completed', 'current', 'upcoming', 'locked'
-            // CSS expects 'completed-dot', 'current-dot', etc.
             const dotClass = `${statusClass}-dot`;
 
             div.innerHTML = `
                 <div class="timeline-dot ${dotClass}">
                     ${iconSvg}
                 </div>
-                <!-- <span class="timeline-date">${date}</span> -->
                 <div class="timeline-content">
-                    <div style="display:flex; justify-content:space-between; align-items:start;">
-                        <div>
-                             <span class="timeline-date">${date}</span>
-                             <h3 class="timeline-title">${title}</h3>
+                    <div style="display:flex; gap:20px; align-items:flex-start;">
+                        <div style="flex:1;">
+                            <div style="display:flex; justify-content:space-between; align-items:start;">
+                                <div>
+                                     <span class="timeline-date">${date}</span>
+                                     <h3 class="timeline-title">${title}</h3>
+                                </div>
+                                ${pointsHtml}
+                            </div>
+                            ${descHtml}
+                            ${tagsHtml}
                         </div>
-                        ${pointsHtml}
+                        
+                        ${videoLink ? `
+                            <div onclick="openVideoModal('${videoLink}', '${title.replace(/'/g, "\\'")}')" 
+                                 class="video-preview-thumb"
+                                 title="Watch Video">
+                                <div class="video-preview-thumb-overlay"></div>
+                                <span class="video-preview-play-icon">▶️</span>
+                            </div>
+                        ` : ''}
                     </div>
-                    ${descHtml}
-                    ${tagsHtml}
-                    <!-- <div class="timeline-status status-${statusClass}">${statusText}</div> -->
                 </div>
             `;
             return div;
+        }
+
+        // Modal Functions
+        function openVideoModal(url, title) {
+            const modal = document.getElementById('videoModal');
+            const videoContainer = document.getElementById('modalVideoContainer');
+            const titleEl = document.getElementById('modalTitle');
+
+            if (!modal || !videoContainer) return;
+
+            // Set Title
+            titleEl.textContent = title || 'Project Video';
+
+            // Process URL to determine embed type
+            let embedHtml = '';
+
+            // Handle Google Drive Links
+            if (url.includes('drive.google.com')) {
+                // Convert view/sharing links to preview links
+                // Replace /view or /edit with /preview
+                let previewUrl = url.replace(/\/view.*$/, '/preview').replace(/\/edit.*$/, '/preview');
+                if (!previewUrl.includes('/preview')) {
+                    // Try to find ID if it's a different format
+                    const match = url.match(/\/d\/([^\/]+)/);
+                    if (match) {
+                        previewUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+                    }
+                }
+                embedHtml = `<iframe src="${previewUrl}" allow="autoplay" allowfullscreen></iframe>`;
+            }
+            // Handle YouTube
+            else if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                let videoId = '';
+                if (url.includes('youtu.be')) {
+                    videoId = url.split('/').pop();
+                } else {
+                    const params = new URLSearchParams(new URL(url).search);
+                    videoId = params.get('v');
+                }
+                embedHtml = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+            }
+            // Direct Video Files (mp4, webm)
+            else if (url.match(/\.(mp4|webm|mov)$/i)) {
+                embedHtml = `<video src="${url}" controls autoplay style="width:100%; height:100%;"></video>`;
+            }
+            // Fallback: simple iframe
+            else {
+                embedHtml = `<iframe src="${url}" allowfullscreen></iframe>`;
+            }
+
+            videoContainer.innerHTML = embedHtml;
+
+            // Show Modal
+            modal.style.display = 'flex';
+            // Small delay for transition
+            setTimeout(() => {
+                modal.classList.add('active');
+            }, 10);
+        }
+
+        function closeVideoModal() {
+            const modal = document.getElementById('videoModal');
+            const videoContainer = document.getElementById('modalVideoContainer');
+
+            if (modal) {
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                    // Stop video by clearing content
+                    if (videoContainer) videoContainer.innerHTML = '';
+                }, 300);
+            }
+        }
+
+        // Close on outside click
+        window.onclick = function (event) {
+            const modal = document.getElementById('videoModal');
+            if (event.target === modal) {
+                closeVideoModal();
+            }
         }
 
         function renderVideoGallery(data) {
             const container = document.getElementById('videoGridContainer');
             container.innerHTML = '';
 
+            // Combine all projects that might have videos (Completed, In Progress?? usually only completed have evidence)
+            // But let's stick to Completed for gallery as per original logic
             const completed = data.completedProjects || [];
-            // Filter for projects that have a video link? Or simplified logic: Just show all completed as "Projects I've Built"
-            // If they have a videoLink property, we can link to it.
 
             let count = 0;
             completed.forEach(p => {
                 if (p.videoLink) {
                     count++;
+                    const dateStr = p.completedDate ? new Date(p.completedDate).toLocaleDateString() : '';
+                    const titleSafe = p.name.replace(/'/g, "\\'");
+
                     const el = document.createElement('div');
                     el.className = 'video-card';
+                    el.onclick = () => openVideoModal(p.videoLink, titleSafe);
+
                     el.innerHTML = `
                         <div class="video-thumb">
-                            <span class="play-icon">▶️</span>
+                            <div class="video-thumb-overlay"></div>
+                            <span class="play-icon-large">▶️</span>
                         </div>
                         <div class="video-info">
                             <div class="video-title">${p.name}</div>
-                            <div class="video-date">Completed on ${new Date(p.completedDate).toLocaleDateString()}</div>
-                            <a href="${p.videoLink}" target="_blank" style="display:block; margin-top:10px; color:#3B82F6; text-decoration:none; font-weight:bold;">Watch Video</a>
+                            <div class="video-date">${dateStr ? `Completed on ${dateStr}` : 'Project Completed'}</div>
+                            <div class="video-play-btn">Watch Video</div>
                         </div>
                    `;
                     container.appendChild(el);
@@ -750,7 +1030,11 @@
             });
 
             if (count === 0) {
-                container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 40px; color:#6B7280; background:#1F2937; border-radius:12px;">No videos found in your gallery yet. Complete projects to add them here!</div>';
+                container.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding: 60px 20px; color:#9CA3AF; background:#1F2937; border-radius:16px; border:1px dashed #374151;">' +
+                    '<span style="font-size:3em; display:block; margin-bottom:15px;">📹</span>' +
+                    '<h3 style="color:white; margin:0 0 10px 0;">No Videos Yet</h3>' +
+                    '<p style="margin:0;">Complete projects and upload evidence to see your video gallery here!</p>' +
+                    '</div>';
             }
         }
 

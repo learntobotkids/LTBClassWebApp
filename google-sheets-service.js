@@ -1120,8 +1120,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                 const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
 
                 completedProjects.push({
-                    studentId: project.studentId, // Crucial: specific ID for this entry
-                    id: project.projectName, // Frontend expects 'id'
+                    studentId: project.studentId,
+                    id: project.id || project.projectName, // FIX: Use ID (Project Code)
                     name: displayName,
                     originalCode: project.projectName,
                     description: projectInfo ? projectInfo.description : '', // New Field
@@ -1140,8 +1140,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                 const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
 
                 inProgressProjects.push({
-                    studentId: project.studentId, // Crucial: specific ID for this entry
-                    id: project.projectName, // Frontend expects 'id'
+                    studentId: project.studentId,
+                    id: project.id || project.projectName, // FIX: Use ID (Project Code)
                     name: displayName,
                     originalCode: project.projectName,
                     description: projectInfo ? projectInfo.description : '',
@@ -1158,7 +1158,7 @@ async function getStudentProjects(studentId, forceRefresh = false) {
 
                 nextProjects.push({
                     studentId: project.studentId,
-                    id: project.projectName,
+                    id: project.id || project.projectName, // FIX: Use ID (Project Code)
                     name: displayName,
                     originalCode: project.projectName,
                     description: projectInfo ? projectInfo.description : '',
@@ -1174,8 +1174,8 @@ async function getStudentProjects(studentId, forceRefresh = false) {
                 const projectInfo = projectMap.get(project.projectName.trim().toUpperCase());
 
                 assignedProjects.push({
-                    studentId: project.studentId, // Crucial: specific ID for this entry
-                    id: project.projectName, // Frontend expects 'id'
+                    studentId: project.studentId,
+                    id: project.id || project.projectName, // FIX: Use ID (Project Code)
                     name: displayName,
                     originalCode: project.projectName,
                     description: projectInfo ? projectInfo.description : '',

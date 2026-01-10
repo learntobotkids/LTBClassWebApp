@@ -42,42 +42,72 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // GLOBAL AUTH UI HANDLER
-function updateAuthUI() {
+async function updateAuthUI() {
     // Check if we are on the instructor dashboard (it handles its own auth usually, but we might want to unify)
     if (window.location.pathname.includes('instructor-dashboard.html')) return;
 
     const navbarAuth = document.querySelector('.navbar-auth');
     if (!navbarAuth) return; // Should not happen if HTML is correct
 
-    const student = localStorage.getItem('currentStudent');
+    const studentName = localStorage.getItem('currentStudent');
     const instructor = localStorage.getItem('instructorLoggedIn');
 
     // Clear existing content to rebuild
     navbarAuth.innerHTML = '';
 
-    if (student || instructor) {
+    if (studentName || instructor) {
         // LOGGED IN STATE
 
-        // 1. User Badge
-        const userSpan = document.createElement('span');
-        userSpan.className = 'navbar-user';
-        userSpan.style.display = 'inline-block';
-        userSpan.style.marginRight = '10px';
-        userSpan.style.color = '#E5E7EB';
-        userSpan.style.fontWeight = '600';
-
         if (instructor) {
+            // Instructor Badge (Keep Simple)
+            const userSpan = document.createElement('span');
+            userSpan.className = 'navbar-user';
+            userSpan.style.display = 'inline-block';
+            userSpan.style.marginRight = '10px';
+            userSpan.style.color = '#E5E7EB';
+            userSpan.style.fontWeight = '600';
             userSpan.textContent = `👨‍🏫 ${localStorage.getItem('instructorName') || 'Instructor'}`;
+            navbarAuth.appendChild(userSpan);
         } else {
-            userSpan.textContent = `👤 ${student}`;
-        }
-        navbarAuth.appendChild(userSpan);
+            // Student Profile Pill (Rich UI)
 
-        // 2. Logout Button
+            // Create container
+            const pill = document.createElement('div');
+            pill.className = 'user-profile-pill';
+
+            // 1. Points Section
+            const pointsDiv = document.createElement('div');
+            pointsDiv.className = 'user-points';
+            pointsDiv.innerHTML = `<span class="points-icon">💎</span><span id="navUserPoints">...</span>`;
+            pill.appendChild(pointsDiv);
+
+            // 2. Info Section (Name + Headshot)
+            const infoDiv = document.createElement('div');
+            infoDiv.className = 'user-info';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = studentName;
+
+            const img = document.createElement('img');
+            img.className = 'user-headshot-nav';
+            img.alt = 'Profile';
+            img.src = ''; // Will populate async
+            img.onerror = function () { this.style.display = 'none'; }; // Hide if broken
+
+            infoDiv.appendChild(nameSpan);
+            infoDiv.appendChild(img);
+            pill.appendChild(infoDiv);
+
+            navbarAuth.appendChild(pill);
+
+            // Fetch Data Async
+            fetchStudentDataRecursive(studentName, img, document.getElementById('navUserPoints'));
+        }
+
+        // Logout Button
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'navbar-btn logout';
-        logoutBtn.textContent = 'Logout';
-        logoutBtn.style.backgroundColor = '#EF4444'; // Red for logout
+        logoutBtn.innerText = 'Logout'; // innerText for safety
         logoutBtn.onclick = handleGlobalLogout;
         navbarAuth.appendChild(logoutBtn);
 
@@ -91,20 +121,88 @@ function updateAuthUI() {
         navbarAuth.appendChild(loginBtn);
     }
 
-    // NEW: Toggle "My Progress" Link Visibility
+    // Toggle "My Progress" Link Visibility
     const progressLink = document.querySelector('a[href*="child-progress.html"], a[href*="student-progress.html"]');
-    console.log('[Mobile Nav] Updating Progress Link. Student:', student, 'Link found:', !!progressLink);
-
     if (progressLink) {
-        // Unhide the link itself first (it has inline style="display:none")
-        progressLink.style.display = (student) ? 'inline-block' : 'none';
-
-        // Also handle parent LI if it exists (for layout)
+        progressLink.style.display = (studentName) ? 'inline-block' : 'none';
         const parentLi = progressLink.parentElement;
         if (parentLi && parentLi.tagName === 'LI') {
-            console.log('[Mobile Nav] Updating parent LI display to:', (student) ? 'block' : 'none');
-            parentLi.style.display = (student) ? 'block' : 'none';
+            parentLi.style.display = (studentName) ? 'block' : 'none';
         }
+    }
+}
+
+async function fetchStudentDataRecursive(studentName, imgEl, pointsEl) {
+    try {
+        // 1. Get Headshot (from Students List - name based)
+        // We do this independently so headshot appears even if points fail
+        fetch('/api/students')
+            .then(res => res.json())
+            .then(data => {
+                if (data.students) {
+                    const student = data.students.find(s => s.name === studentName);
+                    if (student && student.headshot) {
+                        if (student.headshot.startsWith('http') || student.headshot.startsWith('/')) {
+                            imgEl.src = student.headshot;
+                        } else if (student.headshot.includes('.')) {
+                            imgEl.src = `/headshots/${student.headshot}`;
+                        } else {
+                            imgEl.src = `https://drive.google.com/thumbnail?id=${student.headshot}`;
+                        }
+                    } else {
+                        imgEl.style.display = 'none';
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('Headshot fetch error:', err);
+                imgEl.style.display = 'none';
+            });
+
+        // 2. Get Points (requires ID)
+        let studentId = localStorage.getItem('studentId');
+
+        // If no ID, try to resolve it from name
+        if (!studentId && studentName) {
+            console.log('[MobileNav] Resolving ID for points...');
+            try {
+                const resolveRes = await fetch(`/api/resolve-id/${encodeURIComponent(studentName)}`);
+                const resolveData = await resolveRes.json();
+                if (resolveData.success && resolveData.studentId) {
+                    studentId = resolveData.studentId;
+                    localStorage.setItem('studentId', studentId);
+                }
+            } catch (e) {
+                console.error('[MobileNav] ID Resolution failed:', e);
+            }
+        }
+
+        if (studentId) {
+            // Fetch Official Summary
+            const summaryRes = await fetch(`/api/student-summary/${encodeURIComponent(studentId)}`);
+            const summaryData = await summaryRes.json();
+
+            if (summaryData.success && summaryData.stats) {
+                // UPDATE POINTS
+                const pts = summaryData.stats.totalPoints || 0;
+                if (pointsEl) pointsEl.textContent = pts;
+            }
+        } else {
+            // Fallback: Use manual calculation
+            const progressResp = await fetch(`/api/student-assignments/${encodeURIComponent(studentName)}`);
+            const progressData = await progressResp.json();
+
+            let totalPoints = 0;
+            if (progressData.completedProjects) {
+                totalPoints = progressData.completedProjects.reduce((sum, p) => sum + (parseInt(p.points) || 0), 0);
+            }
+            if (pointsEl) pointsEl.textContent = totalPoints;
+        }
+
+    } catch (err) {
+        console.error('Error fetching navbar data:', err);
+        if (pointsEl) pointsEl.textContent = '0';
+        imgEl.style.display = 'none';
     }
 }
 
@@ -155,3 +253,35 @@ if (window.location.search.includes('login=true')) {
         }, 500);
     });
 }
+
+// ============================================================================
+// SLEEP/SHUTDOWN DETECTION (Option 2)
+// ============================================================================
+// Runs a heartbeat check. If the browser execution pauses for > 1 minute,
+// it assumes the computer slept or restarted, and logs the user out.
+
+(function () {
+    let lastTick = Date.now();
+    const CHECK_INTERVAL = 5000;   // Check every 5 seconds
+    const SLEEP_THRESHOLD = 60000; // If gap > 60s (plus interval), assume sleep
+
+    setInterval(() => {
+        const now = Date.now();
+        const diff = now - lastTick;
+
+        // Normal difference should be around 5000ms.
+        // If it's significantly larger (e.g. > 65s), the script was paused (Sleep).
+        if (diff > (CHECK_INTERVAL + SLEEP_THRESHOLD)) {
+            console.warn(`[Sleep Detector] Extended pause detected! Gap: ${Math.round(diff / 1000)}s. Logging out...`);
+
+            // Only logout if someone is actually logged in
+            if (localStorage.getItem('currentStudent') || localStorage.getItem('instructorLoggedIn')) {
+                handleGlobalLogout();
+            }
+        }
+
+        lastTick = now;
+    }, CHECK_INTERVAL);
+
+    console.log('[Sleep Detector] Active');
+})();
