@@ -315,23 +315,20 @@ async function fetchStudents(forceRefresh = false) {
                     } else if (localHeadshots.has(sanitized)) {
                         headshot = `/headshots/${sanitized}`;
                     }
+
+                    // DEBUG LOGGING FOR ADITI
+                    if (row[1] && row[1].includes('Aditi')) {
+                        console.log(`[DEBUG FETCH] Aditi Found: Col B='${row[1]}', Col C='${row[2]}'. Filename='${filename}', Sanitized='${sanitized}', LocalFound=${localHeadshots.has(sanitized)}`);
+                    }
                 }
 
-                // NAME LOGIC: Prefer Column C (Login Name/Index 2) as it's cleaner. 
-                // Fallback to Column B (Name/Index 1), then ID.
-                // Also clean up if it looks like an email.
-                let rawName = (row[2] && row[2].trim().length > 0) ? row[2].trim() : (row[1] ? row[1].trim() : 'Unknown');
-
-                // Extra safety: if it's still an email, strip domain
-                if (rawName.includes('@')) {
-                    rawName = rawName.split('@')[0];
-                    // Capitalize first letter
-                    rawName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
-                }
+                // NAME LOGIC: User wants Full Name from Column C (Index 2).
+                // Column B (Index 1) is Short Name.
+                let finalName = (row[2] && row[2].trim()) ? row[2].trim() : (row[1] ? row[1].trim() : 'Unknown');
 
                 return {
                     id: row[0].trim(),    // Column A: Student ID
-                    name: row[1] ? row[1].trim() : 'Unknown',  // Column B: Student Name
+                    name: finalName,      // PRIORITIZE COL C
                     loginName: row[2] ? row[2].trim() : '',   // Column C: Login Name
                     fileLink: row[6] ? row[6].trim() : '',    // Column G: Drive Link
                     headshot: headshot,
@@ -527,11 +524,12 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         const sheets = await getGoogleSheetsClient();
 
         // Fetch columns D (Name) through AI (All Project Access)
-        // Range: "Child Names!D:AI"
-        // D=Name(0), E(1), F(2), G=FileLink(3), H(4), I=Headshot(5), ... AI=AllProjectAccess(31)
+        // Fetch columns B (Name) through AI (All Project Access)
+        // Range: "Child Names!B:AI"
+        // B=Name(0), C=LoginName(1), D(2), ... G=FileLink(5), ... I=Headshot(7), ... AI=AllProjectAccess(33)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!D:AI`,
+            range: `${config.STUDENT_NAMES_SHEET}!B:AI`,
         });
 
         // Extract rows from response
@@ -539,9 +537,9 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
 
         // Process rows into array of student objects
         // Skip header row, filter out empty cells
-        // Column mapping relative to fetch range (D=0, E=1, ..., I=5)
-        // Name is at index 0 (Column D)
-        // Headshot is at index 5 (Column I)
+        // Column mapping relative to fetch range (B=0, C=1, ..., I=7)
+        // Name is at index 0 (Column B)
+        // Headshot is at index 7 (Column I)
 
         // Cache local headshots for checking
         let localHeadshots = new Set();
@@ -554,11 +552,13 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         const students = rows.slice(1)
             .filter(row => row[0] && row[0].trim())
             .map(row => {
-                const name = row[0].trim();
-                let headshot = row[5] ? row[5].trim() : '';
-                const fileLink = row[3] ? row[3].trim() : '';  // Column G (index 3 from D)
-                // Column AI is index 31 from D (D=0, E=1, ..., AI=31)
-                const allProjectAccess = row[31] ? row[31].trim().toLowerCase() : '';
+                // User Feedback: Column C (Index 1) has the Full Name (e.g. "Aditi Agarwal"), Column B (Index 0) has Short Name ("Aditi").
+                // So we prioritize Column C.
+                const name = (row[1] && row[1].trim()) ? row[1].trim() : row[0].trim();
+                let headshot = row[7] ? row[7].trim() : '';  // Column I (Index 7 from B)
+                const fileLink = row[5] ? row[5].trim() : '';  // Column G (Index 5 from B)
+                // Column AI is index 33 from B (B=0...AI=33)
+                const allProjectAccess = row[33] ? row[33].trim().toLowerCase() : '';
 
                 // Try to map to local file
                 // Start by assuming Column I is the filename
@@ -572,6 +572,12 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
                     headshot = `/headshots/${filename}`;
                 } else if (localHeadshots.has(sanitized)) {
                     headshot = `/headshots/${sanitized}`;
+                }
+
+                // DEBUG LOGGING FOR ADITI
+                if (name.includes('Aditi')) {
+                    console.log(`[DEBUG] Aditi Check: Col B (Short)='${row[0]}', Col C (Full)='${row[1]}'. Selected='${name}'`);
+                    console.log(`[DEBUG] Headshot Check: Raw='${row[7]}', Santized='${sanitized}', Found=${localHeadshots.has(sanitized)}`);
                 }
 
                 return {

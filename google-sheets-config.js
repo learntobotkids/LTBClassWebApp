@@ -55,9 +55,9 @@ module.exports = {
 
     /**
      * Folder ID for student headshots in Google Drive
-     * URL: https://drive.google.com/drive/folders/1oKkD9JYBAhSM5NKXy9gcejXZ6DkEwVL3
+     * URL: https://drive.google.com/drive/folders/1NXrRhPxBkZVoCcYy2uYMy7Mrzz8BTa5R (Child Names_Images)
      */
-    DRIVE_HEADSHOTS_FOLDER_ID: '1oKkD9JYBAhSM5NKXy9gcejXZ6DkEwVL3',
+    DRIVE_HEADSHOTS_FOLDER_ID: '1NXrRhPxBkZVoCcYy2uYMy7Mrzz8BTa5R',
 
     /**
      * Folder ID for Video Upload Tests

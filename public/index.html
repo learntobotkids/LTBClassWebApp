@@ -1155,6 +1155,9 @@
             transition: all 0.3s ease;
             border: 1px solid #374151;
             color: #E5E7EB;
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         .student-item:hover {
@@ -1480,8 +1483,8 @@
 
         /* Ghost Button for 'Continue without logging in' */
         #skipLoginBtn {
-            background: transparent;
-            color: #9CA3AF;
+            background: transparent !important;
+            color: #9CA3AF !important;
             border: 1px solid rgba(255, 255, 255, 0.1);
             padding: 12px 24px;
             border-radius: 12px;
@@ -2813,14 +2816,17 @@
                     if (headshotUrl) {
                         if (headshotUrl.includes('Child Names_Images/')) {
                             headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
-                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('/headshots/') && !headshotUrl.startsWith('http')) {
                             // If it's just a filename, assume it's in headshots/
                             headshotUrl = 'headshots/' + headshotUrl;
                         }
                     }
 
+                    // FIX: Use &quot; for inner attributes to avoid breaking the onerror="..." double-quoted attribute
+                    const fallback = `this.onerror=null; this.outerHTML='<div class=&quot;student-initial&quot; style=&quot;background:#3B82F6&quot;>${name.charAt(0)}</div>'`;
+
                     const headshotHtml = headshotUrl
-                        ? `<img src="${headshotUrl}" alt="${name}" class="student-headshot">`
+                        ? `<img src="${headshotUrl}" alt="${name}" class="student-headshot" onerror="${fallback}">`
                         : `<div class="student-initial">${name.charAt(0)}</div>`;
 
                     return `
@@ -3551,7 +3557,7 @@
                             headshotUrl = studentObj.headshot;
                             if (headshotUrl.includes('Child Names_Images/')) {
                                 headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
-                            } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                            } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('/headshots/') && !headshotUrl.startsWith('http')) {
                                 headshotUrl = 'headshots/' + headshotUrl;
                             }
                         }
@@ -3647,7 +3653,7 @@
                                     if (headshotUrl) {
                                         if (headshotUrl.includes('Child Names_Images/')) {
                                             headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
-                                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
+                                        } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('/headshots/') && !headshotUrl.startsWith('http')) {
                                             headshotUrl = 'headshots/' + headshotUrl;
                                         }
 

@@ -1402,29 +1402,34 @@ app.get('/api/admin/sync-all', async (req, res) => {
         console.log('🔄 Starting Full Admin Sync...');
         const results = {};
 
-        // 1. Students (Child Names)
-        await googleSheetsService.fetchStudents(true);
-        results.students = 'Synced';
+        // 1. Headshots (Run FIRST so files exist for student mapping)
+        const headshotRes = await googleSheetsService.syncHeadshots();
+        results.headshots = headshotRes;
 
-        // 2. Instructors
+        // 2. Students (Child Names)
+        console.log('Fetching students...');
+        const students = await googleSheetsService.fetchStudents(true);
+
+        // Persist to local JSON for offline mode
+        const studentsPath = path.join(DATA_FOLDER, 'students.json');
+        fs.writeFileSync(studentsPath, JSON.stringify(students, null, 2));
+        results.students = `Synced ${students.length} students to local DB`;
+
+        // 3. Instructors
         await googleSheetsService.fetchInstructors(true);
         results.instructors = 'Synced';
 
-        // 3. Bookings (Today's Classes)
+        // 4. Bookings (Today's Classes)
         await googleSheetsService.fetchBookingInfo(true);
         results.bookings = 'Synced';
 
-        // 4. Project List (Code Map)
+        // 5. Project List (Code Map)
         await googleSheetsService.fetchProjectList(true);
         results.projectList = 'Synced';
 
-        // 5. Master Database (Offline Backup)
+        // 6. Master Database (Offline Backup)
         await googleSheetsService.syncMasterDatabase();
         results.masterDB = 'Synced';
-
-        // 6. Headshots
-        const headshotRes = await googleSheetsService.syncHeadshots();
-        results.headshots = headshotRes;
 
         console.log('✅ Full Admin Sync Complete');
         res.json({ success: true, results });
@@ -1636,20 +1641,23 @@ app.post('/api/sync-students', async (req, res) => {
     try {
         console.log('Syncing student names and assignments from Google Sheets...');
 
-        // Step 1: Fetch student names from Google Sheets
+        // Step 1: Download headshots FIRST (so name fetcher can find them)
+        console.log('Syncing headshots...');
+        // Await this so files exist before we build the student list
+        const headshotResult = await googleSheetsService.syncHeadshots();
+
+        // Step 2: Fetch student names from Google Sheets
         // Force refresh (don't use cache) to get latest data
         const studentNames = await googleSheetsService.fetchStudentNamesForLogin(true);
 
-        // Step 2: Write student names to local JSON file
+        // Step 3: Write student names to local JSON file
         const studentsPath = path.join(DATA_FOLDER, 'students.json');
         fs.writeFileSync(studentsPath, JSON.stringify(studentNames, null, 2));
 
         console.log(`Synced ${studentNames.length} students to local database`);
 
-        // Step 3: Download headshots
-        console.log('Syncing headshots...');
-        // Sync Headshots from Drive (Non-blocking)
-        const headshotResult = await googleSheetsService.syncHeadshots();
+        // Sync Master Database (Non-blocking)
+        googleSheetsService.syncMasterDatabase();
 
         // Sync Master Database (Non-blocking)
         googleSheetsService.syncMasterDatabase();
