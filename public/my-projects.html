@@ -12,6 +12,7 @@
     <!-- Themes -->
     <link rel="stylesheet" href="kids-theme.css">
     <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="navbar.css">
     <script src="analytics.js"></script>
 
     <style>
@@ -157,107 +158,7 @@
             text-decoration: underline;
         }
 
-        /* Standardized Navbar Styles (Matches Leaderboard) */
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: rgba(7, 31, 78, 0.95) !important;
-            /* LTB Secondary with opacity */
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-            z-index: 1000;
-            padding: 0 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
-        }
-
-        .navbar-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 70px;
-        }
-
-        .navbar-menu {
-            display: flex;
-            align-items: center;
-            gap: 15px !important;
-            list-style: none;
-            margin: 0;
-            padding: 0;
-        }
-
-        .navbar-link {
-            color: #E5E7EB;
-            /* Light gray/white */
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1em;
-            padding: 8px 12px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-link:hover {
-            color: #009FF5;
-            /* LTB Primary */
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .navbar-link.active {
-            color: #009FF5;
-            background: rgba(0, 159, 245, 0.15);
-        }
-
-        /* USER PROFILE PILL STYLES */
-        .user-profile-pill {
-            display: flex;
-            align-items: center;
-            background: rgba(31, 41, 55, 0.8);
-            border: 1px solid #374151;
-            border-radius: 30px;
-            padding: 5px 15px;
-            gap: 15px;
-            margin-right: 15px;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
-            cursor: default;
-        }
-
-        .user-points {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #FBBF24;
-            font-weight: 700;
-            font-size: 1.05em;
-            border-right: 1px solid #4B5563;
-            padding-right: 15px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .user-name {
-            color: #E5E7EB;
-            font-weight: 600;
-            font-size: 0.95em;
-        }
-
-        .user-headshot-nav {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #3B82F6;
-            background-color: #111827;
-        }
+        /* Navbar styles moved to navbar.css */
     </style>
 </head>
 
@@ -273,11 +174,9 @@
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link active">My Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
-                </li>
+                <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
-                <!-- Teacher Panel Link Removed -->
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
                 <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
@@ -337,99 +236,61 @@
         document.querySelector('.page-title').textContent = `${currentStudent} Completed Projects`;
         document.title = `${currentStudent} Completed Projects - LearnToBot`;
 
+        // ========================================================================
+        // STATE VARIABLES
+        // ========================================================================
+        let allProjects = []; // Catalog
+        let studentCompletedProjects = []; // User's specific data
+
+        // ========================================================================
+        // INITIALIZATION
+        // ========================================================================
         document.addEventListener('DOMContentLoaded', () => {
-            fetchUserProfile(); // [NEW]
-            loadMyProjects();
+            fetchUserProfile();
+            loadData();
         });
 
-        // [NEW] Update User Profile
-        async function fetchUserProfile() {
-            const currentStudent = localStorage.getItem('currentStudent');
-            if (!currentStudent) return;
-
-            // DOM Elements for Navbar
-            const pill = document.getElementById('userProfilePill');
-            const nameEl = document.getElementById('userNameDisplay');
-            const pointsEl = document.getElementById('userPointsDisplay');
-            const headshotEl = document.getElementById('userHeadshotDisplay');
-
-            // Show Pill immediately if logged in
-            if (pill) pill.style.display = 'flex';
-            if (nameEl) nameEl.textContent = currentStudent;
-
-            // Hide legacy elements
-            const legacyUser = document.getElementById('userDisplay');
-            if (legacyUser) legacyUser.style.display = 'none';
-            const loginBtn = document.getElementById('loginBtn');
-            if (loginBtn) {
-                loginBtn.textContent = 'Logout';
-                loginBtn.onclick = logout;
-            }
-
+        // Load both project catalog and student data
+        async function loadData() {
             try {
-                const response = await fetch('/api/leaderboard');
-                const data = await response.json();
+                // 1. Fetch ALL projects catalog (for IDs, icons, categories)
+                console.log('Fetching project catalog...');
+                const catalogResp = await fetch('/api/all-projects');
+                const catalogData = await catalogResp.json();
 
-                if (data.success && data.leaderboard) {
-                    const student = data.leaderboard.find(s => s.name === currentStudent);
-                    if (student) {
-                        if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
-
-                        if (headshotEl) {
-                            let headshotUrl = student.headshot;
-                            if (headshotUrl) {
-                                if (headshotUrl.includes('Child Names_Images/')) {
-                                    headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
-                                } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('http')) {
-                                    headshotUrl = 'headshots/' + headshotUrl;
-                                }
-                                headshotEl.src = headshotUrl;
-                                headshotEl.style.display = 'block';
-                            } else {
-                                headshotEl.src = `https://ui-avatars.com/api/?background=3B82F6&color=fff&name=${encodeURIComponent(student.name)}`;
-                                headshotEl.style.display = 'block';
-                            }
-                        }
-                    }
-                }
-            } catch (e) {
-                console.error('Error updating navbar:', e);
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('currentStudent');
-            window.location.href = '/';
-        }
-
-        async function loadMyProjects() {
-            try {
-                // Fetch student projects (includes completed, in-progress, etc.)
-                // Uses the new endpoint that provides full details (desc + activity)
-                const response = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(currentStudent)}`);
-                const json = await response.json();
-
-                if (!json.success) {
-                    throw new Error(json.error || 'Failed to load projects');
+                if (catalogData.success) {
+                    allProjects = catalogData.projects; // Store globally
+                } else {
+                    console.warn('Failed to load project catalog:', catalogData.error);
+                    // Fallback: continue without enrichment
                 }
 
-                // [NEW] Display Unique Child ID
-                if (json.data && json.data.studentId) {
+                // 2. Fetch Student assignments
+                console.log('Fetching student projects...');
+                const studentResp = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(currentStudent)}`);
+                const studentJson = await studentResp.json();
+
+                if (!studentJson.success) {
+                    throw new Error(studentJson.error || 'Failed to load projects');
+                }
+
+                // Update ID display
+                if (studentJson.data && studentJson.data.studentId) {
                     const idEl = document.getElementById('userIdDisplay');
                     if (idEl) {
-                        idEl.textContent = `ID: ${json.data.studentId}`;
+                        idEl.textContent = `ID: ${studentJson.data.studentId}`;
                         idEl.style.display = 'block';
                     }
                 }
 
-                // We only want completed projects for this page
-                const completedProjects = json.data.completedProjects || [];
+                // Store student completed projects
+                studentCompletedProjects = studentJson.data.completedProjects || [];
 
-                // Render
-                renderProjects(completedProjects);
+                // 3. Render with Enrichment
+                renderProjects(studentCompletedProjects);
 
             } catch (error) {
-                console.error(error);
+                console.error('Error loading data:', error);
                 document.getElementById('projectsContainer').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">⚠️</div>
@@ -439,6 +300,23 @@
                     </div>
                 `;
             }
+        }
+
+        // Helper: Convert icon value to displayable URL
+        function getIconUrl(icon, projectId) {
+            if (!icon) return null;
+            if (icon.startsWith('http')) {
+                if (icon.includes('drive.google.com/file/d/')) {
+                    const match = icon.match(/\/file\/d\/([^\/]+)/);
+                    if (match) return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w400`;
+                }
+                return icon;
+            }
+            if (/^[a-zA-Z0-9_-]{20,}$/.test(icon)) {
+                return `https://drive.google.com/thumbnail?id=${icon}&sz=w400`;
+            }
+            const safePath = projectId.split('/').map(segment => encodeURIComponent(segment)).join('/');
+            return `/projects/${safePath}/${encodeURIComponent(icon)}`;
         }
 
         function renderProjects(userProjects) {
@@ -456,13 +334,36 @@
             }
 
             container.innerHTML = userProjects
-                .sort((a, b) => new Date(b.completedDate) - new Date(a.completedDate)) // Sort by date desc
+                .sort((a, b) => new Date(b.completedDate) - new Date(a.completedDate))
                 .map(logEntry => {
+                    // ENRICHMENT: Find the matching project in the catalog to get the correct ID and Icon
+                    // Try to match by ID first, then Name
+                    let fullProject = null;
+
+                    // 1. Try exact ID match
+                    if (logEntry.id && logEntry.id !== 'PROJECT') {
+                        fullProject = allProjects.find(p => p.id === logEntry.id);
+                    }
+
+                    // 2. If not found, try normalizing name (remove whitespace, lowercase)
+                    if (!fullProject && logEntry.name) {
+                        const searchName = logEntry.name.toLowerCase().trim();
+                        fullProject = allProjects.find(p => p.name.toLowerCase().includes(searchName));
+                    }
+
+                    // Use enriched data if available, fallback to logEntry
+                    const projectId = fullProject ? fullProject.id : (logEntry.id || 'PROJECT');
+                    const projectName = fullProject ? fullProject.name.split(' - ')[1] || fullProject.name : (logEntry.name || logEntry.projectName);
+                    const icon = fullProject ? fullProject.icon : null;
+
+                    // Icon HTML
+                    const iconHTML = icon
+                        ? `<img src="${getIconUrl(icon, projectId)}" alt="${projectName}" class="project-icon-img" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">`
+                        : '<span style="font-size: 2em;">🎮</span>';
+
+                    // Data from log (unique to student)
                     const learnText = logEntry.description || "Project overview not available.";
                     const activityText = logEntry.studentActivity || "Activity details coming soon.";
-                    const projectName = logEntry.name || logEntry.projectName;
-                    // id field is populated by backend now, or fall back to code
-                    const projectId = logEntry.id || 'PROJECT';
 
                     // Video Evidence Logic
                     let videoHtml = '';
@@ -470,12 +371,9 @@
                         try {
                             const videoUrl = logEntry.videoLink;
                             let embedUrl = videoUrl;
-
-                            // Convert Google Drive 'view' links to 'preview' links for embedding
                             if (videoUrl.includes('drive.google.com') && videoUrl.includes('/view')) {
                                 embedUrl = videoUrl.replace('/view', '/preview');
                             }
-
                             videoHtml = `
                                 <div class="my-project-video">
                                     <h4 style="color: #071F4E; margin-bottom: 15px; font-size: 1.1em; border-bottom: 2px solid #009FF5; display: inline-block; padding-bottom: 5px;">🎥 Project Evidence</h4>
@@ -487,26 +385,24 @@
                                     </div>
                                 </div>
                             `;
-                        } catch (e) {
-                            console.error('Error parsing video link:', e);
-                        }
+                        } catch (e) { console.error(e); }
                     } else {
-                        // Placeholder for right column if empty? 
-                        // Or just empty div.
-                        videoHtml = `<div class="no-video-spacer"><!-- No video --></div>`;
+                        videoHtml = `<div class="no-video-spacer"></div>`;
                     }
 
-                    // Personalize Section Headers
-                    // Get only the first name for cleaner headers if desired, or full name.
-                    // User said "What <child name> Learned"
                     const childName = currentStudent;
 
+                    // ADD CLICK HANDLER TO HEADER or WHOLE CARD
+                    // Making the header clickable to go to the project page
                     return `
                     <div class="my-project-card">
-                        <div class="my-project-header">
-                            <div class="my-project-title-group">
-                                <span class="my-project-id">${projectId}</span>
-                                <h3>${projectName}</h3>
+                        <div class="my-project-header" style="cursor: pointer;" onclick="window.location.href='/project.html?id=${encodeURIComponent(projectId)}'">
+                            <div class="my-project-title-group" style="display: flex; align-items: center; gap: 15px;">
+                                ${iconHTML}
+                                <div>
+                                    <span class="my-project-id">${projectId}</span>
+                                    <h3>${projectName}</h3>
+                                </div>
                             </div>
                             <div class="completed-date">
                                 Completed: ${logEntry.completedDate || 'Unknown Date'}

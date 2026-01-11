@@ -2614,11 +2614,75 @@ async function markProjectComplete(studentId, projectCode, videoLink, rating, in
         // Invalidate Cache
         progressCache = null;
         lastProgressFetch = 0;
-
         return { success: true };
 
     } catch (error) {
-        console.error('Error marking project complete:', error);
+        console.error('Error saving class report:', error.message);
+        throw error;
+    }
+}
+
+// ============================================================================
+// FUNCTION: Save Class Report
+// ============================================================================
+
+/**
+ * Appends a new class report to the ClassReport sheet
+ * 
+ * @param {Object} reportData - The report data object
+ * @returns {Promise<Object>} - Success status and new ID
+ */
+async function saveClassReport(reportData) {
+    try {
+        console.log('Saving Class Report...', reportData);
+        const sheets = await getGoogleSheetsClient();
+
+        // Generate ID: 8 char alphanumeric
+        const uniqueId = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+        // Get Today's Date in MM/DD/YYYY
+        const today = new Date();
+        const dateStr = `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`;
+
+        // Prepare Row Data based on Config Column Mapping
+        // We need to verify the max index we need to fill
+        const colMap = config.CLASS_REPORT_COLUMNS;
+        const maxIndex = Math.max(...Object.values(colMap));
+
+        // Initialize empty row array
+        const row = new Array(maxIndex + 1).fill('');
+
+        // Fill data
+        // Fill data
+        row[colMap.ID] = uniqueId;
+        row[colMap.DATE] = dateStr;
+
+        // Convert Y/N to Boolean (TRUE/FALSE)
+        // Note: Google Sheets treats boolean primitives as TRUE/FALSE
+        row[colMap.EQUIPMENT_ISSUES] = (reportData.equipmentIssues === 'Y');
+        row[colMap.LOST_TIME] = (reportData.lostTime === 'Y');
+        row[colMap.DIFFICULTY] = (reportData.difficulty === 'Y');
+        row[colMap.STARTED_ON_TIME] = (reportData.startedOnTime === 'Y');
+
+        row[colMap.RATING] = reportData.rating || '5';
+        row[colMap.PROBLEMS] = reportData.problems || '';
+        row[colMap.INSTRUCTOR] = reportData.instructor || '';
+
+        // Append to Sheet
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.CLASS_REPORT_SHEET}!A:K`, // Adjust range as needed
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [row]
+            }
+        });
+
+        console.log(`✅ Class Report Saved. ID: ${uniqueId}`);
+        return { success: true, id: uniqueId };
+
+    } catch (error) {
+        console.error('Error saving class report:', error);
         throw error;
     }
 }
@@ -2651,5 +2715,6 @@ module.exports = {
     updateStudentFullDetails,
     markProjectComplete,
     fetchStudentNamesForLogin,
-    getGoogleSheetsClient // Exporting for server.js usage
+    getGoogleSheetsClient, // Exporting for server.js usage
+    saveClassReport
 };

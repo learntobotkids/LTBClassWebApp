@@ -895,6 +895,30 @@ app.get('/api/config', (req, res) => {
 });
 
 // ============================================================================
+// STEP 11.5: API ENDPOINT - SAVE CLASS REPORT [NEW]
+// ============================================================================
+app.post('/api/class-report', async (req, res) => {
+    try {
+        const reportData = req.body;
+        console.log('[API] Received Class Report:', reportData);
+
+        if (!reportData) {
+            return res.status(400).json({ success: false, error: 'No data provided' });
+        }
+
+        const result = await googleSheetsService.saveClassReport(reportData);
+        res.json(result);
+
+    } catch (error) {
+        console.error('Error in /api/class-report:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to save report'
+        });
+    }
+});
+
+// ============================================================================
 // STEP 11.6: API ENDPOINT - ANALYTICS LOGGING [NEW]
 // ============================================================================
 // Telemetry endpoint for tracking page views, video usage, etc.

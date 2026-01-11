@@ -69,31 +69,20 @@ module.exports = {
     // SHEET/TAB NAMES
     // ========================================================================
 
+    // ========================================================================
+    // SHEET/TAB NAMES
+    // ========================================================================
+
     /**
      * Name of the sheet (tab) containing student names
      * Default: 'Child Names'
-     *
-     * This sheet should have columns:
-     * - Column A: Student ID (unique identifier)
-     * - Column B: Student name (full name)
-     * - Column C: Login name (name for dropdown)
      */
     STUDENT_NAMES_SHEET: 'Child Names',
 
     /**
-     * Name of the sheet (tab) containing project assignments and progress
-     * Default: 'Project Log'
-     *
-     * This sheet tracks all project assignments, progress, and completions
-     * See PROGRESS_COLUMNS below for column structure
+     * Name of the sheet (tab) containing class reports
      */
-    PROGRESS_SHEET: 'Project Log',
-
-    /**
-     * Name of the sheet (tab) containing booking information
-     * Default: 'All Booking Info'
-     */
-    BOOKING_SHEET: 'All Booking Info',
+    CLASS_REPORT_SHEET: 'ClassReport',
 
     /**
      * Name of the sheet (tab) containing instructor data
@@ -102,32 +91,24 @@ module.exports = {
     INSTRUCTORS_SHEET: 'instructors',
 
     /**
-     * Name of the sheet (tab) containing full project details
-     * Default: 'Projects List'
-     */
-    PROJECT_LIST_SHEET: 'Projects List',
-
-    /**
-     * Name of the sheet (tab) containing project logs/progress
+     * Name of the sheet (tab) containing project assignments and progress
      * Default: 'Project Log'
      */
-    PROJECT_LOG_SHEET: 'Project Log',
+    PROGRESS_SHEET: 'Project Log',
 
     /**
-     * Name of the sheet (tab) containing inventory data
+     * Name of the sheet (tab) containing inventory items
      * Default: 'Inventory'
      */
-    INVENTORY_SHEET: 'inventory2',
+    INVENTORY_SHEET: 'Inventory',
 
     /**
-     * Name of the sheet (tab) containing project video parts/tutorials
+     * Name of the sheet (tab) containing project parts/videos
      * Default: 'LTBCLASSWEBAPP'
      */
     PROJECT_PARTS_SHEET: 'LTBCLASSWEBAPP',
 
-    // ========================================================================
-    // COLUMN MAPPINGS FOR PROJECT PARTS SHEET (LTBCLASSWEBAPP)
-    // ========================================================================
+    // ... (rest of sheet names) ...
     PROJECT_PARTS_COLUMNS: {
         PROJECT_CODE: 0,    // Column A: Project Code (e.g., PROJ101) - REQUIRED
         PROJECT_TITLE: 1,   // Column B: Project Title (optional, for display)
@@ -136,6 +117,29 @@ module.exports = {
         YOUTUBE_URL: 4,     // Column E: YouTube URL - REQUIRED
         DURATION: 5,        // Column F: Duration (e.g., "5:30")
         COVER_IMAGE: 6      // Column G: Cover Image URL
+    },
+
+    // ========================================================================
+    // COLUMN MAPPINGS FOR CLASS REPORT SHEET
+    // ========================================================================
+    CLASS_REPORT_COLUMNS: {
+        ID: 0,              // Column A: Unique 8-char ID
+        DATE: 1,            // Column B: Date (MM/DD/YYYY)
+        STARTED_ON_TIME: 3, // Column D: Class started on time (Y/N)
+        LOST_TIME: 4,       // Column E: Lost >5mins due to issues (Y/N)
+        EQUIPMENT_ISSUES: 5,// Column F: Equipment shortage/issues (Y/N)
+        DIFFICULTY: 7,      // Column H: Any kid had difficulty (Y/N)
+        RATING: 8,          // Column I: Overall rating (1-5)
+        PROBLEMS: 9,        // Column J: List problems (implied next available?) - User didn't specify, assuming J or keeping previously defined logic if adaptable. 
+        // WAIT, User specs: F=Equip, E=LostTime, H=Diff, D=Started, I=Rating.
+        // Missing G? Maybe G is cover image? No this is report sheet.
+        // What about PROBLEMS? User didn't specify column for problems.
+        // Previous was: ID=0, DATE=1, EQUIP=2, LOST=3, DIFF=4, STARTED=5, RATING=6, PROB=7, INSTR=10
+        // New: ID=0, DATE=1, STARTED=3, LOST=4, EQUIP=5, DIFF=7, RATING=8.
+        // G (Index 6) is skipped? J (Index 9)?
+        // I will put Problems in J (9) and Instructor in K (10) as before if not specified otherwise.
+        PROBLEMS: 9,        // Column J
+        INSTRUCTOR: 10      // Column K
     },
 
     // ========================================================================

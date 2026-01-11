@@ -381,7 +381,7 @@
             z-index: 1000;
         }
 
-        .tab-item {
+        .nav-item {
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -389,19 +389,25 @@
             justify-content: center;
             height: 100%;
             color: #757575;
-            font-size: 12px;
-            font-weight: 500;
+            font-size: 10px;
+            /* Smaller font for 5 tabs */
+            font-weight: 600;
             cursor: pointer;
             text-transform: uppercase;
+            min-width: 0;
+            /* Allow shrinking */
+            padding: 4px 0;
+            transition: color 0.2s;
         }
 
-        .tab-item.active {
+        .nav-item.active {
             color: #db3236;
         }
 
-        .tab-icon {
-            font-size: 24px;
-            margin-bottom: 2px;
+        .nav-item i {
+            font-size: 20px;
+            /* Slightly smaller icons */
+            margin-bottom: 4px;
         }
 
         /* Loading State */
@@ -608,38 +614,42 @@
 
     <!-- FOOTER TABS -->
     <nav class="footer-tabs">
-        <div class="tab-item active" onclick="switchTab('today')">
-            <div class="tab-icon">📅</div>
-            <div>TODAY</div>
+        <!-- TAB 1: TODAY -->
+        <div class="nav-item active" onclick="switchTab('today')">
+            <i class="fas fa-calendar-day"></i>
+            <span>TODAY</span>
         </div>
-        <div class="tab-item" onclick="switchTab('all')">
-            <div class="tab-icon">👥</div>
-            <div>ALL KIDS</div>
+
+        <!-- TAB 2: ALL STUDENTS -->
+        <div class="nav-item" onclick="switchTab('all-students')">
+            <i class="fas fa-users"></i>
+            <span>STUDENTS</span>
         </div>
-        <!-- 
-        <div class="tab-item" onclick="switchTab('report')">
-            <div class="tab-icon">📊</div>
-            <div>CLASS REPORT</div>
-        </div> 
-        -->
+
+        <!-- TAB 3: LEADERBOARD -->
+        <div class="nav-item" onclick="switchTab('leaderboard')">
+            <i class="fas fa-trophy"></i>
+            <span>LEADERS</span>
+        </div>
+
+        <!-- TAB 4: INVENTORY -->
+        <div class="nav-item" onclick="switchTab('inventory')">
+            <i class="fas fa-boxes"></i>
+            <span>INVENTORY</span>
+        </div>
+
+        <!-- TAB 5: CLASS REPORT -->
+        <div class="nav-item" onclick="switchTab('class-report')">
+            <i class="fas fa-clipboard-check"></i>
+            <span>REPORT</span>
+        </div>
         <!--
-        <div class="tab-item" onclick="switchTab('analytics')">
-            <div class="tab-icon">📈</div>
-            <div>ANALYTICS</div>
-        </div>
         <div class="tab-item" onclick="switchTab('projects')">
             <div class="tab-icon">📁</div>
             <div>PROJECTS</div>
         </div>
         -->
-        <div class="tab-item" onclick="switchTab('leaderboard')">
-            <div class="tab-icon">🏆</div>
-            <div>LEADERS</div>
-        </div>
-        <div class="tab-item" onclick="switchTab('inventory')">
-            <div class="tab-icon">📦</div>
-            <div>INVENTORY</div>
-        </div>
+        <!-- Duplicates removed -->
 
     </nav>
 
@@ -744,24 +754,32 @@
 
         function switchTab(tab) {
             // Update UI
-            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             // Find component based on index or text
-            // Updated order: Today, All, Analytics, Projects, Leaderboard, Inventory
-            const index = ['today', 'all', 'analytics', 'projects', 'leaderboard', 'inventory'].indexOf(tab);
-            if (index >= 0) {
-                document.querySelectorAll('.tab-item')[index].classList.add('active');
-            }
+            // Updated order: Today, All, Leaderboard, Inventory, Class Report
+            const index = ['today', 'all-students', 'leaderboard', 'inventory', 'class-report'].indexOf(tab);
+
+            // NOTE: The bottom nav uses specific onclicks. 
+            // We need to match the active class to the button that was clicked.
+            // The simple index approach assumes a specific order in DOM matches this array.
+            // Let's rely on the onclick cleaner mechanism if possible, but for now let's use the click handler's target logic if exists,
+            // or just iterate buttons to find the one calling this tab.
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                if (item.getAttribute('onclick').includes(`'${tab}'`)) {
+                    item.classList.add('active');
+                }
+            });
 
             currentTab = tab;
 
             // Update Header Title
             const titles = {
                 'today': 'TODAY',
-                'all': 'ALL STUDENTS',
-                'analytics': 'ANALYTICS',
-                'projects': 'PROJECTS',
+                'all-students': 'ALL STUDENTS',
                 'leaderboard': 'LEADERBOARD',
-                'inventory': 'INVENTORY'
+                'inventory': 'INVENTORY',
+                'class-report': 'CLASS REPORT'
             };
             document.getElementById('pageTitle').innerText = titles[tab] || 'LEARNTOBOT';
 
@@ -809,14 +827,14 @@
 
             if (currentTab === 'today') {
                 renderToday(container);
-            } else if (currentTab === 'all') {
+            } else if (currentTab === 'all-students') {
                 renderAllStudents(container);
             } else if (currentTab === 'leaderboard') {
                 renderLeaderboard(container);
-            } else if (currentTab === 'analytics') {
-                renderAnalytics(container);
             } else if (currentTab === 'inventory') {
-                renderInventory(container);
+                renderInventoryUI(container);
+            } else if (currentTab === 'class-report') {
+                renderClassReport(container);
             } else {
                 container.innerHTML = '<div class="empty-state">This page is empty for now.</div>';
             }
@@ -3156,6 +3174,155 @@
         };
     </script>
     <script>
+        // ============================================================================
+        // CLASS REPORT LOGIC
+        // ============================================================================
+
+        function renderClassReport(container) {
+            const formHtml = `
+            <div class="card" style="padding: 24px; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #071F4E; margin-bottom: 24px; text-align: center;">Daily Class Report</h2>
+                
+                <form id="classReportForm" onsubmit="submitClassReport(event)">
+                    
+                    <!-- Question 1 -->
+                    <div class="form-group mb-4">
+                        <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #444;">Any equipment shortage or issues?</label>
+                        <div class="toggle-group" style="display: flex; gap: 10px;">
+                            <input type="radio" name="equipmentIssues" id="equipmentIssues_N" value="N" checked class="hidden-radio" style="display:none;">
+                            <label for="equipmentIssues_N" class="toggle-btn" onclick="selectToggle('equipmentIssues', 'N')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: #eee; color: #333;">N</label>
+                            
+                            <input type="radio" name="equipmentIssues" id="equipmentIssues_Y" value="Y" class="hidden-radio" style="display:none;">
+                            <label for="equipmentIssues_Y" class="toggle-btn" onclick="selectToggle('equipmentIssues', 'Y')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: white;">Y</label>
+                        </div>
+                    </div>
+
+                    <!-- Question 2 -->
+                    <div class="form-group mb-4" style="margin-top: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #444;">Any child lose >5mjns due to our issue?</label>
+                        <div class="toggle-group" style="display: flex; gap: 10px;">
+                            <input type="radio" name="lostTime" id="lostTime_N" value="N" checked class="hidden-radio" style="display:none;">
+                            <label for="lostTime_N" class="toggle-btn" onclick="selectToggle('lostTime', 'N')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: #eee; color: #333;">N</label>
+                            
+                            <input type="radio" name="lostTime" id="lostTime_Y" value="Y" class="hidden-radio" style="display:none;">
+                            <label for="lostTime_Y" class="toggle-btn" onclick="selectToggle('lostTime', 'Y')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: white;">Y</label>
+                        </div>
+                    </div>
+
+                    <!-- Question 3 -->
+                    <div class="form-group mb-4" style="margin-top: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #444;">Any kid had difficulty with their project?</label>
+                        <div class="toggle-group" style="display: flex; gap: 10px;">
+                            <input type="radio" name="difficulty" id="difficulty_N" value="N" checked class="hidden-radio" style="display:none;">
+                            <label for="difficulty_N" class="toggle-btn" onclick="selectToggle('difficulty', 'N')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: #eee; color: #333;">N</label>
+                            
+                            <input type="radio" name="difficulty" id="difficulty_Y" value="Y" class="hidden-radio" style="display:none;">
+                            <label for="difficulty_Y" class="toggle-btn" onclick="selectToggle('difficulty', 'Y')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: white;">Y</label>
+                        </div>
+                    </div>
+
+                    <!-- Question 4 -->
+                    <div class="form-group mb-4" style="margin-top: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #444;">Class started on time?</label>
+                        <div class="toggle-group" style="display: flex; gap: 10px;">
+                            <input type="radio" name="startedOnTime" id="startedOnTime_Y" value="Y" checked class="hidden-radio" style="display:none;">
+                            <label for="startedOnTime_Y" class="toggle-btn" onclick="selectToggle('startedOnTime', 'Y')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: #eee; color: #333;">Y</label>
+                            
+                            <input type="radio" name="startedOnTime" id="startedOnTime_N" value="N" class="hidden-radio" style="display:none;">
+                            <label for="startedOnTime_N" class="toggle-btn" onclick="selectToggle('startedOnTime', 'N')" style="flex: 1; padding: 12px; border: 1px solid #ddd; text-align: center; border-radius: 6px; cursor: pointer; background: white;">N</label>
+                        </div>
+                    </div>
+
+                    <!-- Question 5: Rating 1-5 -->
+                    <div class="form-group mb-4" style="margin-top: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #444;">Overall how did class go? (5-Perfect)</label>
+                        <div class="rating-group" style="display: flex; gap: 5px;">
+                             <button type="button" class="rating-btn" onclick="selectRating(1)" data-val="1">1</button>
+                             <button type="button" class="rating-btn" onclick="selectRating(2)" data-val="2">2</button>
+                             <button type="button" class="rating-btn" onclick="selectRating(3)" data-val="3">3</button>
+                             <button type="button" class="rating-btn" onclick="selectRating(4)" data-val="4">4</button>
+                             <button type="button" class="rating-btn active" onclick="selectRating(5)" data-val="5">5</button>
+                             <input type="hidden" id="classRating" name="rating" value="5">
+                        </div>
+                        <style>
+                            .rating-btn { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: white; cursor: pointer; font-size: 16px; }
+                            .rating-btn.active { background: #009FF5; color: white; border-color: #009FF5; }
+                        </style>
+                    </div>
+
+                    <!-- Question 6: Text Area -->
+                    <div class="form-group mb-4" style="margin-top: 20px;">
+                        <label style="display: block; font-weight: 600; margin-bottom: 10px; color: #444;">List any problems here:</label>
+                        <textarea id="reportProblems" name="problems" rows="4" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 16px; resize: vertical;" placeholder="Type here..."></textarea>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div style="margin-top: 30px; display: flex; gap: 10px;">
+                        <button type="button" onclick="switchTab('today')" style="flex: 1; padding: 15px; background: #eee; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; color: #666; cursor: pointer;">Cancel</button>
+                        <button type="submit" style="flex: 1; padding: 15px; background: #db3236; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; color: white; cursor: pointer;">Save Report</button>
+                    </div>
+
+                </form>
+            </div>
+            `;
+            container.innerHTML = formHtml;
+        }
+
+        window.selectToggle = function (group, value) {
+            document.getElementById(group + '_' + value).checked = true;
+            document.getElementById(group + '_N').nextElementSibling.style.background =
+                document.getElementById(group + '_N').checked ? '#ddd' : 'white';
+            document.getElementById(group + '_Y').nextElementSibling.style.background =
+                document.getElementById(group + '_Y').checked ? '#ddd' : 'white';
+        };
+
+        window.selectRating = function (val) {
+            document.getElementById('classRating').value = val;
+            document.querySelectorAll('.rating-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.val == val) btn.classList.add('active');
+            });
+        };
+
+        window.submitClassReport = async function (e) {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalText = btn.innerText;
+            btn.innerText = 'Saving...';
+            btn.disabled = true;
+
+            try {
+                const formData = {
+                    instructor: localStorage.getItem('instructorName') || 'Unknown',
+                    equipmentIssues: document.querySelector('input[name="equipmentIssues"]:checked').value,
+                    lostTime: document.querySelector('input[name="lostTime"]:checked').value,
+                    difficulty: document.querySelector('input[name="difficulty"]:checked').value,
+                    startedOnTime: document.querySelector('input[name="startedOnTime"]:checked').value,
+                    rating: document.getElementById('classRating').value,
+                    problems: document.getElementById('reportProblems').value
+                };
+
+                const res = await fetch('/api/class-report', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                alert('Class Report Saved Successfully!');
+                switchTab('today');
+
+            } catch (err) {
+                alert('Failed to save report: ' + err.message);
+            } finally {
+                btn.innerText = originalText;
+                btn.disabled = false;
+            }
+        };
+    </script>
+    <script>
         // Custom Dropdown Logic
         window.toggleCustomProjectSelect = function () {
             const container = document.getElementById('customProjectSelectContainer');
@@ -3212,7 +3379,42 @@
 
             // ... rest of initialization ...
             // ... rest of initialization ...
+            loadInstructors();
         });
+
+        // Fetch Instructors function
+        async function loadInstructors() {
+            try {
+                const selectInfo = document.getElementById('instructorNameSelect');
+                if (!selectInfo) return;
+
+                // Show loading state? or keep default
+                console.log('Fetching instructors...');
+                const response = await fetch('/api/instructors');
+                const data = await response.json();
+
+                if (data.success && data.instructors && data.instructors.length > 0) {
+                    // Clear existing options except the first one
+                    selectInfo.innerHTML = '<option value="" disabled selected>Select Instructor...</option>';
+
+                    data.instructors.forEach(inst => {
+                        const opt = document.createElement('option');
+                        opt.value = inst.name;
+                        opt.innerText = inst.name;
+                        selectInfo.appendChild(opt);
+                    });
+                    console.log(`Loaded ${data.instructors.length} instructors.`);
+                } else {
+                    console.warn('No instructors found or API error.');
+                    // Keep hardcoded fallbacks if API fails? 
+                    // Current behavior: Do nothing, keep defaults if they existed, but I replaced content above.
+                    // Let's restore defaults if fetch fails empty?
+                    // Actually, if we want to replace hardcoded, we should just overwrite.
+                }
+            } catch (err) {
+                console.error('Failed to load instructors:', err);
+            }
+        }
 
         // Fetch and display Data Source ID
         /*

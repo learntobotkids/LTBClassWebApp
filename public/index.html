@@ -7,6 +7,7 @@
     <title>LearnToBot Class - Projects</title>
     <link rel="stylesheet" href="kids-theme.css">
     <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="navbar.css">
     <script src="analytics.js"></script> <!-- Analytics Telemetry -->
     <style>
         * {
@@ -24,185 +25,7 @@
             /* 70px navbar + 20px spacing */
         }
 
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: rgba(7, 31, 78, 0.95);
-            /* #071F4E with opacity */
-            backdrop-filter: blur(10px);
-            border-bottom: 2px solid #3B82F6;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            padding: 0 20px;
-        }
-
-        .navbar-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 100%;
-            /* Match parent height */
-        }
-
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #E5E7EB;
-            text-decoration: none;
-            font-size: 1.5em;
-            font-weight: 700;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-brand:hover {
-            color: #3B82F6;
-            transform: scale(1.05);
-        }
-
-        .navbar-logo {
-            font-size: 1.8em;
-        }
-
-        .navbar-menu {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            list-style: none;
-        }
-
-        .navbar-link {
-            color: #9CA3AF;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1em;
-            padding: 8px 10px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .navbar-link:hover {
-            color: #3B82F6;
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .navbar-link.active {
-            color: #3B82F6;
-            background: rgba(59, 130, 246, 0.15);
-        }
-
-        .navbar-link.active::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: #3B82F6;
-        }
-
-        .navbar-auth {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .navbar-user {
-            color: #E5E7EB;
-            font-weight: 600;
-            padding: 8px 16px;
-            background: rgba(59, 130, 246, 0.2);
-            border-radius: 20px;
-            font-size: 0.95em;
-        }
-
-        .navbar-btn {
-            background: #3B82F6;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.95em;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .navbar-btn:hover {
-            background: #2563EB;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-        }
-
-        .navbar-btn.logout {
-            background: #EF4444;
-        }
-
-        .navbar-btn.logout:hover {
-            background: #DC2626;
-        }
-
-        /* NEW USER PROFILE PILL STYLES */
-        .user-profile-pill {
-            display: flex;
-            align-items: center;
-            background: rgba(31, 41, 55, 0.8);
-            border: 1px solid #374151;
-            border-radius: 30px;
-            padding: 5px 15px;
-            gap: 15px;
-            margin-right: 10px;
-            backdrop-filter: blur(5px);
-            transition: all 0.3s ease;
-            cursor: default;
-        }
-
-        .user-profile-pill:hover {
-            border-color: #3B82F6;
-            background: rgba(31, 41, 55, 0.95);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        }
-
-        .user-points {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: #FBBF24;
-            /* Amber-400 */
-            font-weight: 700;
-            font-size: 1.05em;
-            border-right: 1px solid #4B5563;
-            padding-right: 15px;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        #userNameDisplay {
-            color: #E5E7EB;
-            font-weight: 600;
-            font-size: 0.95em;
-        }
-
-        .user-headshot-nav {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #3B82F6;
-            background-color: #111827;
-        }
+        /* Navbar styles moved to navbar.css */
 
         .page-content {
             padding: 20px;
@@ -1598,13 +1421,13 @@
                 <li><a href="/" class="navbar-link active">Projects</a></li>
                 <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
                         Projects</a></li>
-                <li><a href="/child-progress.html" class="navbar-link" style="display: none;">Student Progress</a>
-                </li>
+                <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
-                <!-- Teacher Panel Link Removed -->
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -2081,6 +1904,19 @@
                         console.log(`Loaded ${allProjects.length} projects from Google Sheets.`);
                         createTopLevelTabs();
                         showTopLevel('All');
+
+                        // [NEW] RACE CONDITION FIX: 
+                        // If student data (studentProgress) loaded BEFORE project list, the icons/IDs are missing.
+                        // Re-render assignments now that we have the project catalog "allProjects" to enrich them.
+                        if (studentProgress) {
+                            console.log('Project Catalog loaded after Student Progress. Re-rendering assignments to fix icons/IDs.');
+                            renderAssignedProjects(
+                                studentProgress.assignedProjects,
+                                studentProgress.nextProjects,
+                                studentProgress.completedProjects
+                            );
+                        }
+
                         return;
                     }
 
@@ -2106,6 +1942,16 @@
 
                     createTopLevelTabs();
                     showTopLevel('All');
+
+                    // [NEW] RACE CONDITION FIX (Offline Mode):
+                    if (studentProgress) {
+                        console.log('Project Catalog loaded after Student Progress (Offline). Re-rendering assignments.');
+                        renderAssignedProjects(
+                            studentProgress.assignedProjects,
+                            studentProgress.nextProjects,
+                            studentProgress.completedProjects
+                        );
+                    }
                 } catch (error) {
                     showError('Failed to load projects: ' + error.message);
                 }
@@ -2445,14 +2291,27 @@
                 // Helper to enrich project with icon and other data from allProjects
                 function enrichProject(project) {
                     if (!project) return project;
-                    // Find matching project in allProjects by ID (project code)
+
+                    let fullProject = null;
                     const projectCode = project.id || project.originalCode || '';
-                    const fullProject = allProjects.find(p =>
-                        p.id && p.id.toUpperCase() === projectCode.toUpperCase()
-                    );
+
+                    // 1. Try exact ID match
+                    if (projectCode) {
+                        fullProject = allProjects.find(p => p.id && p.id.toUpperCase() === projectCode.toUpperCase());
+                    }
+
+                    // 2. If not found, try matching by Name (fuzzy)
+                    // The student log might have "Fox Game" but catalog has "MBOT001 - Fox Game"
+                    if (!fullProject && project.name) {
+                        const searchName = project.name.toLowerCase().trim();
+                        fullProject = allProjects.find(p => p.name.toLowerCase().includes(searchName));
+                    }
+
                     if (fullProject) {
                         return {
                             ...project,
+                            id: fullProject.id, // CRITICAL: Use the canonical ID from catalog
+                            name: fullProject.name, // Use canonical name
                             icon: fullProject.icon || project.icon,
                             videoCount: fullProject.videoCount || project.videoCount || 0,
                             points: fullProject.points || project.points || 0,

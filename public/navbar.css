@@ -1,0 +1,200 @@
+/* Standardized Navbar Styles */
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(7, 31, 78, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 2px solid #3B82F6;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    padding: 0 20px;
+    height: 70px;
+    /* Explicit height to match layout */
+}
+
+.navbar-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #E5E7EB;
+    text-decoration: none;
+    font-size: 1.5em;
+    font-weight: 700;
+    transition: all 0.3s ease;
+}
+
+.navbar-brand:hover {
+    color: #3B82F6;
+    transform: scale(1.05);
+}
+
+.navbar-logo {
+    font-size: 1.8em;
+}
+
+.navbar-menu {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.navbar-link {
+    color: #9CA3AF;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1em;
+    padding: 8px 10px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+    white-space: nowrap;
+}
+
+.navbar-link:hover {
+    color: #3B82F6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.navbar-link.active {
+    color: #3B82F6;
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.navbar-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #3B82F6;
+}
+
+.navbar-auth {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.navbar-user {
+    color: #E5E7EB;
+    font-weight: 600;
+    padding: 8px 16px;
+    background: rgba(59, 130, 246, 0.2);
+    border-radius: 20px;
+    font-size: 0.95em;
+}
+
+.navbar-btn {
+    background: #3B82F6;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.navbar-btn:hover {
+    background: #2563EB;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.navbar-btn.logout {
+    background: #EF4444;
+}
+
+.navbar-btn.logout:hover {
+    background: #DC2626;
+}
+
+/* USER PROFILE PILL STYLES */
+.user-profile-pill {
+    display: flex;
+    align-items: center;
+    background: rgba(31, 41, 55, 0.8);
+    border: 1px solid #374151;
+    border-radius: 30px;
+    padding: 5px 15px;
+    gap: 15px;
+    margin-right: 10px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+    cursor: default;
+}
+
+.user-profile-pill:hover {
+    border-color: #3B82F6;
+    background: rgba(31, 41, 55, 0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.user-points {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #FBBF24;
+    /* Amber-400 */
+    font-weight: 700;
+    font-size: 1.05em;
+    border-right: 1px solid #4B5563;
+    padding-right: 15px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#userNameDisplay {
+    color: #E5E7EB;
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.user-headshot-nav {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #3B82F6;
+    background-color: #111827;
+}
+
+/* Ensure padding for fixed navbar */
+body {
+    padding-top: 90px;
+}
+
+/* Mobile Tweaks */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 5px 15px;
+        height: auto;
+    }
+
+    .navbar-container {
+        flex-wrap: wrap;
+    }
+}

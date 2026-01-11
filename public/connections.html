@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connection Monitor - LearnToBot Class</title>
+    <link rel="stylesheet" href="navbar.css">
     <style>
         * {
             margin: 0;
@@ -23,100 +24,7 @@
             padding-top: 80px;
         }
 
-        .navbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #1F2937 0%, #111827 100%);
-            border-bottom: 2px solid #3B82F6;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            padding: 0 20px;
-        }
-
-        .navbar-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 70px;
-        }
-
-        .navbar-brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #E5E7EB;
-            text-decoration: none;
-            font-size: 1.5em;
-            font-weight: 700;
-            transition: all 0.3s ease;
-        }
-
-        .navbar-brand:hover {
-            color: #3B82F6;
-            transform: scale(1.05);
-        }
-
-        .navbar-logo {
-            font-size: 1.8em;
-        }
-
-        .navbar-menu {
-            display: flex;
-            align-items: center;
-            gap: 30px;
-            list-style: none;
-        }
-
-        .navbar-link {
-            color: #9CA3AF;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1em;
-            padding: 8px 16px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            position: relative;
-        }
-
-        .navbar-link:hover {
-            color: #3B82F6;
-            background: rgba(59, 130, 246, 0.1);
-        }
-
-        .navbar-link.active {
-            color: #3B82F6;
-            background: rgba(59, 130, 246, 0.15);
-        }
-
-        .navbar-auth {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .navbar-btn {
-            background: #3B82F6;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.95em;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .navbar-btn:hover {
-            background: #2563EB;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
-        }
+        /* Navbar styles moved to navbar.css */
 
         .page-content {
             padding: 20px;
@@ -422,10 +330,15 @@
 
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
-                <li><a href="/student-progress.html" class="navbar-link">Student Progress</a></li>
-                <li><a href="/teacher.html" class="navbar-link">Teacher Panel</a></li>
-                <li><a href="/all-kids.html" class="navbar-link">All Kids</a></li>
-                <li><a href="/test-page.html" class="navbar-link">Test Page</a></li>
+                <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
+                        Projects</a></li>
+                <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
+                <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
+                <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
+                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
+                        style="display: none;">Analytics</a></li>
+                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -559,6 +472,13 @@
             function showError(message) {
                 const container = document.getElementById('container');
                 container.innerHTML = `<div class="error">${message}</div>`;
+            }
+
+            // Check login for navbar
+            const currentStudent = localStorage.getItem('currentStudent');
+            if (currentStudent) {
+                const myProjectsLink = document.getElementById('navMyProjects');
+                if (myProjectsLink) myProjectsLink.style.display = 'block';
             }
 
             // Load immediately
