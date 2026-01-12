@@ -68,23 +68,19 @@
 }
 
 /* Desktop Only: Perfect Centering */
+/* Desktop Only: Absolute Centering */
 @media (min-width: 1024px) {
-    .navbar-brand {
-        flex: 1;
-        /* Takes up equal left space */
+    .navbar-container {
+        position: relative;
+        justify-content: space-between;
     }
 
     .navbar-menu {
-        flex: 0 0 auto;
-        /* Natural width, centered */
-        justify-content: center;
-    }
-
-    .navbar-auth {
-        flex: 1;
-        /* Takes up equal right space */
-        justify-content: flex-end;
-        /* Pushes content to far right */
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: max-content;
+        gap: 30px;
     }
 }
 
@@ -107,19 +103,11 @@
 }
 
 .navbar-link.active {
-    color: #3B82F6;
-    background: rgba(59, 130, 246, 0.15);
+    color: #FFFFFF;
+    background: rgba(255, 255, 255, 0.1);
 }
 
-.navbar-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: #3B82F6;
-}
+/* Underline removed as requested */
 
 .navbar-user {
     color: #E5E7EB;
