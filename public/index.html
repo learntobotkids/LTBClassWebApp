@@ -1419,8 +1419,6 @@
 
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link active">Projects</a></li>
-                <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
-                        Projects</a></li>
                 <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
@@ -1764,37 +1762,29 @@
         </div>
 
         <script>
-            // ========================================================================
-            // DEPLOYMENT MODE - Fetched from server's environment variable
-            // ========================================================================
-            let DEPLOYMENT_MODE = 'offline'; // Default
+            // [CRITICAL] Global Deployment Mode
+            // Defined later at global scope or in DOMContentLoaded
+            // let DEPLOYMENT_MODE = 'offline'; // REMOVED to avoid redeclaration
 
+            // We still have the old fetchDeploymentMode for compatibility if legacy code calls it
             async function fetchDeploymentMode() {
-                try {
-                    const response = await fetch('/api/config');
-                    const config = await response.json();
-                    DEPLOYMENT_MODE = config.deploymentMode || 'offline';
-                    console.log(`[LTB] Deployment mode: ${DEPLOYMENT_MODE} (from server)`);
-                } catch (error) {
-                    console.warn('[LTB] Could not fetch config, defaulting to offline mode');
-                    DEPLOYMENT_MODE = 'offline';
-                }
-
-                // [NEW] Gating Logic for Online Mode
-                initializeAccess();
+                return window.DEPLOYMENT_MODE || 'offline';
             }
 
+            // Access control logic
             function initializeAccess() {
                 const loader = document.getElementById('initialLoader');
                 const gate = document.getElementById('loginGate');
                 const contentElements = document.querySelectorAll('.protected-content');
 
+                // Use window.DEPLOYMENT_MODE to be safe
+                const mode = window.DEPLOYMENT_MODE || 'offline';
+                const isOnline = (mode === 'online');
+
                 const student = localStorage.getItem('currentStudent');
                 const instructor = localStorage.getItem('instructorLoggedIn');
-                const isOnline = (DEPLOYMENT_MODE === 'online');
                 const isLoggedIn = !!(student || instructor);
 
-                // Simulate small delay for smooth transition or instant if ready
                 setTimeout(() => {
                     if (isOnline && !isLoggedIn) {
                         // BLOCK: Show Gate, Hide Loader
@@ -1853,9 +1843,10 @@
 
             // Fetch projects from API
             async function loadProjects() {
+                console.log('[loadProjects] Starting... Mode:', window.DEPLOYMENT_MODE);
                 try {
                     // In ONLINE mode, fetch from Google Sheets API
-                    if (DEPLOYMENT_MODE === 'online') {
+                    if (window.DEPLOYMENT_MODE === 'online') {
                         console.log('Loading projects from Google Sheets API...');
                         const response = await fetch('/api/all-projects');
                         const data = await response.json();
@@ -2172,17 +2163,30 @@
 
                 if (currentStudent && studentProgress) {
                     projects.forEach(project => {
-                        if (isProjectCompleted(project.name)) {
+                        // ROBUST MATCHING: ID match preferred, then normalized name match
+                        const isCompleted = isProjectCompleted(project.name) ||
+                            (studentProgress.completedProjects && studentProgress.completedProjects.some(cp => cp.id === project.id));
+
+                        if (isCompleted) {
                             completedProjects.push(project);
                         } else {
                             availableProjects.push(project);
                         }
                     });
 
-                    // APPLY FILTER: If hide checked, exclude completed projects
+                    // APPLY FILTER
+                    // If "Hide Completed" is checked, remove them from the main view
                     if (shouldHideCompleted) {
-                        projectsToRender = projectsToRender.filter(p => !isProjectCompleted(p.name));
+                        // Filter out projects that are in the completed list
+                        // Use a Set of IDs for O(1) lookups
+                        const completedIds = new Set(completedProjects.map(p => p.id));
+                        projectsToRender = projectsToRender.filter(p => !completedIds.has(p.id));
                     }
+                }
+
+                // APPLY FILTER: If hide checked, exclude completed projects
+                if (shouldHideCompleted) {
+                    projectsToRender = projectsToRender.filter(p => !isProjectCompleted(p.name));
                 }
 
                 if (projectsToRender.length === 0) {
@@ -2272,7 +2276,7 @@
             // Show error message
             function showError(message) {
                 const content = document.getElementById('content');
-                content.innerHTML = `< div class="error" > ${message}</div > `;
+                content.innerHTML = `<div class="error">${message}</div>`;
             }
 
             // Toggle collapsible section
@@ -2561,6 +2565,24 @@
             setInterval(updateConnectionCount, 5000);
             updateConnectionCount();
 
+            // Feature Flags
+            const ENABLE_LEADERBOARD = true;
+
+            // Helper to get formatted date
+            function getFormattedDate() {
+                return new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+
+            // Legacy fetchDeploymentMode (stub)
+            async function fetchDeploymentMode() {
+                return window.DEPLOYMENT_MODE || 'offline';
+            }
+
             // Login functionality
             // Load student names on page load from local database
             async function loadStudents() {
@@ -2844,7 +2866,7 @@
                 }
 
                 // In ONLINE mode, skip local folder fetch - files are on Google Drive
-                if (DEPLOYMENT_MODE === 'online') {
+                if (window.DEPLOYMENT_MODE === 'online') {
                     list.innerHTML = `
                         <li style="padding:15px; color:#60A5FA; text-align:center;">
                             <div style="font-size: 2em; margin-bottom: 10px;">☁️</div>
@@ -3585,7 +3607,7 @@
             // [NEW] Helper to check video permissions
             function canShowVideos() {
                 // If offline, always allow
-                if (typeof DEPLOYMENT_MODE === 'undefined' || DEPLOYMENT_MODE !== 'online') return true;
+                if (window.DEPLOYMENT_MODE !== 'online') return true;
                 // If online, only allow if logged in
                 const student = localStorage.getItem('currentStudent');
                 const instructor = localStorage.getItem('instructorLoggedIn');
@@ -3812,10 +3834,31 @@
     </script>
     <script>
         document.addEventListener('DOMContentLoaded', async function () {
+            // [SAFETY] Force-hide loader after 6 seconds to prevent infinite hanging
+            setTimeout(() => {
+                const loader = document.getElementById('initialLoader');
+                if (loader && loader.style.display !== 'none' && loader.style.opacity !== '0') {
+                    console.warn('[Loader Safety] Force-hiding stuck loader');
+                    loader.style.opacity = '0';
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
+            }, 6000);
+
             // First: Fetch deployment mode from server
             try {
                 const confResp = await fetch('/api/config');
                 const confData = await confResp.json();
+
+                // Set Global Mode
+                window.DEPLOYMENT_MODE = confData.mode || 'offline';
+                // Also set the variable used by other scripts if it exists globally
+                if (typeof DEPLOYMENT_MODE !== 'undefined') {
+                    DEPLOYMENT_MODE = window.DEPLOYMENT_MODE;
+                } else {
+                    window.DEPLOYMENT_MODE = window.DEPLOYMENT_MODE;
+                }
+
+                console.log(`[LTB] Initialized in ${window.DEPLOYMENT_MODE} mode`);
 
                 // LOGIN FLOW CONFIGURATION
                 const modal = document.getElementById('loginModal');
@@ -3826,26 +3869,28 @@
                 // 1. ALWAYS HIDE INSTRUCTOR LINK ON HOMEPAGE
                 if (instructorLink) instructorLink.style.display = 'none';
 
-                if (confData.mode === 'online') {
+                if (window.DEPLOYMENT_MODE === 'online') {
                     // ONLINE MODE: Default to Parent Email Login
-                    console.log('Online Mode detected: Defaulting to Parent Login');
                     if (classView) classView.style.display = 'none';
                     if (onlineView) onlineView.style.display = 'block';
-                    // Ensure global var is set for toggleLoginModal
-                    window.DEPLOYMENT_MODE = 'online';
                 } else {
                     // OFFLINE MODE: Default to Class/Student Picker
-                    console.log('Offline Mode detected: Defaulting to Student Picker');
                     if (classView) classView.style.display = 'block';
                     if (onlineView) onlineView.style.display = 'none';
-                    window.DEPLOYMENT_MODE = 'offline';
                 }
 
+                // [CRITICAL] Initialize Access Gating
+                // This determines if we show the "Login" gate or the content
+                initializeAccess();
+
             } catch (e) {
-                console.error('Failed to fetch config for login logic:', e);
+                console.error('Failed to fetch config for initialization:', e);
+                // Fallback to offline
+                window.DEPLOYMENT_MODE = 'offline';
+                initializeAccess();
             }
 
-            await fetchDeploymentMode();
+            // Note: removed redundant await fetchDeploymentMode(); call
 
             // Initialize Staging Environment
             console.log('Staging environment initialized');
@@ -3853,9 +3898,9 @@
             // MOBILE DETECTION: Force Instructor Login - DISABLED PER USER REQUEST
             // const isMobile = window.innerWidth <= 768; 
 
-            // Ensure login modal is active
             // Ensure login modal is active ONLY if not logged in
             const modal = document.getElementById('loginModal');
+            const currentStudent = localStorage.getItem('currentStudent');
 
             // if (isMobile) {
             //     // FORCE INSTRUCTOR LOGIN ON MOBILE
@@ -3864,6 +3909,7 @@
             //     openInstructorLogin(); // Defined earlier in file
             // }
             // else 
+
             if (modal && !currentStudent) {
                 if (window.DEPLOYMENT_MODE === 'online') {
                     // ONLINE MODE: Do NOT auto-open login modal

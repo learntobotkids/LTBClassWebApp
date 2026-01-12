@@ -541,10 +541,14 @@
     <!-- HEADER -->
     <header class="app-header">
         <div class="header-left">
-            <div class="header-title" id="pageTitle" style="margin-left: 15px;">TODAY</div>
+            <a href="/"
+                style="text-decoration: none; display: flex; align-items: center; gap: 8px; margin-right: 15px;">
+                <div style="color: white; font-size: 16px;">🏠 Back to Home</div>
+            </a>
+            <div class="header-title" id="pageTitle" style="margin-left: 0;">TODAY</div>
         </div>
         <div class="header-right">
-            <button onclick="loadData()"
+            <button onclick="loadData(true)"
                 style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; margin-right: 10px;">
                 <span>🔄</span> Refresh
             </button>
@@ -786,12 +790,12 @@
             // Re-render content
             render();
         }
-        async function loadData() {
+        async function loadData(force = false) {
             const container = document.getElementById('mainContent');
 
             // Only show full loading if container is empty or we are forcing it? 
             // Better UX: keep old content while loading? For now, simple.
-            if (!container.innerHTML || container.innerHTML.includes('empty-state')) {
+            if ((!container.innerHTML || container.innerHTML.includes('empty-state')) && !force) {
                 container.innerHTML = `
                     <div class="loading-container">
                         <div class="loading-spinner"></div>
@@ -799,10 +803,17 @@
                     </div>`;
             }
 
+            if (force) {
+                // Determine which tab we are on to show appropriate loading state
+                if (currentTab === 'today') {
+                    container.innerHTML = '<div class="loading-container"><div class="loading-spinner"></div><div>Refreshing Today\'s List...</div></div>';
+                }
+            }
+
             try {
                 // Fetch Today's Students
-                console.log('Fetching /api/todays-students...');
-                const response = await fetch('/api/todays-students');
+                console.log(`Fetching /api/todays-students?force=${force}`);
+                const response = await fetch(`/api/todays-students?force=${force}`);
                 const data = await response.json();
                 console.log('API Response:', data);
 
@@ -1157,6 +1168,9 @@
                     return filtered.map(s => {
                         const safeName = s.name.replace(/'/g, "\\'");
                         const safeId = (s.id || '').toString().replace(/'/g, "\\'");
+                        const safeEmail = (s.email || '').replace(/'/g, "\\'");
+                        const safeAge = (s.age || '').toString().replace(/'/g, "\\'");
+                        const safeService = (s.serviceTitle || '').replace(/'/g, "\\'");
 
                         return `
                         <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${s.headshot || ''}')" style="cursor: pointer;">
@@ -1171,6 +1185,9 @@
                                 </button>
                                 <button onclick="event.stopPropagation(); openNoteModal('${safeId}')" style="background:none; border:none; font-size: 20px; cursor: pointer; padding: 10px;">
                                     ℹ️
+                                </button>
+                                <button onclick="event.stopPropagation(); addToBooking('${safeId}', '${safeName}', '${safeEmail}', '${safeAge}', '${safeService}')" style="background:#db3236; color:white; border:none; border-radius:4px; font-weight:bold; font-size: 11px; cursor: pointer; padding: 6px 10px; margin-left:5px;">
+                                    +TODAY
                                 </button>
                             </div>
                         </div>
@@ -1206,6 +1223,40 @@
                 container.innerHTML = `<div class="empty-state"><h3>Failed to load students</h3><p>${e.message}</p></div>`;
             }
         }
+
+        // ============================================================================
+        // ADD TO BOOKING (TODAY)
+        // ============================================================================
+        window.addToBooking = async function (studentId, studentName, email, age, serviceTitle) {
+            // Need today's date in format MMM D, YYYY (e.g. Jan 11, 2026)
+            const dateObj = new Date();
+            const dateStr = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+            if (!confirm(`Add ${studentName} to booking sheet for TODAY (${dateStr})?`)) return;
+
+            const studentData = {
+                studentId,
+                studentName,
+                email,
+                age,
+                serviceTitle,
+                date: dateStr
+            };
+
+            try {
+                const res = await fetch('/api/add-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ studentId, studentData })
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+
+                alert(`✅ Successfully added ${studentName} to today's bookings!`);
+            } catch (e) {
+                alert('Failed to add booking: ' + e.message);
+            }
+        };
 
         // ============================================================================
         // NOTE MODAL

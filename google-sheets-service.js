@@ -1372,10 +1372,10 @@ async function fetchBookingInfo(forceRefresh = false) {
  * 
  * @returns {Promise<Array>} - Array of enriched student objects
  */
-async function fetchEnrichedBookingInfo() {
+async function fetchEnrichedBookingInfo(forceRefresh = false) {
     try {
         // 1. Get Today's Bookings
-        const bookings = await fetchBookingInfo();
+        const bookings = await fetchBookingInfo(forceRefresh);
         if (bookings.length === 0) return [];
 
         // 2. Get Student Data (from Child Names sheet, keyed by ID)
@@ -1583,7 +1583,9 @@ async function fetchAllKids(forceRefresh = false) {
             email: row[config.ALL_KIDS_COLUMNS.EMAIL] || '',
             headshot: row[config.ALL_KIDS_COLUMNS.HEADSHOT] || '',
             note: row[config.ALL_KIDS_COLUMNS.NOTE] || '',
-            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10)
+            totalPoints: parseInt(row[config.ALL_KIDS_COLUMNS.TOTAL_POINTS] || '0', 10),
+            age: row[config.ALL_KIDS_COLUMNS.AGE] || '',
+            serviceTitle: row[config.ALL_KIDS_COLUMNS.SERVICE_TITLE] || ''
         }));
 
     console.log(`Fetched ${kids.length} kids for All Kids page (${source})`);
@@ -2715,6 +2717,66 @@ module.exports = {
     updateStudentFullDetails,
     markProjectComplete,
     fetchStudentNamesForLogin,
-    getGoogleSheetsClient, // Exporting for server.js usage
-    saveClassReport
+    getGoogleSheetsClient,
+    saveClassReport,
+    addBooking
 };
+
+// ============================================================================
+// FUNCTION: Add Booking to Google Sheets
+// ============================================================================
+
+/**
+ * Adds a new booking row to the "All Booking Info" sheet
+ *
+ * @param {Object} bookingData - The data to add
+ * @returns {Promise<Object>} - Result of the operation
+ */
+async function addBooking(bookingData) {
+    try {
+        console.log('Adding booking to Google Sheets...', bookingData);
+
+        // Get authenticated Sheets API client
+        const sheets = await getGoogleSheetsClient();
+
+        // Prepare row data based on config
+        // Find the max index needed
+        const maxIndex = Math.max(
+            config.BOOKING_COLUMNS.EMAIL || 0,
+            config.BOOKING_COLUMNS.STUDENT_NAME || 0,
+            config.BOOKING_COLUMNS.AGE || 0,
+            config.BOOKING_COLUMNS.SERVICE_TITLE || 0,
+            config.BOOKING_COLUMNS.CLASS_DATE || 0,
+            config.BOOKING_COLUMNS.CHECKED_IN || 0,
+            config.BOOKING_COLUMNS.STUDENT_ID || 14
+        );
+
+        const row = new Array(maxIndex + 1).fill('');
+
+        // Fill in data
+        // Using strict checks for defined indices
+        if (typeof config.BOOKING_COLUMNS.EMAIL !== 'undefined') row[config.BOOKING_COLUMNS.EMAIL] = bookingData.email || '';
+        if (typeof config.BOOKING_COLUMNS.STUDENT_NAME !== 'undefined') row[config.BOOKING_COLUMNS.STUDENT_NAME] = bookingData.studentName || '';
+        if (typeof config.BOOKING_COLUMNS.AGE !== 'undefined') row[config.BOOKING_COLUMNS.AGE] = bookingData.age || '';
+        if (typeof config.BOOKING_COLUMNS.SERVICE_TITLE !== 'undefined') row[config.BOOKING_COLUMNS.SERVICE_TITLE] = bookingData.serviceTitle || '';
+        if (typeof config.BOOKING_COLUMNS.CLASS_DATE !== 'undefined') row[config.BOOKING_COLUMNS.CLASS_DATE] = bookingData.date || '';
+        if (typeof config.BOOKING_COLUMNS.STUDENT_ID !== 'undefined') row[config.BOOKING_COLUMNS.STUDENT_ID] = bookingData.studentId || '';
+
+        // Append to sheet
+        await sheets.spreadsheets.values.append({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.BOOKING_SHEET}!A:Z`,
+            valueInputOption: 'USER_ENTERED',
+            resource: {
+                values: [row]
+            }
+        });
+
+        console.log('✅ Booking added successfully.');
+        return { success: true };
+
+    } catch (error) {
+        console.error('Error adding booking:', error.message);
+        throw error;
+    }
+}

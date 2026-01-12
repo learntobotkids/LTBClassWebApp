@@ -442,6 +442,7 @@ function findProjects(currentPath, categoryPath = []) {
 
             // Only include this project if it has at least one video
             if (videos.length > 0) {
+                console.log(`[DEBUG] Found Project: ${folderName} (${videos.length} videos)`);
                 // Read files at project folder level to find icon and PDF
                 const files = fs.readdirSync(currentPath);
 
@@ -539,8 +540,10 @@ app.get('/api/projects', async (req, res) => {
 
         // Check if PROJECT_FOLDER exists (OFFLINE/LOCAL mode)
         if (fs.existsSync(PROJECT_FOLDER)) {
+            console.log(`[DEBUG] Scanning projects in: ${PROJECT_FOLDER}`);
             // OFFLINE MODE: Scan local folder for projects
             projects = findProjects(PROJECT_FOLDER, []);
+            console.log(`[DEBUG] Total projects found: ${projects.length}`);
         } else {
             // ONLINE MODE: Return sample projects with YouTube videos
             console.log('[ONLINE MODE] Returning sample projects with YouTube videos');
@@ -882,7 +885,23 @@ app.get('/api/config', (req, res) => {
     // If PROJECT_FOLDER is missing, we are definitely ONLINE
     // If DEPLOYMENT_MODE is 'cloud' or 'online', we are ONLINE
     const envMode = (process.env.DEPLOYMENT_MODE || '').toLowerCase();
-    const isOnline = !fs.existsSync(PROJECT_FOLDER) || envMode === 'cloud' || envMode === 'online';
+
+    // [DEBUG]
+    console.log('[DEBUG] envMode detected as:', envMode);
+
+    // Logic:
+    // 1. If explicit 'offline' in env, FORCE OFFLINE (even if folder missing)
+    // 2. If explicit 'online/cloud' in env, FORCE ONLINE
+    // 3. If no env var, default to checking folder existence
+    let isOnline;
+    if (envMode === 'offline') {
+        isOnline = false;
+    } else if (envMode === 'online' || envMode === 'cloud') {
+        isOnline = true;
+    } else {
+        // Auto-detect based on folder
+        isOnline = !fs.existsSync(PROJECT_FOLDER);
+    }
 
     const modeString = isOnline ? 'online' : 'offline';
 
@@ -2007,7 +2026,8 @@ app.post('/api/instructor-login', express.json(), async (req, res) => {
  */
 app.get('/api/todays-students', async (req, res) => {
     try {
-        const students = await googleSheetsService.fetchEnrichedBookingInfo();
+        const force = req.query.force === 'true';
+        const students = await googleSheetsService.fetchEnrichedBookingInfo(force);
         res.json({ success: true, students });
     } catch (error) {
         console.error('Error fetching todays students:', error);
@@ -2473,6 +2493,24 @@ function formatFileSize(bytes) {
 
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
+
+// ============================================================================
+// STEP 23: API ENDPOINT - ADD BOOKING
+// ============================================================================
+app.post('/api/add-booking', async (req, res) => {
+    try {
+        const { studentId, studentData } = req.body;
+        console.log(`[API] Adding booking for Student ID: ${studentId}`, studentData);
+
+        // Call Service
+        await googleSheetsService.addBooking(studentData);
+
+        res.json({ success: true, message: 'Booking added successfully' });
+    } catch (err) {
+        console.error('Error adding booking:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // ============================================================================
 // STEP 22: API ENDPOINT - GET UNC PATH FOR STUDENT FOLDER

@@ -85,6 +85,18 @@ module.exports = {
     CLASS_REPORT_SHEET: 'ClassReport',
 
     /**
+     * Name of the sheet (tab) containing the full project catalog
+     * Default: 'Projects List'
+     */
+    PROJECT_LIST_SHEET: 'Projects List',
+
+    /**
+     * Name of the sheet (tab) containing student booking/attendance info
+     * Default: 'Bookings'
+     */
+    BOOKING_SHEET: 'All Booking Info',
+
+    /**
      * Name of the sheet (tab) containing instructor data
      * Default: 'instructors'
      */
@@ -100,7 +112,7 @@ module.exports = {
      * Name of the sheet (tab) containing inventory items
      * Default: 'Inventory'
      */
-    INVENTORY_SHEET: 'Inventory',
+    INVENTORY_SHEET: 'inventory2',
 
     /**
      * Name of the sheet (tab) containing project parts/videos
@@ -212,7 +224,9 @@ module.exports = {
     // Maps columns in 'All Booking Info' sheet
 
     BOOKING_COLUMNS: {
+        EMAIL: 0,           // Column A: Student Email
         STUDENT_NAME: 4,    // Column E: Student's full name
+        AGE: 5,             // Column F: Student's Age
         SERVICE_TITLE: 7,   // Column H: Class/Service Title
         CLASS_DATE: 12,     // Column M: Date of class
         CHECKED_IN: 13,     // Column N: Checked In? (TRUE/FALSE)
@@ -269,7 +283,9 @@ module.exports = {
         EMAIL: 1,           // Column B: Parent Email
         HEADSHOT: 8,        // Column I: Headshot
         NOTE: 23,           // Column X: Note for child
-        TOTAL_POINTS: 33    // Column AH: Total Points (All Time)
+        TOTAL_POINTS: 33,   // Column AH: Total Points (All Time)
+        AGE: 3,             // Column D: Child Age
+        SERVICE_TITLE: 10   // Column K: Service Title
     },
 
     // ========================================================================

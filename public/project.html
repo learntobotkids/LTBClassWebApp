@@ -1026,6 +1026,17 @@
                             font-weight: 600;
                             transition: all 0.2s;
                         }
+
+                        @media (max-width: 600px) {
+                            .online-nav {
+                                flex-direction: column;
+                                gap: 15px;
+                            }
+                            .online-nav-btn {
+                                width: 100%;
+                                text-align: center;
+                            }
+                        }
                         .online-nav-btn:hover:not(:disabled) {
                             background: #3B82F6;
                             transform: translateY(-2px);
