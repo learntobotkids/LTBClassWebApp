@@ -1819,32 +1819,72 @@ async function fetchInventory(forceRefresh = false) {
         // Also map update columns: kitName -> columnIndex
         const updateColumns = {};
 
+        // Known columns to exclude from being treated as Kits
+        const EXCLUDED_HEADERS = ['id', 'product', 'image', 'photo', 'last log', 'last update', 'barcode', 'item'];
+
         headers.forEach((header, index) => {
             if (!header) return;
             const h = header.toLowerCase();
 
-            // Detect Stock Columns: "Current Stock in KIT1"
-            if (h.includes('current stock in')) {
-                const parts = header.split(' in ');
+            // 1. Detect Kit Stock Columns
+            // Heuristic:
+            // - Contains "current stock" OR "stock" OR "qty" OR "quantity"
+            // - OR starts with "kit" or "station"
+            // - AND does NOT contain "last update" or other excluded terms (unless it's "stock in kit...")
+
+            let isKitCol = false;
+            let kitName = '';
+
+            // Pattern 1: "Current Stock in KIT1" or "Stock in KIT1"
+            if (h.includes('stock in')) {
+                const parts = header.split(/stock in/i);
                 if (parts.length > 1) {
-                    const kitName = parts[1].trim();
+                    kitName = parts[1].trim();
+                    isKitCol = true;
+                }
+            }
+            // Pattern 2: "KIT1" or "Station 1" (and not excluded)
+            else if ((h.startsWith('kit') || h.startsWith('station')) && !h.includes('update')) {
+                kitName = header.trim();
+                isKitCol = true;
+            }
+            // Pattern 3: Fallback based on config position? 
+            // If we are in the "Kit Zone" (between Image and Last Log)
+            // But relying on headers is safer if they are labelled.
+
+            if (isKitCol && kitName) {
+                // Check against exclusions just in case
+                if (!EXCLUDED_HEADERS.some(ex => h.includes(ex) && !h.includes('stock'))) {
                     kitColumns[kitName] = index;
                 }
             }
-            // Detect Update Columns: "Last Update KIT1"
-            else if (h.includes('last update')) {
-                // Format is usually "Last Update KIT1"
-                // Let's try to extract the kit name by removing "Last Update "
-                // Assuming header is "Last Update KIT1"
-                const prefix = "Last Update ";
-                if (header.startsWith(prefix)) {
-                    const kitName = header.substring(prefix.length).trim();
-                    if (kitName) {
-                        updateColumns[kitName] = index;
-                    }
+
+            // 2. Detect Update Columns: "Last Update KIT1"
+            if (h.includes('last update')) {
+                // Try to extract kit name
+                // "Last Update KIT1" -> "KIT1"
+                const name = header.replace(/last update/i, '').trim();
+                if (name) {
+                    updateColumns[name] = index;
                 }
             }
         });
+
+        // Fallback: If no kits detected by name, use the indices from config
+        // Assuming Columns G (6) to K (10) are kits if headers failed
+        if (Object.keys(kitColumns).length === 0) {
+            console.log('⚠️ No kits detected by name. Using fallback indices 6-10.');
+            // Check headers at 6,7,8,9,10
+            [6, 7, 8, 9, 10].forEach(idx => {
+                if (headers[idx]) {
+                    const inferredName = headers[idx];
+                    // Only use if not excluded
+                    if (!EXCLUDED_HEADERS.some(ex => inferredName.toLowerCase().includes(ex))) {
+                        kitColumns[inferredName] = idx;
+                    }
+                }
+            });
+        }
 
         const kits = Object.keys(kitColumns);
         console.log('Detected Kits:', kits);
