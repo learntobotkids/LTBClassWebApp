@@ -402,3 +402,15 @@ body {
     transform: translateY(-3px) !important;
     box-shadow: 0 15px 30px rgba(124, 58, 237, 0.3) !important;
 }
+
+/* Dark Mode Overrides for Headers */
+.category-header h2,
+.header h1 {
+    color: #FFFFFF !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.category-header {
+    margin: 30px 0 20px 0;
+    text-align: center;
+}
