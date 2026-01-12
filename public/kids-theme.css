@@ -274,3 +274,131 @@ p {
 .client-info {
     color: var(--ltb-text-secondary) !important;
 }
+
+/* =========================================
+   NEW UI ENHANCEMENTS (Glassmorphism & Trends)
+   ========================================= */
+
+/* Body Gradient to make Glassmorphism visible */
+body {
+    background: radial-gradient(circle at top left, #1e3a8a, #0f172a) !important;
+    min-height: 100vh;
+    padding-top: 90px !important;
+}
+
+/* Glass Panel Effect */
+.glass-panel {
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+    border-radius: 24px !important;
+}
+
+/* Dark Mode Glass (if needed later, but theme is light) */
+.glass-panel-dark {
+    background: rgba(17, 24, 39, 0.7) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Hero/Assigned Section Styling - Stronger Glass */
+.assigned-projects-section.glass-mode {
+    background: rgba(17, 24, 39, 0.6) !important;
+    /* Semi-transparent dark card */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    /* Purple tint border */
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4) !important;
+    padding: 20px !important;
+    /* Reduced padding */
+    max-width: 1000px !important;
+    /* Constrain width */
+    margin: 20px auto !important;
+}
+
+/* Compact Logic for Completed Projects - 2 COLUMN STACK */
+.compact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr !important;
+    /* Strict 2 Columns */
+    gap: 10px !important;
+    /* Tighter gap */
+}
+
+/* Make compact cards look more like "list items" or horizontal stack */
+.project-card.compact {
+    font-size: 0.8em;
+    /* Smaller text */
+    display: flex;
+    /* Horizontal Layout */
+    align-items: center;
+    padding: 8px 12px !important;
+    /* Slimmer padding */
+    min-height: 70px;
+    /* Enforce smaller height */
+}
+
+.project-card.compact .project-icon {
+    width: 50px !important;
+    /* Much smaller icon */
+    height: 50px !important;
+    flex-shrink: 0;
+    margin-right: 12px;
+    background: transparent !important;
+    /* Remove grey bg */
+    padding: 0 !important;
+}
+
+.project-card.compact .project-icon img {
+    border-radius: 6px;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.project-card.compact .project-info {
+    flex: 1;
+    /* Take remaining space */
+    padding: 0 !important;
+    text-align: left !important;
+}
+
+.project-card.compact .project-name {
+    font-size: 1.1em !important;
+    margin-bottom: 2px !important;
+    line-height: 1.2;
+}
+
+.project-card.compact .project-category {
+    font-size: 0.9em !important;
+    margin-bottom: 2px !important;
+}
+
+.project-card.compact .completion-badge {
+    position: static !important;
+    /* Move badge into flow */
+    display: inline-block;
+    margin-bottom: 0px;
+    font-size: 0.65em !important;
+    padding: 2px 6px !important;
+    line-height: 1;
+}
+
+/* Enhanced Hero Card (Assigned) */
+.assigned-project-card.hero-card {
+    border: none !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%) !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+    transform: scale(1.0);
+    border-radius: 16px !important;
+    transition: all 0.3s ease;
+    max-width: 600px;
+    /* Prevent massive cards */
+    margin: 0 auto;
+}
+
+.assigned-project-card.hero-card:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 15px 30px rgba(124, 58, 237, 0.3) !important;
+}

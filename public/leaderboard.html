@@ -635,21 +635,22 @@
     <nav class="navbar">
         <div class="navbar-container">
             <a href="/" class="navbar-brand">
-                <span class="navbar-logo">🤖</span>
-                <span>LearnToBot</span>
+                <img src="assets/logo.png" alt="LearnToBot" class="navbar-logo-img">
+                <span class="brand-text">LEARNTOBOT</span>
             </a>
+
+            <!-- Mobile menu button handled by mobile-nav.js -->
+
             <ul class="navbar-menu">
                 <li><a href="/" class="navbar-link">Projects</a></li>
-                <li><a href="/my-projects.html" class="navbar-link" id="navMyProjects" style="display: none;">My
-                        Projects</a></li>
                 <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link active">Leaders</a></li>
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
                 <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
-                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
+
             <div class="navbar-auth">
                 <div id="userProfilePill" class="user-profile-pill" style="display: none;">
                     <div class="user-points">
@@ -662,7 +663,7 @@
                             onerror="this.style.display='none'">
                     </div>
                 </div>
-                <a href="/" class="navbar-btn">Back to Projects</a>
+                <button id="authBtn" class="navbar-btn" onclick="window.location.href='/'">Login</button>
             </div>
         </div>
     </nav>

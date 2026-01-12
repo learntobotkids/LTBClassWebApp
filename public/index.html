@@ -16,14 +16,7 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #071F4E;
-            background: linear-gradient(135deg, #071F4E 0%, #051838 100%);
-            min-height: 100vh;
-            padding-top: 90px;
-            /* 70px navbar + 20px spacing */
-        }
+        /* Body styles moved to kids-theme.css */
 
         /* Navbar styles moved to navbar.css */
 
@@ -1410,8 +1403,8 @@
     <nav class="navbar protected-content">
         <div class="navbar-container">
             <a href="/" class="navbar-brand">
-                <span class="navbar-logo">🤖</span>
-                <span>LearnToBot</span>
+                <img src="assets/logo.png" alt="LearnToBot" class="navbar-logo-img">
+                <span class="brand-text">LEARNTOBOT</span>
             </a>
 
             <!-- Hamburger Button -->
@@ -1425,7 +1418,6 @@
                 <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
                         style="display: none;">Analytics</a></li>
                 <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
-                <li><a href="#" onclick="logout(); return false;" class="navbar-link logout-link">Logout</a></li>
             </ul>
 
             <div class="navbar-auth">
@@ -2342,12 +2334,12 @@
                 container.style.display = 'block';
 
                 // Helper to create a section
-                function createSection(title, projects, icon, badgeClass, badgeText, headerColor = 'white', isCollapsible = false) {
+                function createSection(title, projects, icon, badgeClass, badgeText, headerColor = 'white', isCollapsible = false, gridClass = '', cardClass = '') {
                     if (!projects || projects.length === 0) return '';
 
                     const projectsHTML = projects.map(project => {
                         const demoVideo = project.videos && project.videos.find(v => v.toLowerCase().includes('demo'));
-                        const demoUrl = demoVideo ? `/ projects / ${encodeURIComponent(project.id)}/${encodeURIComponent(demoVideo)}` : '';
+                        const demoUrl = demoVideo ? '/projects/' + encodeURIComponent(project.id) + '/' + encodeURIComponent(demoVideo) : '';
 
                         const iconHTML = project.icon
                             ? `<img src="${getIconUrl(project.icon, project.id)}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
@@ -2357,7 +2349,7 @@
                         const notFoundStyle = project.notFound ? 'style="opacity: 0.6; cursor: not-allowed;"' : '';
 
                         return `
-                        <div class="assigned-project-card" ${clickHandler} ${notFoundStyle}>
+                        <div class="assigned-project-card ${cardClass}" ${clickHandler} ${notFoundStyle}>
                             <div class="${badgeClass}">${badgeText}</div>
                             <div class="project-icon">${iconHTML}</div>
                             <div class="project-info">
@@ -2378,12 +2370,6 @@
                     const arrowStyle = isCollapsible ? 'transition: transform 0.3s ease; display: inline-block;' : 'display: none;';
                     const containerStyle = isCollapsible ? 'display: none;' : 'display: grid;'; // Default to collapsed if collapsible
 
-                    // Specific logic for Completed Projects: Collapsed by default
-                    // (Actually, user asked for collapsible, usually implies starts open or closed, but "collapsible" implies the ABILITY. 
-                    // Let's assume collapsed by default for "Completed Projects" as it takes up space, or open? 
-                    // The user prompt "make the completed projects section collapsible" usually implies they want to be able to hide it. 
-                    // Let's default it to collapsed (closed) so it's clean, as there are usually many completed projects.)
-
                     return `
                         <div style="margin-bottom: 30px;">
                             <div class="assigned-header" 
@@ -2393,7 +2379,7 @@
                                 <h2 style="color:${headerColor}; flex: 1;">${title} (${projects.length})</h2>
                                 ${isCollapsible ? `<span id="arrow-${collapseId}" style="${arrowStyle} transform: rotate(-90deg); font-size: 1.5em; color: ${headerColor};">▼</span>` : ''}
                             </div>
-                            <div id="${collapseId}" class="assigned-projects-container" style="${containerStyle}">
+                            <div id="${collapseId}" class="assigned-projects-container ${gridClass}" style="${containerStyle}">
                                 ${projectsHTML}
                             </div>
                         </div>
@@ -2407,11 +2393,11 @@
                     return;
                 }
 
-                let html = '<div class="assigned-projects-section">';
+                let html = '<div class="assigned-projects-section glass-mode">';
 
                 // 1. Assigned (Primary)
                 if (assigned && assigned.length > 0) {
-                    html += createSection('Assigned Projects', assigned, '🎯', 'assigned-badge', '🎯 ASSIGNED');
+                    html += createSection('Assigned Projects', assigned, '🎯', 'assigned-badge', '🎯 ASSIGNED', 'white', false, '', 'hero-card');
                 }
 
                 // 2. Next Projects
@@ -2421,7 +2407,7 @@
 
                 // 3. Completed
                 if (completed && completed.length > 0) {
-                    html += createSection('Completed Projects', completed, '✅', 'completion-badge', '✓ COMPLETED', '#4ade80', true);
+                    html += createSection('Completed Projects', completed, '✅', 'completion-badge', '✓ COMPLETED', '#4ade80', true, 'compact-grid', 'compact');
                 }
 
                 html += '</div>';
