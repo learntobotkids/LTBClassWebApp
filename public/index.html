@@ -1505,12 +1505,7 @@
                         autocomplete="off" style="margin-bottom: 15px;">
 
                     <!-- SECTION A: TODAY'S CLASSES (Default) -->
-                    <div id="todayClassesSection">
-                        <div class="date-header" id="modalDateDisplay"></div>
-                        <div id="classGridContainer" style="max-height: 55vh; overflow-y: auto; padding-right: 10px;">
-                            <div class="loading">Loading today's classes...</div>
-                        </div>
-                    </div>
+
 
                     <!-- SECTION B: SEARCH RESULTS (Hidden by default) -->
                     <div id="studentList" class="student-list"
@@ -2570,10 +2565,12 @@
             }
 
             // Login functionality
-            // Load student names on page load from local database
+            // Load student names on page load from local database (or cache)
             async function loadStudents() {
                 try {
-                    const response = await fetch('/api/students');
+                    // FIX: Use /api/student-names which calls the updated Google Sheets Service directly (with IDs)
+                    // instead of /api/students which reads a potentially stale/incorrect students.json
+                    const response = await fetch('/api/student-names');
                     const data = await response.json();
 
                     if (data.error) {
@@ -2581,7 +2578,8 @@
                         return;
                     }
 
-                    allStudents = data.students;
+                    // The API returns { names: [...] } containing objects with id, name, headshot, etc.
+                    allStudents = data.names;
                     renderStudentList(allStudents);
                 } catch (error) {
                     console.error('Failed to load students:', error);
@@ -2678,6 +2676,7 @@
                     const headshot = (typeof student === 'object' && student.headshot) ? student.headshot : null;
                     const fileLink = (typeof student === 'object' && student.fileLink) ? student.fileLink : '';
                     const allProjectAccess = (typeof student === 'object' && student.allProjectAccess) ? 'true' : 'false';
+                    const studentId = (typeof student === 'object' && student.id) ? student.id : ''; // Get Student ID
 
                     let headshotUrl = headshot;
                     if (headshotUrl) {
@@ -2697,7 +2696,7 @@
                         : `<div class="student-initial">${name.charAt(0)}</div>`;
 
                     return `
-                    <div class="student-item" onclick="selectStudent('${name.replace(/'/g, "\\'")}', '${fileLink.replace(/'/g, "\\'")}', ${allProjectAccess})">
+                    <div class="student-item" onclick="selectStudent('${name.replace(/'/g, "\\'")}', '${fileLink.replace(/'/g, "\\'")}', ${allProjectAccess}, '${studentId}')">
                         ${headshotHtml}
                         <span class="student-name">${name}</span>
                     </div>
@@ -2705,20 +2704,19 @@
             }
 
             // Search students (Unified Logic)
+            // Search students (Unified Logic)
             document.getElementById('studentSearch').addEventListener('input', (e) => {
                 const searchTerm = e.target.value.toLowerCase().trim();
-                const todaySection = document.getElementById('todayClassesSection');
                 const listSection = document.getElementById('studentList');
 
-                if (searchTerm === '') {
-                    // EMPTY SEARCH -> SHOW TODAY'S CLASSES
-                    todaySection.style.display = 'block';
-                    listSection.style.display = 'none';
-                } else {
-                    // ACTIVE SEARCH -> SHOW LIST
-                    todaySection.style.display = 'none';
-                    listSection.style.display = 'block';
+                // Always show list section
+                if (listSection) listSection.style.display = 'block';
 
+                if (searchTerm === '') {
+                    // EMPTY SEARCH -> SHOW ALL STUDENTS
+                    renderStudentList(allStudents);
+                } else {
+                    // ACTIVE SEARCH -> FILTER LIST
                     const filtered = allStudents.filter(student => {
                         const name = typeof student === 'object' ? student.name : student;
                         return name.toLowerCase().includes(searchTerm);
@@ -2728,9 +2726,45 @@
             });
 
             // Select a student
-            function selectStudent(studentName, fileLink = null, allProjectAccess = false, studentId = null) {
-                console.log('[Login Debug] selectStudent called with:', { studentName, fileLink, allProjectAccess, studentId });
+            async function selectStudent(studentName, fileLink = null, allProjectAccess = false, studentId = null) {
+                console.log('[Login Debug] selectStudent called with:', {
+                    studentName,
+                    fileLink,
+                    allProjectAccess,
+                    studentId,
+                    typeOfId: typeof studentId
+                });
+
+                // Alert if ID is missing for debugging (temporary)
+                if (!studentId) {
+                    console.error('[Login Debug] CRITICAL: Student ID is missing or null!');
+                }
+
                 currentStudent = studentName;
+                currentStudentId = studentId; // Store global ID if needed
+
+                // [NEW] MARK ATTENDANCE
+                if (studentId) {
+                    console.log(`[ATTENDANCE] Marking attendance for ID: ${studentId}`);
+                    try {
+                        // Await valid fetch to ensure it sends before reload
+                        // Use a promise race to timeout after 2 seconds so we don't block login forever
+                        const markAttendance = fetch('/api/attendance', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ studentId: studentId })
+                        }).then(res => res.json());
+
+                        const timeout = new Promise(resolve => setTimeout(resolve, 2000));
+
+                        const result = await Promise.race([markAttendance, timeout]);
+                        console.log('[ATTENDANCE] Result:', result);
+                    } catch (err) {
+                        console.error('[ATTENDANCE ERROR]', err);
+                    }
+                } else {
+                    console.warn('[ATTENDANCE] No Student ID provided for attendance marking.');
+                }
                 localStorage.setItem('currentStudent', studentName);
 
                 // NEW: Store Student ID
@@ -3285,14 +3319,12 @@
                         document.getElementById('parentEmailInput').value = '';
                     } else {
                         // NORMAL OFFLINE RESET
-                        startClassRotation();
                         // Reset Search
                         const search = document.getElementById('studentSearch');
-                        const todaySection = document.getElementById('todayClassesSection');
                         const listSection = document.getElementById('studentList');
 
                         if (search) search.value = '';
-                        if (todaySection) todaySection.style.display = 'block';
+                        // Keep list view clean
                         if (listSection) listSection.style.display = 'none';
                     }
                 } else {
@@ -3315,7 +3347,10 @@
                         if (skipBtn) skipBtn.style.display = 'block';
 
                         loadStudents(); // Load for search
-                        stopClassRotation();
+
+                        // Show student list by default
+                        const listSection = document.getElementById('studentList');
+                        if (listSection) listSection.style.display = 'block';
 
                         // FOCUS SEARCH BAR IMMEDIATELY
                         setTimeout(() => {
@@ -3339,124 +3374,8 @@
             }
 
             // Load Today's Classes into Modal
-            async function loadClassView() {
-                const container = document.getElementById('classGridContainer');
-                const dateDisplay = document.getElementById('modalDateDisplay');
+            // Formerly loadClassView - Removed per user request
 
-                // Set Date
-                const dateOptions = { weekday: 'long', month: 'long', day: 'numeric' };
-                dateDisplay.textContent = new Date().toLocaleDateString('en-US', dateOptions);
-
-                // Ensure we have student data (for headshots)
-                if (!allStudents || allStudents.length === 0) {
-                    console.log('Waiting for student data...');
-                    await loadStudents();
-                }
-
-                try {
-                    const resp = await fetch('/api/today-classes');
-                    const data = await resp.json();
-
-                    if (data.success) {
-                        renderModalClassGrid(data.bookings);
-                    } else {
-                        container.innerHTML = '<div style="text-align:center; padding:20px;">Failed to load classes</div>';
-                    }
-                } catch (e) {
-                    console.error("Error loading classes", e);
-                    container.innerHTML = '<div style="text-align:center; padding:20px;">Could not load classes</div>';
-                }
-            }
-
-            // Render the Grid in Modal
-            function renderModalClassGrid(bookings) {
-                constcontainer = document.getElementById('classGridContainer');
-
-                // Group by Class
-                const classes = {};
-                bookings.forEach(b => {
-                    const title = b.serviceTitle || 'General Class';
-                    if (!b.studentName) return;
-                    if (!classes[title]) classes[title] = [];
-                    classes[title].push(b);
-                });
-
-                // Empty check
-                if (Object.keys(classes).length === 0) {
-                    document.getElementById('classGridContainer').innerHTML = `
-                        <div style="text-align:center; padding: 40px; color: #9CA3AF;">
-                            <div style="font-size: 3em; margin-bottom: 10px;">📅</div>
-                            <div>No classes scheduled for today.</div>
-                            <div style="font-size: 0.9em; margin-top: 5px;">Click "Search All Students" below.</div>
-                        </div>
-                     `;
-                    return;
-                }
-
-                let html = '';
-
-                // Lookup map for headshots (allStudents populated by loadStudents)
-                // We might need to wait for allStudents? loadStudents() is async but not awaited here.
-                // Assuming allStudents might optionally have data, or we use what's in booking if available?
-                // booking info usually just has name. 
-                // We need to match with full student list for headshots.
-                // Let's do a best effort lookup from global allStudents if available.
-
-                Object.entries(classes).forEach(([className, students]) => {
-                    html += `
-                        <div class="modal-class-section">
-                            <div class="modal-class-title">${className}</div>
-                            <div class="modal-students-grid">
-                    `;
-
-                    students.forEach(s => {
-                        const name = s.studentName;
-                        // Find headshot
-                        let headshotUrl = null;
-
-                        // Try to find in allStudents
-                        const studentObj = allStudents.find(as => {
-                            const asName = typeof as === 'object' ? as.name : as;
-                            return asName.toLowerCase() === name.toLowerCase();
-                        });
-
-                        if (studentObj && studentObj.headshot) {
-                            headshotUrl = studentObj.headshot;
-                            if (headshotUrl.includes('Child Names_Images/')) {
-                                headshotUrl = headshotUrl.replace('Child Names_Images/', 'headshots/');
-                            } else if (!headshotUrl.startsWith('headshots/') && !headshotUrl.startsWith('/headshots/') && !headshotUrl.startsWith('http')) {
-                                headshotUrl = 'headshots/' + headshotUrl;
-                            }
-                        }
-
-                        // Fallback generator
-                        const fallback = `this.onerror=null; this.parentNode.innerHTML='<div class="modal-student-initial" style="background:${stringToColor(name)}">${name.charAt(0)}</div>'`;
-
-                        if (headshotUrl) {
-                            html += `
-                                <div class="modal-student-card" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
-                                    <img src="${headshotUrl}" class="modal-student-headshot" onerror="${fallback}">
-                                    <div class="modal-student-name">${name}</div>
-                                </div>
-                            `;
-                        } else {
-                            html += `
-                                <div class="modal-student-card" onclick="selectStudent('${name.replace(/'/g, "\'")}')">
-                                    <div class="modal-student-initial" style="background:${stringToColor(name)}">${name.charAt(0)}</div>
-                                    <div class="modal-student-name">${name}</div>
-                                </div>
-                            `;
-                        }
-                    });
-
-                    html += `
-                            </div>
-                        </div>
-                    `;
-                });
-
-                document.getElementById('classGridContainer').innerHTML = html;
-            }
 
             // Helper to generate consistent pleasant colors from names
             function stringToColor(str) {
@@ -3583,7 +3502,12 @@
 
                 // Send student name if logged in
                 if (currentStudent) {
-                    socket.emit('student-login', { studentName: currentStudent });
+                    // [BACKUP] Send ID for attendance marking
+                    const storedId = localStorage.getItem('studentId') || currentStudentId;
+                    socket.emit('student-login', {
+                        studentName: currentStudent,
+                        studentId: storedId
+                    });
                 }
 
                 // Notify server of current page

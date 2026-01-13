@@ -1003,6 +1003,7 @@ function getLocalIPAddress() {
 app.get('/api/student-names', async (req, res) => {
     try {
         const studentNames = await googleSheetsService.fetchStudentNamesForLogin();
+        console.log(`[API] /api/student-names returning ${studentNames.length} students. First:`, studentNames[0]);
         res.json({ names: studentNames });
     } catch (error) {
         console.error('Error fetching student names:', error);
@@ -1216,11 +1217,42 @@ io.on('connection', (socket) => {
     });
 
     // Listen for student login event
-    socket.on('student-login', (data) => {
+    // Listen for student login event
+    socket.on('student-login', async (data) => {
         const client = connectedClients.get(socket.id);
         if (client) {
             client.studentName = data.studentName;
-            console.log(`Student logged in: ${data.studentName} (${socket.id})`);
+            console.log(`[SOCKET] Student logged in: ${data.studentName} (${socket.id})`);
+
+            let targetId = data.studentId;
+
+            // [FALLBACK] If ID is missing, try to find it by name
+            if (!targetId && data.studentName) {
+                console.log(`[SOCKET] ID missing for "${data.studentName}". Attempting lookup...`);
+                try {
+                    const allStudents = await googleSheetsService.fetchStudentNamesForLogin();
+                    // Match by name (case insensitive just in case, though usually exact)
+                    const match = allStudents.find(s => s.name === data.studentName);
+                    if (match && match.id) {
+                        targetId = match.id;
+                        console.log(`[SOCKET] Found ID via lookup: ${targetId}`);
+                    } else {
+                        console.warn(`[SOCKET] Lookup failed for: "${data.studentName}"`);
+                    }
+                } catch (err) {
+                    console.error('[SOCKET] Lookup Error:', err);
+                }
+            }
+
+            // [BACKUP] Mark attendance via Socket
+            if (targetId) {
+                console.log(`[SOCKET] Marking attendance for ID: ${targetId}`);
+                try {
+                    await googleSheetsService.markAttendanceByStudentId(targetId);
+                } catch (err) {
+                    console.error('[SOCKET] Attendance Error:', err);
+                }
+            }
         }
     });
 
@@ -1343,6 +1375,30 @@ app.get('/api/google-sheets/student-progress', async (req, res) => {
 });
 
 /**
+ * POST /api/attendance
+ * Marks student attendance by ID and Today's Date
+ */
+app.post('/api/attendance', async (req, res) => {
+    try {
+        const { studentId } = req.body;
+        console.log('[API] Mark Attendance requested for:', studentId);
+
+        if (!studentId) {
+            return res.status(400).json({ success: false, error: 'Student ID is required' });
+        }
+
+        const updated = await googleSheetsService.markAttendanceByStudentId(studentId);
+
+        // Return success even if not updated (meaning no booking found), 
+        // but let frontend know via 'updated' flag.
+        res.json({ success: true, updated });
+    } catch (error) {
+        console.error('Error marking attendance:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * POST /api/mark-attendance
  * Updates student attendance status
  */
@@ -1389,6 +1445,20 @@ app.get('/api/instructors', async (req, res) => {
             error: 'Failed to fetch instructors',
             message: error.message
         });
+    }
+});
+
+// DEBUG: Inspect a student's data by name
+app.get('/api/debug/student-lookup/:name', async (req, res) => {
+    try {
+        const targetName = req.params.name.toLowerCase();
+        const studentNames = await googleSheetsService.fetchStudentNamesForLogin();
+        // Return ALL matches
+        const matches = studentNames.filter(s => s.name.toLowerCase().includes(targetName));
+
+        res.json({ success: true, count: matches.length, matches });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 

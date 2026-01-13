@@ -523,13 +523,12 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         // Get authenticated Sheets API client
         const sheets = await getGoogleSheetsClient();
 
-        // Fetch columns D (Name) through AI (All Project Access)
-        // Fetch columns B (Name) through AI (All Project Access)
-        // Range: "Child Names!B:AI"
-        // B=Name(0), C=LoginName(1), D(2), ... G=FileLink(5), ... I=Headshot(7), ... AI=AllProjectAccess(33)
+        // Fetch columns A (ID) through AI (All Project Access)
+        // Range: "Child Names!A:AI"
+        // A=ID(0), B=ShortName(1), C=LoginName(2), ... H=FileLink(6), ... J=Headshot(8), ... AI=AllProjectAccess(34)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!B:AI`,
+            range: `${config.STUDENT_NAMES_SHEET}!A:AI`,
         });
 
         // Extract rows from response
@@ -550,22 +549,30 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         }
 
         const students = rows.slice(1)
-            .filter(row => row[0] && row[0].trim())
+            .filter(row => {
+                const id = row[0] ? row[0].trim() : '';
+                // ID must exist and contain more than just a slash or empty string
+                return id && id.length > 1 && id !== '/';
+            })
             .map(row => {
-                // User Feedback: Column C (Index 1) has the Full Name (e.g. "Aditi Agarwal"), Column B (Index 0) has Short Name ("Aditi").
+                // ID: Column A (Index 0)
+                const id = row[0].trim();
+
+                // User Feedback: Column C (Index 2) has the Full Name, Column B (Index 1) has Short Name.
                 // So we prioritize Column C.
-                const name = (row[1] && row[1].trim()) ? row[1].trim() : row[0].trim();
-                let headshot = row[7] ? row[7].trim() : '';  // Column I (Index 7 from B)
-                const fileLink = row[5] ? row[5].trim() : '';  // Column G (Index 5 from B)
-                // Column AI is index 33 from B (B=0...AI=33)
-                const allProjectAccess = row[33] ? row[33].trim().toLowerCase() : '';
+                const name = (row[2] && row[2].trim()) ? row[2].trim() : row[1].trim();
+
+                // Headshot: Column I (Index 8 from A)
+                let headshot = row[8] ? row[8].trim() : '';
+
+                // File Link: Column G (Index 6 from A)
+                const fileLink = row[6] ? row[6].trim() : '';
+
+                // AllProjectAccess: Column AI (Index 34 from A)
+                const allProjectAccess = row[34] ? row[34].trim().toLowerCase() : '';
 
                 // Try to map to local file
-                // Start by assuming Column I is the filename
-                // Handle cases where it might be a full path "Folder/Image.jpg"
                 let filename = path.basename(headshot);
-
-                // Also handle sanitized versions we might have downloaded
                 const sanitized = filename.replace(/[^a-zA-Z0-9.-]/g, '_');
 
                 if (localHeadshots.has(filename)) {
@@ -574,17 +581,12 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
                     headshot = `/headshots/${sanitized}`;
                 }
 
-                // DEBUG LOGGING FOR ADITI
-                if (name.includes('Aditi')) {
-                    console.log(`[DEBUG] Aditi Check: Col B (Short)='${row[0]}', Col C (Full)='${row[1]}'. Selected='${name}'`);
-                    console.log(`[DEBUG] Headshot Check: Raw='${row[7]}', Santized='${sanitized}', Found=${localHeadshots.has(sanitized)}`);
-                }
-
                 return {
+                    id, // INCLUDE ID
                     name,
                     headshot,
                     fileLink,
-                    allProjectAccess: allProjectAccess === 'yes'  // Convert to boolean
+                    allProjectAccess: allProjectAccess === 'yes'
                 };
             });
 
@@ -603,6 +605,9 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
         lastLoginNamesFetch = now;
 
         console.log(`Fetched ${uniqueStudents.length} students for login`);
+        if (uniqueStudents.length > 0) {
+            console.log(`[DEBUG] First Student ID Check: ${JSON.stringify(uniqueStudents[0])}`);
+        }
         return uniqueStudents;
     } catch (error) {
         console.error('Error fetching student login names:', error.message);
@@ -1293,8 +1298,8 @@ async function fetchBookingInfo(forceRefresh = false) {
                 const isMatch = rowDate.toDateString() === today.toDateString();
 
                 if (!isMatch) {
-                    // Debug log for close misses
-                    console.log(`[DEBUG] Skipping date: "${dateStr}" (Parsed: "${rowDate.toDateString()}") vs Target: "${today.toDateString()}"`);
+                    // Debug log for close misses (Commented out to reduce noise)
+                    // console.log(`[DEBUG] Skipping date: "${dateStr}" (Parsed: "${rowDate.toDateString()}") vs Target: "${today.toDateString()}"`);
                 }
 
                 return isMatch;
@@ -2759,7 +2764,8 @@ module.exports = {
     fetchStudentNamesForLogin,
     getGoogleSheetsClient,
     saveClassReport,
-    addBooking
+    addBooking,
+    markAttendanceByStudentId: markAttendanceByStudentIdDEBUG // [NEW] Attendance by ID (Debug Version)
 };
 
 // ============================================================================
@@ -2818,5 +2824,206 @@ async function addBooking(bookingData) {
     } catch (error) {
         console.error('Error adding booking:', error.message);
         throw error;
+    }
+}
+
+// ============================================================================
+// FUNCTION: Mark Attendance by Student ID (For Login)
+// ============================================================================
+
+/**
+ * Marks a student as present (TRUE in Col N) if their ID (Col O) matches
+ * and the Class Date (Col M) matches today's date.
+ *
+ * @param {string} studentId - The unique student ID (Email/Name)
+ * @returns {Promise<boolean>} - True if a record was updated
+ */
+async function markAttendanceByStudentId(studentId) {
+    if (!studentId) return false;
+
+    try {
+        const client = await getGoogleSheetsClient();
+        const sheetName = config.BOOKING_SHEET;
+
+        // 1. Get today's date in "Jan 13, 2026" format
+        const today = new Date();
+        const dateOptions = { month: 'short', day: 'numeric', year: 'numeric' }; // e.g., "Jan 13, 2026"
+        const todayStr = today.toLocaleDateString('en-US', dateOptions);
+
+        console.log(`[ATTENDANCE] Checking for Student ID: "${studentId}" on Date: "${todayStr}"`);
+
+        // 2. Fetch Columns M, N, O (Date, Status, ID)
+        // M is Index 12 (Col 13), O is Index 14 (Col 15)
+        // Range M:O
+        const response = await client.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${sheetName}!M:O`,
+        });
+
+        const rows = response.data.values || [];
+
+        // 3. Find matching row
+        // Row check: Col M (0 in range) == Today, Col O (2 in range) == StudentID
+        let matchRowIndex = -1;
+
+        // Start from Index 1 to skip header? Usually Booking sheet has headers.
+        // Google Sheets API returns range values. row[0] is M, row[1] is N, row[2] is O.
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const dateVal = row[0] ? row[0].trim() : '';
+            const idVal = row[2] ? row[2].trim() : '';
+
+            // Simple string comparison for date (Sheet format must match)
+            // If sheet has "1/13/2026", this might fail. User specified "Jan 13, 2026" format.
+            // Let's assume user is correct about sheet format.
+            // Also lenient check for ID (case insensitive?)
+
+            if (dateVal === todayStr && idVal.toLowerCase() === studentId.toLowerCase()) {
+                matchRowIndex = i; // This is the index in the 'rows' array
+                break;
+            }
+        }
+
+        if (matchRowIndex !== -1) {
+            // Calculate actual spreadsheet row number (1-based)
+            // If we fetched M:O, the first row of 'rows' is the first row of M:O.
+            // If M:O includes header, i=0 is header.
+            // row[0] corresponds to M1 (or M2 if we skipped header? No, range M:O means M1:O_END).
+            // So if matchRowIndex is 0, that's Row 1.
+            const sheetRowNumber = matchRowIndex + 1;
+
+            console.log(`[ATTENDANCE] Found match at Row ${sheetRowNumber}. Updating status...`);
+
+            // 4. Update Status (Col N) to TRUE
+            // Col N is the middle column of our M:O range, but we should target cell N{Row} directly.
+
+            await client.spreadsheets.values.update({
+                spreadsheetId: config.SPREADSHEET_ID,
+                range: `${sheetName}!N${sheetRowNumber}`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: [['TRUE']] }
+            });
+
+            console.log(`[ATTENDANCE] marked TRUE for ${studentId}`);
+            return true;
+        } else {
+            console.log(`[ATTENDANCE] No matching booking found for ${studentId} today.`);
+            return false;
+        }
+
+    } catch (error) {
+        console.error('[ATTENDANCE ERROR]', error);
+        return false;
+    }
+}
+// ============================================================================
+// FUNCTION: Mark Attendance by Student ID (DEBUG Version)
+// ============================================================================
+
+/**
+ * Marks a student as present (TRUE in Col N) if their ID (Col O) matches
+ * and the Class Date (Col M) matches today's date.
+ * DEBUG VERSION WITH DETAILED LOGGING
+ *
+ * @param {string} studentId - The unique student ID (Email/Name)
+ * @returns {Promise<boolean>} - True if a record was updated
+ */
+async function markAttendanceByStudentIdDEBUG(studentId) {
+    if (!studentId) return false;
+
+    console.log(`[ATTENDANCE] START: Validating attendance for "${studentId}"`);
+
+    try {
+        const client = await getGoogleSheetsClient();
+        const sheetName = config.BOOKING_SHEET;
+
+        // 1. Generate multiple date formats to match
+        const today = new Date();
+        const formats = [
+            today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), // "Jan 13, 2026"
+            today.toLocaleDateString('en-US'), // "1/13/2026" (default)
+            `${today.getMonth() + 1}/${today.getDate()}/${today.getFullYear()}`, // "1/13/2026" manual
+            today.toISOString().split('T')[0] // "2026-01-13" (ISO)
+        ];
+
+        // Add zero-padded format "01/13/2026"
+        const paddedMonth = String(today.getMonth() + 1).padStart(2, '0');
+        const paddedDay = String(today.getDate()).padStart(2, '0');
+        formats.push(`${paddedMonth}/${paddedDay}/${today.getFullYear()}`);
+
+        console.log(`[ATTENDANCE] Checking Date Formats: ${JSON.stringify(formats)}`);
+
+        // 2. Fetch Range
+        // M (Date) is at Index 0 relative to range M:O
+        // N (Status) is at Index 1
+        // O (ID) is at Index 2
+        console.log(`[ATTENDANCE] Fetching range ${sheetName}!M:O...`);
+        const response = await client.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${sheetName}!M:O`,
+            valueRenderOption: 'FORMATTED_VALUE' // Get exactly what is displayed
+        });
+
+        const rows = response.data.values || [];
+        console.log(`[ATTENDANCE] Sheet fetched. Total rows: ${rows.length}`);
+
+        // Log first few rows for debug
+        if (rows.length > 0) {
+            console.log(`[ATTENDANCE] Sample Row 1: ${JSON.stringify(rows[0])}`);
+        }
+
+        // 3. Find matching row
+        let matchRowIndex = -1;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const dateVal = row[0] ? row[0].trim() : '';
+            const idVal = row[2] ? row[2].trim() : ''; // Col O is index 2
+
+            // Debug specific student check
+            if (idVal.toLowerCase().includes(studentId.toLowerCase().split('/')[0])) {
+                // Partial log for debugging
+                console.log(`[ATTENDANCE DEBUG] Row ${i + 1}: Date="${dateVal}", ID="${idVal}" (Potential Match)`);
+            }
+
+            // Check if date matches ANY of our formats
+            const dateMatches = formats.includes(dateVal);
+
+            // Check ID (strict match first, then lenient)
+            const idMatches = idVal.toLowerCase().trim() === studentId.toLowerCase().trim();
+
+            if (dateMatches && idMatches) {
+                matchRowIndex = i;
+                console.log(`[ATTENDANCE] MATCH FOUND at Row ${i + 1}!`);
+                break;
+            }
+        }
+
+        if (matchRowIndex !== -1) {
+            // Calculate 1-based row number
+            const sheetRowNumber = matchRowIndex + 1;
+
+            // 4. Update Status (Col N) to TRUE
+            await client.spreadsheets.values.update({
+                spreadsheetId: config.SPREADSHEET_ID,
+                range: `${sheetName}!N${sheetRowNumber}`,
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: [['TRUE']] }
+            });
+
+            console.log(`[ATTENDANCE] ✅ Successfully marked TRUE for ${studentId} at Row ${sheetRowNumber}`);
+            return true;
+        } else {
+            console.warn(`[ATTENDANCE] ⚠️ No matching booking found for "${studentId}" today.`);
+            return false;
+        }
+
+    } catch (error) {
+        console.error('[ATTENDANCE ERROR] ❌ Failed to mark attendance:', error.message);
+        if (error.message.includes('getaddrinfo') || error.message.includes('ENOTFOUND')) {
+            console.error('[ATTENDANCE ERROR] Network Error - System might be offline.');
+        }
+        return false;
     }
 }
