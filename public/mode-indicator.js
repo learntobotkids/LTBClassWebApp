@@ -19,21 +19,26 @@
     // Create indicator element
     const indicator = document.createElement('div');
     indicator.textContent = mode;
-    indicator.style.position = 'fixed';
-    indicator.style.top = '100px';
-    indicator.style.left = '20px';
-    indicator.style.padding = '5px 10px';
-    indicator.style.background = 'rgba(0, 0, 0, 0.7)';
-    indicator.style.border = `1px solid ${color}`;
-    indicator.style.color = color;
-    indicator.style.borderRadius = '5px';
-    indicator.style.fontWeight = 'bold';
-    indicator.style.fontSize = '0.8em';
-    indicator.style.zIndex = '9999';
-    indicator.style.pointerEvents = 'none';
-    indicator.style.fontFamily = "'Inter', sans-serif";
-    indicator.style.letterSpacing = '1px';
+    indicator.id = 'modeIndicator';
+    indicator.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        padding: 6px 14px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 1px solid ${color};
+        color: ${color};
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.7em;
+        z-index: 9999;
+        pointer-events: none;
+        font-family: 'Inter', sans-serif;
+        letter-spacing: 1px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    `;
 
     document.body.appendChild(indicator);
     console.log(`[Mode Indicator] Running in ${mode} mode (from server)`);
 })();
+
