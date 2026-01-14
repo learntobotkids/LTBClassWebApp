@@ -2222,10 +2222,9 @@
 
 
                     // Check if user has access to all projects
-                    // LOCK FEATURE DISABLED FOR NOW (By Request)
-                    // const hasAccess = localStorage.getItem('allProjectAccess') === 'yes';
-                    // const isLocked = currentStudent && !hasAccess && !isCompleted && !inProgress;
-                    const isLocked = false;
+                    // Enabled: Projects are locked if not completed or in progress, unless override exists
+                    const hasAccess = localStorage.getItem('allProjectAccess') === 'yes';
+                    const isLocked = currentStudent && !hasAccess && !isCompleted && !inProgress;
 
                     // Lock overlay HTML
                     const lockOverlayHTML = isLocked ? `<div class="lock-overlay">🔒</div>` : '';
@@ -2819,20 +2818,86 @@
                 }
             }
 
+            // Mobile Online Files Button Styles
+            const mobileBtnStyles = document.createElement('style');
+            mobileBtnStyles.innerHTML = `
+                .mobile-files-fab {
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    width: 50px;
+                    height: 50px;
+                    background: linear-gradient(135deg, #009FF5 0%, #0070c0 100%);
+                    color: white;
+                    border-radius: 50%;
+                    box-shadow: 0 4px 15px rgba(0, 159, 245, 0.4);
+                    z-index: 9999;
+                    cursor: pointer;
+                    display: none; /* Hidden by default */
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.5em;
+                    backdrop-filter: blur(5px);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    transition: transform 0.2s, box-shadow 0.2s;
+                    text-decoration: none;
+                }
+                .mobile-files-fab:active {
+                    transform: scale(0.9);
+                }
+                .mobile-files-fab:hover {
+                    box-shadow: 0 6px 20px rgba(0, 159, 245, 0.6);
+                    transform: scale(1.05);
+                }
+                
+                /* Only show on mobile */
+                @media (min-width: 769px) {
+                    .mobile-files-fab {
+                        display: none !important;
+                    }
+                }
+            `;
+            document.head.appendChild(mobileBtnStyles);
+
+            // Create and append the button
+            const mobileFab = document.createElement('a');
+            mobileFab.id = 'mobile-online-files-btn';
+            mobileFab.className = 'mobile-files-fab';
+            mobileFab.innerHTML = '☁️';
+            mobileFab.title = 'Open My Files';
+            mobileFab.onclick = function (e) {
+                e.preventDefault();
+                openCurrentStudentFolder();
+            };
+            document.body.appendChild(mobileFab);
+
             // Update Sidebar State (Login vs Logout)
             function updateSidebarState() {
                 const title = document.getElementById('sidebar-title');
                 const searchContainer = document.getElementById('sidebar-search-container');
                 const actionsContainer = document.getElementById('sidebar-actions');
                 const list = document.getElementById('sidebar-list');
+                const mobileBtn = document.getElementById('mobile-online-files-btn');
 
                 if (currentStudent) {
                     // LOGGED IN STATE
                     sidebarMode = 'login';
                     title.textContent = 'My Files';
                     searchContainer.style.display = 'none';
-                    actionsContainer.style.display = 'block';
-                    fetchStudentFiles(currentStudent);
+
+                    if (window.DEPLOYMENT_MODE === 'online') {
+                        // ONLINE MODE: Custom Compact Design
+                        actionsContainer.style.display = 'none';
+                        renderOnlineSidebar();
+
+                        // Show mobile button if on mobile (handled by CSS media query, but we enable display here)
+                        if (mobileBtn) mobileBtn.style.display = 'flex';
+                    } else {
+                        // OFFLINE MODE: Standard Design
+                        actionsContainer.style.display = 'block';
+                        fetchStudentFiles(currentStudent);
+                        if (mobileBtn) mobileBtn.style.display = 'none';
+                    }
                 } else {
                     // LOGGED OUT STATE
                     sidebarMode = 'logout';
@@ -2840,7 +2905,99 @@
                     searchContainer.style.display = 'block';
                     actionsContainer.style.display = 'none';
                     loadAllFolders();
+                    if (mobileBtn) mobileBtn.style.display = 'none';
                 }
+            }
+
+
+
+            // New Online Sidebar Renderer
+            function renderOnlineSidebar() {
+                const list = document.getElementById('sidebar-list');
+                const sidebar = document.getElementById('student-folder-sidebar');
+
+                // Inject overrides for the sidebar container itself
+                // We use a style block inside the list to ensure it hits providing scoping isn't an issue, 
+                // or we can just set styles directly on the element.
+                // Setting direct styles is safer for a specific instance override.
+                if (sidebar) {
+                    sidebar.style.setProperty('background-color', 'transparent', 'important');
+                    sidebar.style.setProperty('border', 'none', 'important');
+                    sidebar.style.setProperty('box-shadow', 'none', 'important');
+                }
+
+                // Update title color to be visible on dark background (since sidebar is now transparent)
+                const title = document.getElementById('sidebar-title');
+                if (title) {
+                    title.style.setProperty('color', 'white', 'important');
+                    title.style.setProperty('border-bottom', '1px solid rgba(255,255,255,0.1)', 'important');
+                }
+
+                list.innerHTML = `
+                    <style>
+                        .online-file-card {
+                            background: rgba(255, 255, 255, 0.05); /* Glass feel */
+                            backdrop-filter: blur(10px);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            border-radius: 12px;
+                            padding: 20px;
+                            text-align: center;
+                            margin-top: 10px;
+                            transition: transform 0.2s, box-shadow 0.2s;
+                        }
+                        .online-file-card:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+                            border-color: rgba(0, 159, 245, 0.3);
+                        }
+                        .online-cloud-icon {
+                            font-size: 3em;
+                            margin-bottom: 10px;
+                            filter: drop-shadow(0 0 10px rgba(0, 159, 245, 0.5));
+                        }
+                        .online-card-title {
+                            color: white;
+                            font-weight: 600;
+                            margin-bottom: 5px;
+                            font-size: 1.1em;
+                        }
+                        .online-card-desc {
+                            color: #94A3B8;
+                            font-size: 0.85em;
+                            margin-bottom: 15px;
+                            line-height: 1.4;
+                        }
+                        .online-open-btn {
+                            background: linear-gradient(135deg, #009FF5 0%, #0070c0 100%);
+                            border: none;
+                            color: white;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            width: 100%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                            transition: all 0.2s;
+                            box-shadow: 0 4px 12px rgba(0, 159, 245, 0.3);
+                        }
+                        .online-open-btn:hover {
+                            box-shadow: 0 6px 16px rgba(0, 159, 245, 0.5);
+                            transform: scale(1.02);
+                        }
+                    </style>
+                    <div class="online-file-card">
+                        <div class="online-cloud-icon">☁️</div>
+                        <div class="online-card-title">Cloud Storage</div>
+                        <div class="online-card-desc">Your project files are stored securely on Google Drive.</div>
+                        <button onclick="openCurrentStudentFolder()" class="online-open-btn">
+                            <span>Open Drive Folder</span>
+                            <span>↗</span>
+                        </button>
+                    </div>
+                `;
             }
 
             // Load all student folders (Logged Out)
