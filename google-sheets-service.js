@@ -2443,6 +2443,74 @@ async function updateStudentFullDetails(studentId, newValues, userEmail) {
     return { success: true };
 }
 
+/**
+ * Uploads a headshot image to Google Drive
+ * @param {Object} fileObject - Multer file object
+ * @returns {Promise<string>} - Public web link to the file
+ */
+async function uploadHeadshotToDrive(fileObject) {
+    console.log(`Uploading headshot: ${fileObject.originalname}`);
+    const drive = await getGoogleDriveClient();
+
+    // Create file metadata
+    const folderId = '1NXrRhPxBkZVoCcYy2uYMy7Mrzz8BTa5R'; // Hardcoded Headshots Folder ID
+    const fileMetadata = {
+        name: `HEADSHOT_${Date.now()}_${fileObject.originalname}`,
+        parents: [folderId]
+    };
+
+    // Create media object
+    const media = {
+        mimeType: fileObject.mimetype,
+        body: fs.createReadStream(fileObject.path)
+    };
+
+    try {
+        // Log who we are acting as (helpful for permission debugging)
+        const email = drive.context._options.auth.email || 'Unknown Service Account';
+        console.log(`[Drive Upload] Acting as: ${email}`);
+
+        // 1. Upload the file
+        const file = await drive.files.create({
+            resource: fileMetadata,
+            media: media,
+            fields: 'id, webViewLink, webContentLink',
+            supportsAllDrives: true // Required for Shared Drives
+        });
+
+        console.log(`File uploaded. ID: ${file.data.id}`);
+
+        // 2. Set permissions to "Anyone with the link"
+        await drive.permissions.create({
+            fileId: file.data.id,
+            requestBody: {
+                role: 'reader',
+                type: 'anyone'
+            },
+            supportsAllDrives: true // Required for Shared Drives
+        });
+
+        console.log('File permissions set to public.');
+
+        // Clean up local temp file
+        try { fs.unlinkSync(fileObject.path); } catch (e) { console.warn('Failed to delete temp file:', e); }
+
+        return file.data.webViewLink;
+
+    } catch (error) {
+        console.error('Error uploading to Drive:', error);
+
+        // Enhance error message for common issues
+        // Enhance error message for common issues
+        if (error.message && error.message.includes('File not found')) {
+            const email = drive.context._options.auth.email || 'the Service Account';
+            throw new Error(`Folder access denied. Please share folder "${folderId}" (Child Names_Images) with ${email}`);
+        }
+
+        throw error;
+    }
+}
+
 // ============================================================================
 // HELPER: Find existing Project Log Row
 // ============================================================================
@@ -2765,7 +2833,8 @@ module.exports = {
     getGoogleSheetsClient,
     saveClassReport,
     addBooking,
-    markAttendanceByStudentId: markAttendanceByStudentIdDEBUG // [NEW] Attendance by ID (Debug Version)
+    markAttendanceByStudentId: markAttendanceByStudentIdDEBUG, // [NEW] Attendance by ID (Debug Version)
+    uploadHeadshotToDrive
 };
 
 // ============================================================================

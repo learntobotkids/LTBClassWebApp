@@ -8,8 +8,44 @@
 
     // CONFIGURATION
     const HEARTBEAT_INTERVAL = 15000; // 15 seconds
+    const GA_MEASUREMENT_ID = 'G-TCMVVPTM1B';
+    const PRODUCTION_DOMAIN = 'portal.learntobot.com';
+
     let activeVideo = null;
     let heartbeatTimer = null;
+
+    // ========================================================================
+    // GOOGLE ANALYTICS INIT
+    // ========================================================================
+    function initGoogleAnalytics() {
+        // Simple check to only run in production (or if forced via URL param ?analytics=true)
+        const isProd = window.location.hostname === PRODUCTION_DOMAIN;
+        const forceAnalytics = new URLSearchParams(window.location.search).has('analytics');
+
+        if (isProd || forceAnalytics) {
+            console.log(`[Analytics] Initializing Google Analytics (${GA_MEASUREMENT_ID})...`);
+
+            // 1. Inject Script Tag
+            const script = document.createElement('script');
+            script.async = true;
+            script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+            document.head.appendChild(script);
+
+            // 2. Initialize Data Layer
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+            window.gtag = gtag;
+            gtag('js', new Date());
+
+            // 3. Config
+            gtag('config', GA_MEASUREMENT_ID);
+        } else {
+            console.log('[Analytics] Skipping Google Analytics (Not on production domain)');
+        }
+    }
+
+    // Initialize immediately
+    initGoogleAnalytics();
 
     // ========================================================================
     // LOGGING FUNCTION

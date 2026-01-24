@@ -1731,6 +1731,29 @@ app.post('/api/student-update', async (req, res) => {
     }
 });
 
+/**
+ * POST /api/upload-headshot
+ * Uploads a file to Google Drive
+ */
+app.post('/api/upload-headshot', upload.single('image'), async (req, res) => {
+    console.log('[API] /api/upload-headshot called');
+    try {
+        if (!req.file) {
+            console.error('[API] No file received in upload request');
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+        console.log(`[API] File received: ${req.file.originalname} (${req.file.size} bytes)`);
+
+        const link = await googleSheetsService.uploadHeadshotToDrive(req.file);
+        console.log(`[API] Upload success. Link: ${link}`);
+        res.json({ success: true, link: link });
+
+    } catch (error) {
+        console.error('Error uploading headshot:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // ============================================================================
 // STEP 17: API ENDPOINT - SYNC STUDENTS FROM GOOGLE SHEETS TO LOCAL FILES
 // ============================================================================

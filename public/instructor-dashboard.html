@@ -236,14 +236,18 @@
         /* --- NEW CARD STYLES --- */
         .student-card {
             background: white;
-            padding: 12px 20px;
-            /* More horizontal breathing room */
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            /* Vertical Layout */
+            gap: 12px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .card-header {
             display: flex;
             align-items: center;
-            border-bottom: 1px solid #E5E7EB;
-            /* Very light subtle border */
-            min-height: 72px;
-            /* Consistent height like iOS list items */
+            width: 100%;
         }
 
         .student-initial-fallback {
@@ -305,9 +309,13 @@
         .attendance-actions {
             display: flex;
             align-items: center;
+            justify-content: flex-end;
+            /* Align Right */
+            width: 100%;
             gap: 16px;
-            /* Space between icons */
-            margin-left: 12px;
+            padding-top: 8px;
+            border-top: 1px solid #f9fafb;
+            /* Subtle separator */
         }
 
         /* Action Buttons */
@@ -1040,26 +1048,29 @@
 
                 listHtml += `
                     <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${student.headshot || ''}')" style="cursor: pointer;">
-                        ${renderHeadshot(student.headshot, rawName, student.studentId)}
-                        
-                        <div class="student-info">
-                            <div class="student-name">${rawName}</div>
-                            <div class="student-project">${currentProject}</div>
-                            ${student.note ? `
-                                <div class="student-note" style="
-                                    font-size: 0.85rem; 
-                                    color: #d9534f; 
-                                    margin-top: 4px; 
-                                    font-style: italic; 
-                                    font-weight: 500;
-                                ">
-                                    Note: ${student.note}
-                                </div>
-                            ` : ''}
+                        <div class="card-header">
+                            ${renderHeadshot(student.headshot, rawName, student.studentId)}
+                            
+                            <div class="student-info">
+                                <div class="student-name" style="font-size: 1.1em;">${rawName}</div>
+                                <div class="student-project">${currentProject}</div>
+                                ${student.note ? `
+                                    <div class="student-note" style="
+                                        font-size: 0.85rem; 
+                                        color: #d9534f; 
+                                        margin-top: 4px; 
+                                        font-style: italic; 
+                                        font-weight: 500;
+                                    ">
+                                        Note: ${student.note}
+                                    </div>
+                                ` : ''}
+                            </div>
                         </div>
                         
                         <div class="attendance-actions">
                             <!-- Attendance Checkbox -->
+                            <span style="font-size: 12px; color: #888; margin-right: auto;">Mark Present:</span>
                             <button class="${checkBtnClass}" onclick="event.stopPropagation(); toggleAttendance(${student.rowIndex}, ${!isCheckedIn})">
                                  ${checkContent}
                             </button>
@@ -1174,10 +1185,12 @@
 
                         return `
                         <div class="student-card" onclick="openStudentDetail('${safeId}', '${safeName}', '${s.headshot || ''}')" style="cursor: pointer;">
-                            ${renderHeadshot(s.headshot, s.name, s.id)}
-                            <div class="student-info">
-                                <div class="student-name">${s.name}</div>
-                                <div class="student-project" style="color: #6B7280;">${s.email || 'No email'}</div>
+                            <div class="card-header">
+                                ${renderHeadshot(s.headshot, s.name, s.id)}
+                                <div class="student-info">
+                                    <div class="student-name" style="font-size: 1.1em;">${s.name}</div>
+                                    <div class="student-project" style="color: #6B7280;">${s.email || 'No email'}</div>
+                                </div>
                             </div>
                             <div class="attendance-actions">
                                 <button onclick="event.stopPropagation(); openStudentEditModal('${safeId}')" style="background:none; border:none; font-size: 20px; cursor: pointer; padding: 10px;">
@@ -1186,8 +1199,8 @@
                                 <button onclick="event.stopPropagation(); openNoteModal('${safeId}')" style="background:none; border:none; font-size: 20px; cursor: pointer; padding: 10px;">
                                     ℹ️
                                 </button>
-                                <button onclick="event.stopPropagation(); addToBooking('${safeId}', '${safeName}', '${safeEmail}', '${safeAge}', '${safeService}')" style="background:#db3236; color:white; border:none; border-radius:4px; font-weight:bold; font-size: 11px; cursor: pointer; padding: 6px 10px; margin-left:5px;">
-                                    +TODAY
+                                <button onclick="event.stopPropagation(); addToBooking('${safeId}', '${safeName}', '${safeEmail}', '${safeAge}', '${safeService}')" style="background:#db3236; color:white; border:none; border-radius:4px; font-weight:bold; font-size: 14px; cursor: pointer; padding: 8px 16px; margin-left:5px;">
+                                    + TODAY
                                 </button>
                             </div>
                         </div>
@@ -1356,8 +1369,6 @@
                 }
 
             } catch (e) {
-                alert('Save Failed: ' + e.message);
-                btn.disabled = false;
                 btn.innerText = 'Save Data';
             }
         };
@@ -1383,6 +1394,29 @@
                     </div>
                     <div id="editStudentFormContent" style="padding:20px; overflow-y:auto; flex-grow:1;">
                         <div style="text-align:center; padding:20px; color:#666;">Loading details...</div>
+                    </div>
+                    <!-- CAMERA SECTION -->
+                    <div style="padding:15px; background:#f0f7ff; border-top:1px solid #cce5ff;">
+                        <div style="font-weight:bold; margin-bottom:10px; color:#0056b3;">📸 Update Headshot</div>
+                        <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+                            <div style="position:relative; width:100%; max-width:320px; aspect-ratio:4/3; background:#000; border-radius:8px; overflow:hidden;">
+                                <video id="cameraPreview" autoplay playsinline style="width:100%; height:100%; object-fit:cover; display:none;"></video>
+                                <canvas id="canvas" style="display:none;"></canvas>
+                                <img id="capturedImage" style="width:100%; height:100%; object-fit:cover; display:none;">
+                                <div id="cameraPlaceholder" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:white; flex-direction:column;">
+                                    <i class="fas fa-camera" style="font-size:40px; margin-bottom:10px; opacity:0.7;"></i>
+                                    <span style="font-size:12px; opacity:0.7;">Camera Off</span>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex; gap:10px;">
+                                <button id="startCameraBtn" onclick="startCamera()" style="padding:8px 16px; background:#3B82F6; color:white; border:none; border-radius:6px; cursor:pointer;">Start Camera</button>
+                                <button id="captureBtn" onclick="capturePhoto()" style="padding:8px 16px; background:#10B981; color:white; border:none; border-radius:6px; cursor:pointer; display:none;">Capture</button>
+                                <button id="retakeBtn" onclick="retakePhoto()" style="padding:8px 16px; background:#F59E0B; color:white; border:none; border-radius:6px; cursor:pointer; display:none;">Retake</button>
+                                <button id="uploadBtn" onclick="uploadPhoto()" style="padding:8px 16px; background:#6366F1; color:white; border:none; border-radius:6px; cursor:pointer; display:none;">Upload to Drive</button>
+                            </div>
+                            <div id="uploadStatus" style="font-size:12px; color:#666; height:16px;"></div>
+                        </div>
                     </div>
                     <div style="padding:15px; border-top:1px solid #eee; background:#f8f9fa; text-align:right;">
                         <button onclick="document.getElementById('editStudentModal').remove()" style="padding:8px 16px; border:1px solid #ccc; background:white; border-radius:6px; margin-right:10px; cursor:pointer;">Cancel</button>
@@ -1413,8 +1447,8 @@
                 for (let i = 14; i <= 29; i++) hiddenIndices.push(i);
                 hiddenIndices.push(31, 32); // AF, AG
 
-                // EXCEPTION: Show Column AC (Index 28) which is inside our hidden range [14-29]
-                const showIndices = [28];
+                // EXCEPTION: Show Column AC (Index 28) and AI (Index 34)
+                const showIndices = [28, 34];
 
                 headers.forEach((header, index) => {
                     const value = row[index] || '';
@@ -3492,6 +3526,137 @@
                 .catch(err => console.error('Failed to get Spreadsheet ID', err));
         });
         */
+        // ==========================================
+        // CAMERA & UPLOAD FUNCTIONS
+        // ==========================================
+        let stream = null;
+        let imageBlob = null;
+
+        window.startCamera = async function () {
+            try {
+                const video = document.getElementById('cameraPreview');
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+                video.style.display = 'block';
+                document.getElementById('cameraPlaceholder').style.display = 'none';
+                document.getElementById('capturedImage').style.display = 'none';
+
+                document.getElementById('startCameraBtn').style.display = 'none';
+                document.getElementById('captureBtn').style.display = 'inline-block';
+                document.getElementById('retakeBtn').style.display = 'none';
+                document.getElementById('uploadBtn').style.display = 'none';
+                document.getElementById('uploadStatus').innerText = '';
+            } catch (err) {
+                alert('Error accessing camera: ' + err.message);
+                console.error(err);
+            }
+        };
+
+        window.capturePhoto = function () {
+            const video = document.getElementById('cameraPreview');
+            const canvas = document.getElementById('canvas');
+            const img = document.getElementById('capturedImage');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Stop stream
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+
+            // Show image
+            img.src = canvas.toDataURL('image/png');
+            img.style.display = 'block';
+            video.style.display = 'none';
+
+            canvas.toBlob(blob => {
+                imageBlob = blob;
+            }, 'image/png');
+
+            document.getElementById('captureBtn').style.display = 'none';
+            document.getElementById('retakeBtn').style.display = 'inline-block';
+            document.getElementById('uploadBtn').style.display = 'inline-block';
+        };
+
+        window.retakePhoto = function () {
+            startCamera();
+        };
+
+        window.uploadPhoto = async function () {
+            if (!imageBlob) return;
+
+            const statusDiv = document.getElementById('uploadStatus');
+            statusDiv.innerText = 'Uploading...';
+
+            const formData = new FormData();
+            // Use timestamp to ensure unique filename
+            const filename = `capture_${Date.now()}.png`;
+            formData.append('image', imageBlob, filename);
+
+            try {
+                const res = await fetch('/api/upload-headshot', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const text = await res.text();
+                    // Try to parse as JSON if possible, otherwise use text
+                    try {
+                        const jsonErr = JSON.parse(text);
+                        throw new Error(jsonErr.error || `Server Error ${res.status}`);
+                    } catch (e) {
+                        // It's likely HTML
+                        console.error('Upload Error HTML:', text);
+                        throw new Error(`Server returned ${res.status}: ${text.substring(0, 100).replace(/<[^>]*>/g, '')}...`);
+                    }
+                }
+
+                const data = await res.json();
+                if (data.success) {
+                    statusDiv.innerText = 'Upload Complete!';
+                    statusDiv.style.color = 'green';
+
+                    // Populate the input field
+                    // We need to find the input for "New Headshot Path" (Index 34)
+                    const input = document.querySelector('.edit-student-input[data-index="34"]');
+                    if (input) {
+                        input.value = data.link;
+                        // Flash input to show update
+                        input.style.backgroundColor = '#d1fae5'; // light green
+                        input.style.border = '2px solid #10B981';
+                        setTimeout(() => {
+                            input.style.backgroundColor = 'white';
+                            input.style.border = '1px solid #ddd';
+                        }, 2000);
+                    } else {
+                        console.warn('Could not find input with data-index="34"');
+                        alert('Upload successful, but could not auto-fill field. Link: ' + data.link);
+                    }
+
+                    // Enable save button just in case
+                    const saveBtn = document.getElementById('saveStudentBtn');
+                    if (saveBtn) {
+                        saveBtn.disabled = false;
+                        saveBtn.innerText = 'Save Changes (Ready)';
+                        saveBtn.style.background = '#10B981'; // Green
+                    }
+
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                statusDiv.innerText = 'Upload Failed: ' + err.message;
+                statusDiv.style.color = 'red';
+                console.error(err);
+                // Alert the user so they can see the full message (especially the email)
+                alert('Upload Failed:\n' + err.message);
+            }
+        };
     </script>
 
 </body>
