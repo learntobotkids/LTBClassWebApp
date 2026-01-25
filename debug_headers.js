@@ -18,24 +18,13 @@ async function checkHeaders() {
         const sheets = await getGoogleSheetsClient();
         console.log(`Fetching headers from ${config.STUDENT_NAMES_SHEET}...`);
 
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!A1:N100`
+        const response = await sheets.spreadsheets.get({
+            spreadsheetId: config.SPREADSHEET_ID
         });
 
-        const headers = response.data.values[0];
-        const rows = response.data.values.slice(1);
+        const sheetTitles = response.data.sheets.map(s => s.properties.title);
+        console.log('Sheets in Main Spreadsheet:', sheetTitles);
 
-        console.log('Searching for first ACTIVE student...');
-        const activeStudent = rows.find(r => r[12] && r[12].toLowerCase().trim() === 'active');
-
-        if (activeStudent) {
-            console.log(`FOUND ACTIVE STUDENT: Name="${activeStudent[2] || activeStudent[1]}", RowIndex=${rows.indexOf(activeStudent) + 2}`);
-        } else {
-            console.log('NO active students found in first 100 rows.');
-            // Dump all values in col 12 to see what they are
-            console.log('All unique Col 12 values:', Array.from(new Set(rows.map(r => r[12]))));
-        }
 
 
 

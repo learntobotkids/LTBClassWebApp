@@ -2805,6 +2805,38 @@ async function saveClassReport(reportData) {
     }
 }
 
+/**
+ * Fetch prizes list from the configured Prizes sheet
+ * @returns {Promise<Array>} List of prizes
+ */
+async function fetchPrizesList() {
+    try {
+        const client = await getGoogleSheetsClient();
+        const response = await client.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.PRIZES_SHEET}!A:E` // Assuming cols A-E contain prize info
+        });
+
+        const rows = response.data.values;
+        if (!rows || rows.length < 2) return [];
+
+        const headers = rows[0].map(h => h.trim());
+
+        // Map rows to objects based on headers
+        return rows.slice(1).map(row => {
+            const prize = {};
+            headers.forEach((header, index) => {
+                prize[header] = row[index] || '';
+            });
+            return prize;
+        });
+
+    } catch (error) {
+        console.error('Error fetching prizes:', error);
+        return [];
+    }
+}
+
 module.exports = {
     getStudents: fetchStudents,
     fetchStudents,
@@ -2837,7 +2869,8 @@ module.exports = {
     saveClassReport,
     addBooking,
     markAttendanceByStudentId: markAttendanceByStudentIdDEBUG, // [NEW] Attendance by ID (Debug Version)
-    uploadHeadshotToDrive
+    uploadHeadshotToDrive,
+    fetchPrizesList
 };
 
 // ============================================================================

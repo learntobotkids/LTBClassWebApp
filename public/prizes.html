@@ -239,10 +239,11 @@
     </div>
 
     <!-- PapaParse for CSV parsing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
 
     <script>
-        const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
+        // const SHEET_URL = '...'; // Removed, using internal API now
+
 
         document.addEventListener('DOMContentLoaded', () => {
             initPage();
@@ -334,23 +335,19 @@
         }
 
         async function fetchPrizesData() {
-            const response = await fetch(SHEET_URL);
-            if (!response.ok) throw new Error('Failed to fetch prizes data');
-
-            const csvText = await response.text();
-
-            return new Promise((resolve, reject) => {
-                Papa.parse(csvText, {
-                    header: true,
-                    skipEmptyLines: true,
-                    complete: function (results) {
-                        resolve(results.data);
-                    },
-                    error: function (error) {
-                        reject(error);
-                    }
-                });
-            });
+            try {
+                const response = await fetch('/api/prizes');
+                const data = await response.json();
+                if (data.success && Array.isArray(data.prizes)) {
+                    return data.prizes;
+                } else {
+                    console.error('API Error:', data.error);
+                    throw new Error(data.error || 'Failed to fetch prizes');
+                }
+            } catch (error) {
+                console.error('Fetch Prizes Error:', error);
+                throw error;
+            }
         }
 
         function renderPrizes(prizes, userPoints) {
