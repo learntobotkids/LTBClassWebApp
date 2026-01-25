@@ -114,6 +114,8 @@ module.exports = {
      */
     INVENTORY_SHEET: 'inventory2',
     PRIZES_SHEET: 'prizes',
+    REDEMPTIONS_SHEET: 'redemptions',
+
 
 
     /**

@@ -2045,6 +2045,7 @@ async function updateInventory(itemId, kitName, newStatus, userEmail) {
 /**
  * Fetches rankings for the leaderboard
  * Calculates points from Project Log based on All Time, Month, and Week
+ * Subtracts Redemptions to calculate Current Balance
  */
 async function getLeaderboard(forceRefresh = false) {
     try {
@@ -2053,29 +2054,28 @@ async function getLeaderboard(forceRefresh = false) {
         // 1. Get Base Student Data (ID, Name, Headshot)
         const students = await fetchStudents(forceRefresh);
 
-        // 2. Get Project Log Data (All completions)
-        const projectLog = await fetchProjectLog(forceRefresh);
+        // 2. Parallel Fetch: Project Log (Earnings) AND Redemptions (Spending)
+        const [projectLog, redemptions] = await Promise.all([
+            fetchProjectLog(forceRefresh),
+            fetchRedemptions()
+        ]);
 
         // 3. Initialize Points Map
-        // Map<StudentID, { total, monthly, weekly }>
+        // Map<StudentID, { total, monthly, weekly, spent }>
         const pointsMap = new Map();
 
         // Initialize all students with 0 points
         students.forEach(s => {
             // Use ID from Column A
             if (s.id) {
-                pointsMap.set(s.id, { total: 0, monthly: 0, weekly: 0 });
+                pointsMap.set(s.id, { total: 0, monthly: 0, weekly: 0, spent: 0 });
             }
         });
 
-        // 4. Calculate Points
+        // 4. Calculate Earnings (Projects)
         const now = new Date();
-
-        // Calculate 30 Days Ago (for "This Month" rolling window)
         const thirtyDaysAgo = new Date(now);
         thirtyDaysAgo.setDate(now.getDate() - 30);
-
-        // Calculate 7 Days Ago (for "This Week" rolling window)
         const sevenDaysAgo = new Date(now);
         sevenDaysAgo.setDate(now.getDate() - 7);
 
@@ -2084,47 +2084,57 @@ async function getLeaderboard(forceRefresh = false) {
             const points = parseInt(project.points || '0', 10);
             const dateStr = project.date; // Column B
 
-            if (!sid || !pointsMap.has(sid) || isNaN(points)) return;
+            if (!sid || isNaN(points)) return;
 
-            // Update All Time
+            // Ensure student entry exists (in case of legacy/unmapped IDs, or create on fly?)
+            // For now, only track if we have the student in our base list, or create entry if missing?
+            // Better to only track if in map to avoid ghosts
+            if (!pointsMap.has(sid)) return;
+
             const stats = pointsMap.get(sid);
             stats.total += points;
 
-            // Parse Date
             if (dateStr) {
                 const pDate = new Date(dateStr);
-                // Check if valid date
                 if (!isNaN(pDate.getTime())) {
-                    // Check Month (Rolling 30 Days)
-                    if (pDate >= thirtyDaysAgo) {
-                        stats.monthly += points;
-                    }
-
-                    // Check Week (Rolling 7 Days)
-                    if (pDate >= sevenDaysAgo) {
-                        stats.weekly += points;
-                    }
+                    if (pDate >= thirtyDaysAgo) stats.monthly += points;
+                    if (pDate >= sevenDaysAgo) stats.weekly += points;
                 }
             }
         });
 
-        // 5. Merge Data
+        // 5. Calculate Spending (Redemptions)
+        redemptions.forEach(r => {
+            const sid = r.studentId;
+            const cost = r.pointsCost;
+
+            if (sid && !isNaN(cost) && pointsMap.has(sid)) {
+                pointsMap.get(sid).spent += cost;
+            }
+        });
+
+        // 6. Merge Data
         const leaderboard = students.map(s => {
-            const stats = pointsMap.get(s.id) || { total: 0, monthly: 0, weekly: 0 };
+            const stats = pointsMap.get(s.id) || { total: 0, monthly: 0, weekly: 0, spent: 0 };
+            const balance = stats.total - stats.spent;
 
             return {
                 id: s.id,
-                name: s.loginName || s.name, // Use Login Name if available
+                name: s.loginName || s.name,
                 headshot: s.headshot,
                 email: s.email,
-                isActive: s.isActive, // Propagate Active Status
-                totalPoints: stats.total,
+                isActive: s.isActive,
+                totalPoints: stats.total,       // Lifetime Earned
                 monthlyPoints: stats.monthly,
-                weeklyPoints: stats.weekly
+                weeklyPoints: stats.weekly,
+                spentPoints: stats.spent,       // Lifetime Spent
+                currentBalance: balance         // Redeemable
             };
         });
 
-        // Sort by total points descending default
+        // Sort by total points (lifetime achievement) or balance?
+        // Usually leaderboard is by Achievement (Total), but spending shouldn't lower your rank.
+        // So keeping sort by totalPoints is correct.
         leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
 
         console.log(`Generated leaderboard with ${leaderboard.length} entries`);
@@ -2837,6 +2847,71 @@ async function fetchPrizesList() {
     }
 }
 
+/**
+ * Fetch all redemptions from the Redemptions sheet
+ * @returns {Promise<Array>} List of redemptions {studentId, points, date, ...}
+ */
+async function fetchRedemptions() {
+    try {
+        const client = await getGoogleSheetsClient();
+        const response = await client.spreadsheets.values.get({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.REDEMPTIONS_SHEET}!A:E`
+        });
+
+        const rows = response.data.values;
+        if (!rows || rows.length < 2) return [];
+
+        // Expecting Headers: Timestamp, Student Name, Student ID, Prize Name, Points Cost
+        // We really only need Student ID and Points Cost for calculation
+        return rows.slice(1).map(row => ({
+            timestamp: row[0],
+            studentName: row[1],
+            studentId: row[2],
+            prizeName: row[3],
+            pointsCost: parseInt(row[4] || '0', 10)
+        }));
+
+    } catch (error) {
+        console.error('Error fetching redemptions:', error);
+        return [];
+    }
+}
+
+/**
+ * Add a new redemption record
+ */
+async function addRedemption(student, prizeName, pointsCost) {
+    try {
+        const client = await getGoogleSheetsClient();
+        const timestamp = new Date().toLocaleString();
+
+        const values = [[
+            timestamp,
+            student.name,
+            student.id,
+            prizeName,
+            pointsCost.toString(),
+            'APPROVED' // Status
+        ]];
+
+        await client.spreadsheets.values.append({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: `${config.REDEMPTIONS_SHEET}!A:F`,
+            valueInputOption: 'USER_ENTERED',
+            resource: { values }
+        });
+
+        // Clear cache so leaderboard updates immediately
+        clearCache();
+        return true;
+
+    } catch (error) {
+        console.error('Error adding redemption:', error);
+        throw error;
+    }
+}
+
 module.exports = {
     getStudents: fetchStudents,
     fetchStudents,
@@ -2870,7 +2945,9 @@ module.exports = {
     addBooking,
     markAttendanceByStudentId: markAttendanceByStudentIdDEBUG, // [NEW] Attendance by ID (Debug Version)
     uploadHeadshotToDrive,
-    fetchPrizesList
+    fetchPrizesList,
+    fetchRedemptions,
+    addRedemption
 };
 
 // ============================================================================

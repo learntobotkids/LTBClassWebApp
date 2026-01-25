@@ -2347,9 +2347,51 @@ app.get('/api/prizes', async (req, res) => {
     }
 });
 
+// [NEW] Redemption Endpoint
+app.post('/api/redeem', async (req, res) => {
+    try {
+        const { studentId, prizeName, cost } = req.body;
+
+        if (!studentId || !prizeName || !cost) {
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
+        }
+
+        // 1. Fetch current student data to verify balance
+        const allStudents = await googleSheetsService.getLeaderboard(); // This now includes currentBalance
+        const student = allStudents.find(s => s.id === studentId || s.name === studentId); // Handle ID or Name fallback
+
+        if (!student) {
+            return res.status(404).json({ success: false, error: 'Student not found' });
+        }
+
+        // 2. Check Balance
+        if (student.currentBalance < cost) {
+            return res.status(400).json({
+                success: false,
+                error: `Insufficient points. You have ${student.currentBalance}, but this costs ${cost}.`
+            });
+        }
+
+        // 3. Process Redemption
+        // Pass minimal student object { id, name }
+        await googleSheetsService.addRedemption(
+            { id: student.id, name: student.name },
+            prizeName,
+            parseInt(cost)
+        );
+
+        res.json({ success: true, newBalance: student.currentBalance - cost });
+
+    } catch (error) {
+        console.error('Redemption failed:', error);
+        res.status(500).json({ success: false, error: 'Redemption failed. Please try again.' });
+    }
+});
+
 app.get('/api/leaderboard', async (req, res) => {
     try {
-        const data = await googleSheetsService.getLeaderboard();
+        const forceRefresh = req.query.refresh === 'true';
+        const data = await googleSheetsService.getLeaderboard(forceRefresh);
         res.json({ success: true, leaderboard: data });
     } catch (error) {
         console.error('Leaderboard fetch failed:', error);

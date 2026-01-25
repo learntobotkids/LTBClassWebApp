@@ -247,10 +247,15 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             initPage();
+            // Poll for point updates every 10 seconds
+            setInterval(fetchUserPoints, 10000);
         });
 
         async function initPage() {
             try {
+                // Try syncing offline actions first
+                await syncPendingRedemptions();
+
                 // parallel fetch: prizes + user info
                 const [prizesData, userPoints] = await Promise.all([
                     fetchPrizesData(),
@@ -284,7 +289,7 @@
             if (myProjectsLink) myProjectsLink.style.display = 'block';
 
             try {
-                const response = await fetch('/api/leaderboard');
+                const response = await fetch('/api/leaderboard?refresh=true');
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -294,8 +299,13 @@
                 const student = json.leaderboard.find(s => s.name === currentStudent);
 
                 if (student) {
-                    // Update Navbar UI with Rich Data
-                    if (pointsEl) pointsEl.textContent = (student.totalPoints || 0).toLocaleString();
+                    // Update Navbar UI - Show BALANCE
+                    // If currentBalance is undefined (legacy), fallback to totalPoints
+                    const balance = (typeof student.currentBalance !== 'undefined') ? student.currentBalance : student.totalPoints;
+
+                    if (pointsEl) {
+                        pointsEl.innerHTML = `${balance.toLocaleString()} <span style="font-size:0.7em; opacity:0.8;">BAL</span>`;
+                    }
 
                     if (headshotEl) {
                         let headshotUrl = student.headshot;
@@ -313,7 +323,9 @@
                         }
                     }
 
-                    return student.totalPoints || 0;
+                    // Store student info for redemption
+                    localStorage.setItem('studentId', student.id);
+                    return balance;
                 }
 
                 return 0;
@@ -324,14 +336,82 @@
             }
         }
 
-        async function fetchUserProfile() {
-            // ... (keeping existing logic intact)
+        async function redeemPrize(prizeName, cost) {
+            const studentId = localStorage.getItem('studentId');
+            const currentStudent = localStorage.getItem('currentStudent');
+
+            if (!studentId || !confirm(`Are you sure you want to redeem "${prizeName}" for ${cost} points?`)) {
+                return;
+            }
+
+            const payload = { studentId, prizeName, cost, timestamp: Date.now() };
+
+            try {
+                const response = await fetch('/api/redeem', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(`🎉 Successfully redeemed ${prizeName}!\n\nYour new balance is ${data.newBalance} points.`);
+                    location.reload();
+                } else {
+                    console.warn('Redemption failed (server):', data.error);
+                    handleOfflineRedemption(payload);
+                }
+            } catch (error) {
+                console.warn('Redemption failed (network):', error);
+                handleOfflineRedemption(payload);
+            }
         }
 
-        function logout() {
-            localStorage.removeItem('currentStudent');
-            localStorage.removeItem('allProjectAccess');
-            window.location.href = '/';
+        function handleOfflineRedemption(payload) {
+            // Store for sync
+            const pending = JSON.parse(localStorage.getItem('pendingRedemptions') || '[]');
+            pending.push(payload);
+            localStorage.setItem('pendingRedemptions', JSON.stringify(pending));
+
+            alert("Offline Mode: Request saved. Tell your instructor you want this gift, just in case. It will sync automatically when you reconnect.");
+        }
+
+        async function syncPendingRedemptions() {
+            const pending = JSON.parse(localStorage.getItem('pendingRedemptions') || '[]');
+            if (pending.length === 0) return;
+
+            console.log(`Attempting to sync ${pending.length} pending redemptions...`);
+
+            const remaining = [];
+            let syncedCount = 0;
+
+            for (const item of pending) {
+                try {
+                    const response = await fetch('/api/redeem', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(item)
+                    });
+
+                    if (response.ok) {
+                        syncedCount++;
+                        console.log(`Synced redemption: ${item.prizeName}`);
+                    } else {
+                        remaining.push(item); // Keep if server rejected (maybe check error type?)
+                    }
+                } catch (e) {
+                    remaining.push(item); // Keep if network fail
+                }
+            }
+
+            localStorage.setItem('pendingRedemptions', JSON.stringify(remaining));
+
+            if (syncedCount > 0) {
+                console.log(`Synced ${syncedCount} items.`);
+                // Ideally refresh points now
+                fetchUserPoints();
+            }
         }
 
         async function fetchPrizesData() {
@@ -371,15 +451,12 @@
                 const isEligible = !isLoggedIn || (userPoints >= points);
 
                 // Determine card props
-                const href = isEligible ? (prize['Prize Link'] || '#') : 'javascript:void(0)';
-                const target = isEligible ? '_blank' : '';
+                const href = prize['Prize Link'] || '#';
                 const baseClass = 'prize-card';
                 const extraClass = isEligible ? '' : 'locked';
 
-                const card = document.createElement('a');
+                const card = document.createElement('div'); // Changed from 'a' to 'div'
                 card.className = `${baseClass} ${extraClass}`;
-                card.href = href;
-                if (target) card.target = target;
 
                 let overlayHtml = '';
                 if (!isEligible) {
@@ -393,15 +470,31 @@
                     `;
                 }
 
+                // Interaction HTML
+                let actionHtml = '';
+                if (isLoggedIn && isEligible) {
+                    actionHtml = `
+                        <button onclick="redeemPrize('${prize['Prize Name'].replace(/'/g, "\\'")}', ${points})" 
+                                style="margin-top:10px; padding:10px; background:#10B981; color:white; border:none; border-radius:8px; font-weight:bold; cursor:pointer; width:100%; transition:all 0.2s;">
+                            🎁 REDEEM NOW
+                        </button>
+                    `;
+                } else if (!isLoggedIn) {
+                    actionHtml = `<div style="text-align:center; margin-top:10px; font-size:0.9em; color:#9CA3AF;">Login to redeem</div>`;
+                }
+
                 card.innerHTML = `
                     ${overlayHtml}
-                    <div class="prize-image-container">
+                    <a href="${href}" target="_blank" class="prize-image-container" style="display:block;">
                         <img src="${prize['Prize Image']}" alt="${prize['Prize Name']}" class="prize-image" onerror="this.src='https://via.placeholder.com/300?text=No+Image'">
-                    </div>
+                    </a>
                     <div class="prize-content">
-                        <div class="prize-name">${prize['Prize Name']}</div>
+                        <div class="prize-name">
+                            <a href="${href}" target="_blank" style="text-decoration:none; color:inherit;">${prize['Prize Name']}</a>
+                        </div>
                         <div>
                             <span class="prize-points">💎 ${points.toLocaleString()} Points</span>
+                            ${actionHtml}
                         </div>
                     </div>
                 `;
