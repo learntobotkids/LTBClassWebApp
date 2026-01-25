@@ -10,7 +10,7 @@
 
 ### Frontend (Main Pages)
 *   `public/index.html`: **HOMEPAGE**. Contains the Main Login Modal, Project Dashboard, and "Today's Classes" logic.
-*   `public/instructor-dashboard.html`: Teacher interface for viewing student progress and assigning projects.
+
 *   `public/student-progress.html`: Detailed view of a student's history and current work.
 *   `public/leaderboard.html`: Displays student points and rankings (Marquee logic).
 *   `public/project.html`: Individual project instructions page.

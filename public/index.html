@@ -1415,9 +1415,7 @@
                 <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
-                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
-                        style="display: none;">Analytics</a></li>
-                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+
             </ul>
 
             <div class="navbar-auth">
@@ -1687,7 +1685,7 @@
                     if (data.success) {
                         localStorage.setItem('instructorLoggedIn', 'true');
                         localStorage.setItem('instructorName', name);
-                        window.location.href = '/instructor-dashboard.html';
+                        window.location.href = '/teacher.html';
                     } else {
                         errorDiv.textContent = data.error || 'Incorrect name or passcode';
                         errorDiv.style.display = 'block';

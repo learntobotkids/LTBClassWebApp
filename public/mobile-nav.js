@@ -43,8 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // GLOBAL AUTH UI HANDLER
 async function updateAuthUI() {
-    // Check if we are on the instructor dashboard (it handles its own auth usually, but we might want to unify)
-    if (window.location.pathname.includes('instructor-dashboard.html')) return;
+
 
     const navbarAuth = document.querySelector('.navbar-auth');
     if (!navbarAuth) return; // Should not happen if HTML is correct
@@ -217,7 +216,7 @@ function handleGlobalLogout() {
     localStorage.removeItem('instructorName');
 
     // Redirect
-    if (wasInstructor && window.location.pathname.includes('instructor-dashboard')) {
+    if (wasInstructor && window.location.pathname.includes('teacher.html')) {
         window.location.href = '/';
     } else {
         // Just refresh to update UI or redirect home

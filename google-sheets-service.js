@@ -328,6 +328,8 @@ async function fetchStudents(forceRefresh = false) {
 
                 return {
                     id: row[0].trim(),    // Column A: Student ID
+                    id: row[0].trim(),    // Column A: Student ID
+                    isActive: (row[12] && (['yes', 'true', 'active'].includes(row[12].trim().toLowerCase()))) || false, // Column M: Active Status ('active', 'yes', 'true')
                     name: finalName,      // PRIORITIZE COL C
                     loginName: row[2] ? row[2].trim() : '',   // Column C: Login Name
                     fileLink: row[6] ? row[6].trim() : '',    // Column G: Drive Link
@@ -2115,6 +2117,7 @@ async function getLeaderboard(forceRefresh = false) {
                 name: s.loginName || s.name, // Use Login Name if available
                 headshot: s.headshot,
                 email: s.email,
+                isActive: s.isActive, // Propagate Active Status
                 totalPoints: stats.total,
                 monthlyPoints: stats.monthly,
                 weeklyPoints: stats.weekly

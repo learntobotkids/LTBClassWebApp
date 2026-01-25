@@ -10,8 +10,78 @@
     <link rel="stylesheet" href="kids-theme.css">
     <link rel="stylesheet" href="mobile.css">
     <link rel="stylesheet" href="navbar.css">
+    <title>Champions Leaderboard | LearnToBot</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="kids-theme.css">
+    <link rel="stylesheet" href="mobile.css">
+    <link rel="stylesheet" href="navbar.css">
     <script src="analytics.js"></script> <!-- Analytics Telemetry -->
     <style>
+        /* TOGGLE SWITCH STYLE */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--glass-bg);
+            padding: 8px 16px;
+            border-radius: 50px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(5px);
+        }
+
+        .toggle-label {
+            color: #9CA3AF;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 22px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #4B5563;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #10B981;
+            /* Emerald Green */
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(18px);
+        }
+
         :root {
             --gold: #FFD700;
             --silver: #E0E0E0;
@@ -647,9 +717,7 @@
                 <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link active">Leaders</a></li>
-                <li><a href="/instructor-dashboard.html?tab=analytics" class="navbar-link" id="navAnalytics"
-                        style="display: none;">Analytics</a></li>
-                <li><a href="/instructor-dashboard.html" class="navbar-link">Instructors</a></li>
+
             </ul>
 
             <div class="navbar-auth">
@@ -702,6 +770,15 @@
             <button class="scope-btn active" onclick="setScope('all')">All Time</button>
             <button class="scope-btn" onclick="setScope('monthly')">This Month</button>
             <button class="scope-btn" onclick="setScope('weekly')">This Week</button>
+
+            <!-- ACTIVE TOGGLE -->
+            <div class="toggle-container">
+                <span class="toggle-label">Active Only</span>
+                <label class="switch">
+                    <input type="checkbox" id="activeToggle" onchange="toggleActive()">
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
 
         <!-- Search Bar -->
@@ -735,6 +812,7 @@
     <script>
         let currentScope = 'all';
         let leaderboardData = [];
+        let showActiveOnly = false; // Default: show all
         let searchTerm = '';
         const PRIZES_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1h2i6tMTH9vWU7nk6DMnOqaaAaid7yucHZfgcNLBGCPw/export?format=csv';
 
@@ -864,6 +942,13 @@
 
                 if (data.success) {
                     leaderboardData = data.leaderboard;
+                    // Check local storage for toggle state
+                    const storedActive = localStorage.getItem('leaderboardShowActiveOnly');
+                    if (storedActive === 'true') {
+                        showActiveOnly = true;
+                        const toggleEl = document.getElementById('activeToggle');
+                        if (toggleEl) toggleEl.checked = true;
+                    }
                     render();
                 } else {
                     showError(data.error || "Failed to load");
@@ -875,127 +960,144 @@
         }
 
         function showError(msg) {
-            document.getElementById('leaderboardContent').innerHTML = `
-                <div style="text-align:center; padding:50px; color:#EF4444; background: rgba(239, 68, 68, 0.1); border-radius: 20px;">
-                    <h3>⚠️ Oops!</h3>
-                    <p>${msg}</p>
-                </div>`;
+            const container = document.getElementById('leaderboardContent');
+            container.innerHTML = `<div style="text-align:center; padding: 50px; color: #EF4444;">${msg}</div>`;
+        }
+
+        // [NEW] Toggle Active Handler
+        function toggleActive() {
+            showActiveOnly = document.getElementById('activeToggle').checked;
+            localStorage.setItem('leaderboardShowActiveOnly', showActiveOnly);
+            render();
         }
 
         function setScope(scope) {
             currentScope = scope;
-            document.querySelectorAll('.scope-btn').forEach(btn => {
-                if (btn.innerText.toLowerCase().includes(scope === 'all' ? 'all' : scope.replace('ly', ''))) {
-                    btn.classList.add('active');
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
+            document.querySelectorAll('.scope-btn').forEach(btn => btn.classList.remove('active'));
+            // Find button with correct onclick
+            // Simplified selector
+            const buttons = Array.from(document.querySelectorAll('.scope-btn'));
+            const target = buttons.find(b => b.innerText.toLowerCase().includes(scope.replace('all', 'all time').replace('weekly', 'week').replace('monthly', 'month')));
+            if (target) target.classList.add('active');
+
             render();
         }
 
         function render() {
             const container = document.getElementById('leaderboardContent');
 
-            // 1. Sort & Filter Data
-            let sorted = [...leaderboardData].sort((a, b) => {
-                return getValue(b) - getValue(a);
-            }).filter(s => getValue(s) > 0);
+            // 1. Filter Data (Search + Active + Scope)
+            let filtered = leaderboardData.filter(student => {
+                // Active Filter
+                if (showActiveOnly && !student.isActive) return false;
 
-            // Filter if Searching
-            if (searchTerm) {
-                sorted = sorted.filter(s => s.name.toLowerCase().includes(searchTerm));
-            }
+                // Search Filter
+                if (searchTerm && !student.name.toLowerCase().includes(searchTerm)) return false;
 
-            if (sorted.length === 0) {
-                container.innerHTML = `<div style="text-align:center; padding:100px; color:#6B7280; font-size:1.5em; opacity:0.6;">No matching champions found! 🕵️</div>`;
+                return true;
+            });
+
+            // 2. Sort based on Scope
+            filtered.sort((a, b) => {
+                let ptsA = 0, ptsB = 0;
+                if (currentScope === 'weekly') {
+                    ptsA = a.weeklyPoints || 0;
+                    ptsB = b.weeklyPoints || 0;
+                } else if (currentScope === 'monthly') {
+                    ptsA = a.monthlyPoints || 0;
+                    ptsB = b.monthlyPoints || 0;
+                } else {
+                    ptsA = a.totalPoints || 0;
+                    ptsB = b.totalPoints || 0;
+                }
+                return ptsB - ptsA;
+            });
+
+            // 3. Render
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:50px; color:#9CA3AF;">No students found matching filters.</div>`;
                 return;
             }
 
-            // 2. Logic: If searching, show EVERYTHING as a list (hide podium) for clarity.
-            //    If NOT searching, show Podium + Rest.
-            let showPodium = !searchTerm;
+            // Top 3 (Podium)
+            const top3 = filtered.slice(0, 3);
+            const rest = filtered.slice(3);
 
-            // Generate HTML
-            let html = '';
+            let html = '<div class="podium-container">';
 
-            if (showPodium) {
-                const top3 = sorted.slice(0, 3);
-                const rest = sorted.slice(3);
+            // 2nd Place
+            if (top3[1]) html += createPodiumItem(top3[1], 2);
+            // 1st Place
+            if (top3[0]) html += createPodiumItem(top3[0], 1);
+            // 3rd Place
+            if (top3[2]) html += createPodiumItem(top3[2], 3);
 
-                // Reorder top 3 for podium: 2nd, 1st, 3rd
-                const podiumOrder = [];
-                if (top3[1]) podiumOrder.push({ ...top3[1], rank: 2 });
-                if (top3[0]) podiumOrder.push({ ...top3[0], rank: 1 });
-                if (top3[2]) podiumOrder.push({ ...top3[2], rank: 3 });
+            html += '</div><div class="rank-list-wrapper">';
 
-                html += `<div class="podium-container">`;
-                podiumOrder.forEach(student => html += renderPodiumItem(student));
-                html += `</div><div class="rank-list-wrapper">`;
-                rest.forEach((student, idx) => html += renderListItem(student, idx + 4));
-                html += `</div>`;
-            } else {
-                // Search Mode - Simple List
-                html += `<div class="rank-list-wrapper">`;
-                sorted.forEach((student, idx) => {
-                    // Calculate TRUE rank from original data
-                    let realRank = -1;
-                    const fullSorted = [...leaderboardData].sort((a, b) => getValue(b) - getValue(a)).filter(s => getValue(s) > 0);
-                    realRank = fullSorted.findIndex(s => s.id === student.id) + 1;
-                    html += renderListItem(student, realRank);
-                });
-                html += `</div>`;
-            }
+            // Rest of list
+            rest.forEach((student, index) => {
+                html += createListItem(student, index + 4);
+            });
 
+            html += '</div>';
             container.innerHTML = html;
         }
 
-        function renderPodiumItem(student) {
-            const points = getValue(student);
-            const safeId = student.id ? student.id.toString().replace(/\//g, '_') : '';
-            const headshotSrc = safeId ? `/headshots/${safeId}.jpg` : student.headshot;
-            const fallback = `this.onerror=null; this.src='${student.headshot || 'https://ui-avatars.com/api/?background=random&name=' + encodeURIComponent(student.name)}'`;
+        function createPodiumItem(student, rank) {
+            let pts = student.totalPoints || 0;
+            if (currentScope === 'weekly') pts = student.weeklyPoints || 0;
+            if (currentScope === 'monthly') pts = student.monthlyPoints || 0;
 
-            const crown = student.rank === 1 ? '<div class="crown">👑</div>' : '';
+            let headshot = student.headshot;
+            if (headshot && headshot.includes('Child Names_Images/')) {
+                headshot = headshot.replace('Child Names_Images/', 'headshots/');
+            } else if (headshot && !headshot.startsWith('/headshots/') && !headshot.startsWith('headshots/') && !headshot.startsWith('http')) {
+                headshot = 'headshots/' + headshot;
+            }
+            if (!headshot) {
+                headshot = `https://ui-avatars.com/api/?background=random&color=fff&name=${encodeURIComponent(student.name)}`;
+            }
 
-            return `
-                <div class="podium-item podium-${student.rank}">
-                    <div class="podium-avatar-wrapper">
-                        ${crown}
-                        <img src="${headshotSrc || '/api/placeholder/150/150'}" class="podium-avatar" onerror="${fallback}">
-                    </div>
-                    <div class="podium-base">
-                        <div class="podium-name">${student.name}</div>
-                        <div class="podium-points">${points.toLocaleString()} PTS</div>
-                        <div class="podium-rank">#${student.rank}</div>
-                    </div>
-                </div>`;
-        }
-
-        function renderListItem(student, rank) {
-            const points = getValue(student);
-            const safeId = student.id ? student.id.toString().replace(/\//g, '_') : '';
-            const headshotSrc = safeId ? `/headshots/${safeId}.jpg` : student.headshot;
-            const fallback = `this.onerror=null; this.src='${student.headshot || 'https://ui-avatars.com/api/?background=random&name=' + encodeURIComponent(student.name)}'`;
-
-            // Stagger animation
-            const delay = Math.min((rank - 1) * 0.05, 1.0); // Cap delay
+            let crownHtml = rank === 1 ? '<div class="crown">👑</div>' : '';
 
             return `
-                <div class="rank-card" style="animation-delay: ${delay}s">
-                    <div class="list-rank">#${rank}</div>
-                    <img src="${headshotSrc || '/api/placeholder/50/50'}" class="list-avatar" onerror="${fallback}">
-                    <div class="list-info">
-                        <div class="list-name">${student.name}</div>
-                    </div>
-                    <div class="list-points">${points.toLocaleString()}</div>
-                </div>`;
+            <div class="podium-item podium-${rank}">
+                <div class="podium-avatar-wrapper">
+                    ${crownHtml}
+                    <img src="${headshot}" class="podium-avatar" onerror="this.src='https://ui-avatars.com/api/?background=random&color=fff&name=${encodeURIComponent(student.name)}'">
+                    <div class="podium-rank">#${rank}</div>
+                </div>
+                <div class="podium-base">
+                    <div class="podium-name">${student.name}</div>
+                    <div class="podium-points">${pts.toLocaleString()} PTS</div>
+                </div>
+            </div>`;
         }
 
-        function getValue(student) {
-            if (currentScope === 'weekly') return student.weeklyPoints || 0;
-            if (currentScope === 'monthly') return student.monthlyPoints || 0;
-            return student.totalPoints || 0;
+        function createListItem(student, rank) {
+            let pts = student.totalPoints || 0;
+            if (currentScope === 'weekly') pts = student.weeklyPoints || 0;
+            if (currentScope === 'monthly') pts = student.monthlyPoints || 0;
+
+            let headshot = student.headshot;
+            if (headshot && headshot.includes('Child Names_Images/')) {
+                headshot = headshot.replace('Child Names_Images/', 'headshots/');
+            } else if (headshot && !headshot.startsWith('/headshots/') && !headshot.startsWith('headshots/') && !headshot.startsWith('http')) {
+                headshot = 'headshots/' + headshot;
+            }
+            if (!headshot) {
+                headshot = `https://ui-avatars.com/api/?background=random&color=fff&name=${encodeURIComponent(student.name)}`;
+            }
+
+            return `
+            <div class="rank-card" onclick="alert('View stats for ${student.name} coming soon!')">
+                <div class="list-rank">#${rank}</div>
+                <img src="${headshot}" class="list-avatar" onerror="this.src='https://ui-avatars.com/api/?background=random&color=fff&name=${encodeURIComponent(student.name)}'">
+                <div class="list-info">
+                    <div class="list-name">${student.name}</div>
+                </div>
+                <div class="list-points">${pts.toLocaleString()} PTS</div>
+            </div>`;
         }
     </script>
     <script src="mode-indicator.js"></script>
