@@ -2336,6 +2336,17 @@ app.post('/api/admin/setup-curriculum', async (req, res) => {
 // ============================================================================
 // LEADERBOARD API
 // ============================================================================
+// [NEW] Prizes Endpoint
+app.get('/api/prizes', async (req, res) => {
+    try {
+        const prizes = await googleSheetsService.fetchPrizesList();
+        res.json({ success: true, prizes });
+    } catch (error) {
+        console.error('Error fetching prizes:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch prizes' });
+    }
+});
+
 app.get('/api/leaderboard', async (req, res) => {
     try {
         const data = await googleSheetsService.getLeaderboard();

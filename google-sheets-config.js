@@ -113,6 +113,8 @@ module.exports = {
      * Default: 'Inventory'
      */
     INVENTORY_SHEET: 'inventory2',
+    PRIZES_SHEET: 'prizes',
+
 
     /**
      * Name of the sheet (tab) containing project parts/videos
