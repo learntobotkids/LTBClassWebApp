@@ -1,5 +1,10 @@
 # Project Documentation
 
+## File Structure Note (2026-01-26)
+All utility, debug, and verification scripts have been moved to the `scripts/` directory to declutter the root.
+**Running Scripts:**
+Instead of `node debug_drive.js`, use: `node scripts/debug_drive.js`.
+
 ## File Inventory & Functions
 
 ### Core Server

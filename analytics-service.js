@@ -16,11 +16,38 @@ if (!fs.existsSync(DATA_DIR)) {
 const analyticsService = {
 
     /**
-     * Logs an event to the daily analytics file.
+     * Logs an event to the daily analytics file and/or Supabase.
      * @param {Object} eventData - The event data to log.
      */
-    logEvent: (eventData) => {
+    logEvent: async (eventData) => {
         try {
+            // 1. SUPABASE LOGGING (Online Only)
+            if (process.env.DEPLOYMENT_MODE === 'online') {
+                const supabase = require('./supabase-client');
+                if (supabase) {
+                    try {
+                        const { error } = await supabase
+                            .from('analytics_logs')
+                            .insert([
+                                {
+                                    student_id: eventData.studentId || 'anonymous',
+                                    event_type: eventData.eventType,
+                                    details: eventData, // Store full JSON payload
+                                    page_url: eventData.url, // Explicit column for easier querying
+                                    created_at: new Date().toISOString()
+                                }
+                            ]);
+
+                        if (error) {
+                            console.error('[Supabase] Analytics Insert Error:', error.message);
+                        }
+                    } catch (sbError) {
+                        console.error('[Supabase] Unexpected Error:', sbError);
+                    }
+                }
+            }
+
+            // 2. FILESYSTEM LOGGING (Always, as backup/local source)
             const hostname = os.hostname().replace(/[^a-zA-Z0-9.-]/g, '_'); // Sanitize hostname
             const date = new Date();
             const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD

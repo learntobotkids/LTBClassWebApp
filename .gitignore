@@ -6,6 +6,9 @@ node_modules/
 .env.local
 .env.production
 google-credentials.json
+client_secret.json
+setup_oauth.json
+output.json
 
 # Data & Cache (generated at runtime)
 data/
@@ -36,3 +39,5 @@ errorpassing.txt
 
 # Claude/AI assistant folders
 .claude/
+
+GITIGNORE
