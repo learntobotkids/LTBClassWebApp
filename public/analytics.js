@@ -15,6 +15,25 @@
     let heartbeatTimer = null;
 
     // ========================================================================
+    // 0. GLOBAL ERROR LISTENER (New)
+    // ========================================================================
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+        window.logAnalyticsEvent('client_error', {
+            message: msg,
+            source: url,
+            lineno: lineNo,
+            stack: error ? error.stack : null
+        });
+        return false;
+    };
+
+    // Helper for manual search logging
+    window.trackSearch = function (query) {
+        if (!query) return;
+        window.logAnalyticsEvent('search_query', { query: query });
+    };
+
+    // ========================================================================
     // GOOGLE ANALYTICS INIT
     // ========================================================================
     function initGoogleAnalytics() {
@@ -51,17 +70,39 @@
     // LOGGING FUNCTION
     // ========================================================================
 
+    // ========================================================================
+    // LOGGING FUNCTION
+    // ========================================================================
+
     window.logAnalyticsEvent = (eventType, additionalData = {}) => {
         try {
+            // [NEW] Smart Context Enrichment
+            // Check if we have active project data loaded on the page
+            let contextData = {};
+            if (window.currentProject) {
+                contextData.title = window.currentProject.name;
+                contextData.projectId = window.currentProject.id;
+            }
+
             // Context Data
             const eventData = {
                 eventType: eventType,
-                url: window.location.pathname,
+                url: window.location.pathname + window.location.search,
                 timestamp: new Date().toISOString(),
-                studentId: localStorage.getItem('studentId') || 'anonymous',
-                studentName: localStorage.getItem('studentName') || 'Guest',
-                ...additionalData
+                studentId: localStorage.getItem('studentId') || localStorage.getItem('currentStudent') || 'anonymous',
+                // [FIX] Prioritize currentStudent (active login) over studentName (legacy/stale)
+                studentName: localStorage.getItem('currentStudent') || localStorage.getItem('studentName') || 'Guest',
+                ...contextData,     // Add enriched context
+                ...additionalData   // Allow overriding
             };
+
+            // Fix for Root URL display
+            if (eventData.url === '/' || eventData.url === '/index.html') {
+                eventData.url = 'Home';
+            } else if (eventData.url.startsWith('/?')) {
+                eventData.url = 'Home ' + eventData.url.substring(1);
+            }
+
 
             // Use Beacon if available (more reliable on page unload)
             const endpoint = '/api/analytics/event';
@@ -90,7 +131,27 @@
     // ========================================================================
 
     // 1. Page View (Immediate)
-    window.logAnalyticsEvent('page_view');
+    // [NEW] Smart Page View for Project Page
+    // If we are on project.html, try to extract the project name from the URL "id"
+    // Example ID: "PYTHON/Beginner/101 - Calculator" -> Title: "101 - Calculator"
+    if (window.location.pathname.includes('project.html')) {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        let initialTitle = null;
+
+        if (id) {
+            // Take the last part of the path (the actual folder name)
+            const parts = id.split('/');
+            initialTitle = parts[parts.length - 1]; // "101 - Calculator"
+            // Clean up encodings just in case
+            try { initialTitle = decodeURIComponent(initialTitle); } catch (e) { }
+        }
+
+        window.logAnalyticsEvent('page_view', { title: initialTitle, projectId: id });
+    } else {
+        // Standard page view for other pages
+        window.logAnalyticsEvent('page_view');
+    }
 
     // 2. Video Tracking (Heartbeats)
     // Listens for all 'play' and 'pause' events on the page (capturing)
@@ -102,6 +163,19 @@
 
     document.addEventListener('pause', (e) => {
         if (e.target.tagName === 'VIDEO') {
+            stopHeartbeat();
+        }
+    }, true);
+
+    // [NEW] Video Completion
+    document.addEventListener('ended', (e) => {
+        if (e.target.tagName === 'VIDEO') {
+            const videoEl = e.target;
+            const videoTitle = videoEl.getAttribute('data-title') || videoEl.currentSrc.split('/').pop();
+            window.logAnalyticsEvent('video_complete', {
+                videoTitle: videoTitle,
+                duration: videoEl.duration
+            });
             stopHeartbeat();
         }
     }, true);

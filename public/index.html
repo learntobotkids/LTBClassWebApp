@@ -3143,8 +3143,18 @@
             }
 
             // Sidebar Search Filter
+            let searchTimeout;
             document.getElementById('sidebar-folder-search').addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
+                
+                // [ANALYTICS] Track Search (Debounced)
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                   if(term.length > 2) {
+                       window.trackSearch(term);
+                   }
+                }, 1000);
+
                 const filtered = allSidebarItems.filter(item => item.name.toLowerCase().includes(term));
 
                 // Re-render using local data (simple client-side filter)
