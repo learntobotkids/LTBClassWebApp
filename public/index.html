@@ -1464,6 +1464,8 @@
                 📂 Open My Folder
             </button>
 
+
+
             <!-- New: Copy Path Feature -->
             <div id="folder-path-container"
                 style="display: none; margin-top: 10px; background: #374151; padding: 10px; border-radius: 8px;">
@@ -2989,10 +2991,14 @@
                     <div class="online-file-card">
                         <div class="online-cloud-icon">☁️</div>
                         <div class="online-card-title">Cloud Storage</div>
-                        <div class="online-card-desc">Your project files are stored securely on Google Drive.</div>
+                        <div class="online-card-desc">Your project files are stored securely on OneDrive.</div>
                         <button onclick="openCurrentStudentFolder()" class="online-open-btn">
-                            <span>Open Drive Folder</span>
+                            <span>Open OneDrive Folder</span>
                             <span>↗</span>
+                        </button>
+
+                        <button onclick="openOneDriveTutorial()" class="online-open-btn" style="background: transparent; border: 1px solid rgba(255,255,255,0.2); margin-top: 10px;">
+                            <span>❓ How does this work?</span>
                         </button>
                     </div>
                 `;
@@ -3146,13 +3152,13 @@
             let searchTimeout;
             document.getElementById('sidebar-folder-search').addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
-                
+
                 // [ANALYTICS] Track Search (Debounced)
                 clearTimeout(searchTimeout);
                 searchTimeout = setTimeout(() => {
-                   if(term.length > 2) {
-                       window.trackSearch(term);
-                   }
+                    if (term.length > 2) {
+                        window.trackSearch(term);
+                    }
                 }, 1000);
 
                 const filtered = allSidebarItems.filter(item => item.name.toLowerCase().includes(term));
@@ -4083,6 +4089,8 @@
         }
     </script>
     <script src="mobile-nav.js?v=2"></script>
+
+    <script src="tutorial.js"></script>
 </body>
 
 </html>
