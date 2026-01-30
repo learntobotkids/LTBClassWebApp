@@ -183,7 +183,8 @@ module.exports = {
     ONLINE_LOGIN_COLUMNS: {
         PARENT_EMAIL: 1,    // Column B: Parent Email (Index 1)
         CHILD_NAME: 2,      // Column C: Child Name (Index 2)
-        PARENT_FIRST_NAME: 4 // Column E: Parent First Name (Index 4)
+        PARENT_FIRST_NAME: 4, // Column E: Parent First Name (Index 4)
+        IS_ACTIVE: 12       // Column M: Active Status (Index 12)
     },
 
     // ========================================================================

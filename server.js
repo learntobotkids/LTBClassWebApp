@@ -1038,10 +1038,10 @@ app.post('/api/check-parent-email', async (req, res) => {
 
         let response;
         try {
-            // UPDATED: Fetch A:G to include ID (Column A)
+            // UPDATED: Fetch A:M to include Active Status (Column M)
             response = await sheets.spreadsheets.values.get({
                 spreadsheetId: config.SPREADSHEET_ID,
-                range: `${config.STUDENT_NAMES_SHEET}!A:G`
+                range: `${config.STUDENT_NAMES_SHEET}!A:M`
             });
         } catch (sheetError) {
             console.error('[CRITICAL] Google Sheets API Error:', sheetError.message);
@@ -1054,43 +1054,47 @@ app.post('/api/check-parent-email', async (req, res) => {
         const rows = response.data.values || [];
         console.log(`[DEBUG] Sheet fetch success. Total rows found: ${rows.length}`);
 
-        // Filter rows to find matches
-        // Config indices are 0-based relative to the sheet
-        // But our fetch range starts at B (Column 1)
+        // Filter and Active Check
 
-        // Response array indices (A:G):
-        // 0 -> Column A (ID) - NEW
-        // 1 -> Column B (Email)
-        // 2 -> Column C (Child Name)
-        // 3 -> Column D (Child Age)
-        // 4 -> Column E (Parent Name)
-        // 5 -> Column F (Parent Last Name)
-        // 6 -> Column G (Child File Link)
+        // 1. Find all rows matching the email
+        const allMatches = rows.slice(1).filter(row => {
+            const rowEmail = row[1] ? row[1].trim().toLowerCase() : '';
+            return rowEmail.includes(cleanEmail);
+        });
 
-        const matchedChildren = rows
-            .slice(1) // Skip header
-            .filter(row => {
-                // Check Column B (Index 1)
-                const rowEmail = row[1] ? row[1].trim().toLowerCase() : '';
-                // Use substring matching as requested ("even as a substring")
-                const isMatch = rowEmail.includes(cleanEmail);
-                if (isMatch) {
-                    console.log(`[DEBUG] Match found! Row email: "${rowEmail}" matches input: "${cleanEmail}"`);
-                }
-                return isMatch;
-            })
-            .map(row => ({
-                id: row[0] ? row[0].trim() : '',                 // Column A (ID)
-                name: row[2] ? row[2].trim() : 'Unknown Name',   // Column C
-                parentName: row[4] ? row[4].trim() : 'Parent',   // Column E
-                fileLink: row[6] ? row[6].trim() : ''            // Column G
-            }));
+        console.log(`[DEBUG] Found ${allMatches.length} email matches before active check.`);
+
+        // 2. Filter for Active students only
+        const activeMatches = allMatches.filter((row, index) => {
+            // Column M (Index 12) is "Active?"
+            // Handle sparse arrays: check if index 12 exists
+            const rawStatus = row[12];
+            const status = rawStatus ? rawStatus.trim().toLowerCase() : '';
+
+            console.log(`[DEBUG] Row Match #${index}: Name=${row[2]}, Email=${row[1]}, ActiveCol(M)=${JSON.stringify(rawStatus)}, ParsedStatus='${status}'`);
+
+            return status === 'active';
+        });
+
+        const matchedChildren = activeMatches.map(row => ({
+            id: row[0] ? row[0].trim() : '',                 // Column A (ID)
+            name: row[2] ? row[2].trim() : 'Unknown Name',   // Column C
+            parentName: row[4] ? row[4].trim() : 'Parent',   // Column E
+            fileLink: row[6] ? row[6].trim() : ''            // Column G
+        }));
 
         if (matchedChildren.length > 0) {
-            console.log(`[SUCCESS] Parent Email Match: ${cleanEmail} -> Found ${matchedChildren.length} kids`);
+            console.log(`[SUCCESS] Parent Email Match: ${cleanEmail} -> Found ${matchedChildren.length} active kids`);
             res.json({
                 success: true,
                 children: matchedChildren
+            });
+        } else if (allMatches.length > 0) {
+            // Found email matches but none were active
+            console.log(`[FAILURE] Parent Email Found but Inactive: ${cleanEmail} -> ${allMatches.length} inactive records.`);
+            res.json({
+                success: false,
+                message: 'Your subscription has ended. Please contact admin@learntobot.com or text us at +13462151556 if you think this is an error.'
             });
         } else {
             console.log(`[FAILURE] Parent Email Failed: ${cleanEmail} -> 0 matches in ${rows.length} rows.`);
@@ -3063,3 +3067,46 @@ server.listen(PORT, '0.0.0.0', () => {
  *
  * ============================================================================
  */
+
+// ============================================================================
+// STUDENT LOGIN ENDPOINT (SAFEGUARD)
+// ============================================================================
+app.post('/api/login', async (req, res) => {
+    try {
+        const { studentName, parentEmail } = req.body;
+        console.log(`[API] Login Attempt for: ${studentName} (Parent: ${parentEmail || 'N/A'})`);
+
+        if (!studentName) {
+            return res.status(400).json({ success: false, message: 'Student name is required' });
+        }
+
+        // Fetch all students to verify status
+        const students = await googleSheetsService.fetchStudents();
+        const student = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() || s.loginName.toLowerCase() === studentName.toLowerCase());
+
+        if (!student) {
+            return res.status(404).json({ success: false, message: 'Student account not found.' });
+        }
+
+        // Check Active Status
+        if (student.hasOwnProperty('isActive') && !student.isActive) {
+            console.log(`[Login] Blocked Inactive User: ${studentName}`);
+            return res.status(403).json({
+                success: false,
+                message: 'Your subscription has ended. Please contact admin@learntobot.com or text us at +13462151556 if you think this is an error.'
+            });
+        }
+
+        // (Optional) Check Parent Email if provided
+        if (parentEmail && student.parentEmail && student.parentEmail.toLowerCase() !== parentEmail.toLowerCase()) {
+             // Since we rely on name locally, this is a secondary check if data is available
+             // But for now, we trust the name if the ID matches what we expect
+        }
+
+        res.json({ success: true, student });
+
+    } catch (error) {
+        console.error('Login Error:', error);
+        res.status(500).json({ success: false, message: 'Login failed due to server error.' });
+    }
+});

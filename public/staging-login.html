@@ -298,12 +298,33 @@
             container.appendChild(classContainer);
         }
 
-        function loginStudent(name) {
-            // Set local storage
-            localStorage.setItem('currentStudent', name);
+        async function loginStudent(name) {
+            try {
+                // Show loading state if desired
+                const card = document.querySelector(`.student-name[innerText="${name}"]`)?.parentElement;
+                if (card) card.style.opacity = '0.5';
 
-            // Redirect to main app
-            window.location.href = '/index.html';
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ studentName: name })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Set local storage
+                    localStorage.setItem('currentStudent', name);
+                    // Redirect to main app
+                    window.location.href = '/index.html';
+                } else {
+                    alert(data.message || 'Login failed.');
+                    if (card) card.style.opacity = '1';
+                }
+            } catch (err) {
+                console.error('Login Error:', err);
+                alert('Connection error. Please try again.');
+            }
         }
 
         // Run
