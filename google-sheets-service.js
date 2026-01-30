@@ -646,11 +646,11 @@ async function fetchProjectList(forceRefresh = false) {
         // Get authenticated Sheets API client
         const sheets = await getGoogleSheetsClient();
 
-        // Fetch columns A (Code) through BF (Category)
-        // A=0, B=1 ... BF=57. So range A:BF cover all.
+        // Fetch columns A (Code) through BI (Difficulty)
+        // A=0, B=1 ... BF=57, BG=58, BH=59. So range A:BI covers all.
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.PROJECT_LIST_SHEET}!A:BF`,
+            range: `${config.PROJECT_LIST_SHEET}!A:BI`,
         });
 
         const rows = response.data.values || [];
@@ -664,15 +664,19 @@ async function fetchProjectList(forceRefresh = false) {
             const description = row[config.PROJECT_LIST_COLUMNS.DESCRIPTION]; // Column C
             const studentActivity = row[config.PROJECT_LIST_COLUMNS.STUDENT_ACTIVITY]; // Column E
             const points = row[config.PROJECT_LIST_COLUMNS.POINTS]; // Column BD
+            const tracks = row[config.PROJECT_LIST_COLUMNS.RECOMMENDED_TRACK]; // Column BE (comma-separated)
+            const difficulty = row[config.PROJECT_LIST_COLUMNS.DIFFICULTY]; // Column BH
 
             if (code) {
-                // Return object { name, category, description, studentActivity, points }
+                // Return object { name, category, description, studentActivity, points, tracks, difficulty }
                 projectMap.set(code.trim().toUpperCase(), {
                     name: name ? name.trim() : '',
                     category: category ? category.trim() : 'Other',
                     description: description ? description.trim() : '',
                     studentActivity: studentActivity ? studentActivity.trim() : '',
-                    points: points ? parseInt(points.replace(/\D/g, '') || '0', 10) : 0
+                    points: points ? parseInt(points.replace(/\D/g, '') || '0', 10) : 0,
+                    tracks: tracks ? tracks.trim() : '', // Comma-separated track list
+                    difficulty: difficulty ? parseInt(difficulty.replace(/\D/g, '') || '9999', 10) : 9999 // Default high for sorting
                 });
             }
         });
@@ -1044,6 +1048,52 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
         result.studentId = student.id; // NEW: Return resolved ID
         result.fileLink = student.fileLink; // Pass the Drive Link to the frontend
         result.track = student.track;       // Pass the Track to the frontend for filtering
+
+        // 4. Calculate "Projects To Try" based on student's track
+        result.projectsToTry = [];
+        if (student.track && student.track.trim()) {
+            const studentTrack = student.track.trim().toUpperCase();
+            console.log(`[PROJECTS TO TRY] Student track: ${studentTrack}`);
+
+            // Get the project list map (already fetched in getStudentProjects)
+            const projectMap = await fetchProjectList(false);
+
+            // Collect all project codes that are already assigned, in progress, next, or completed
+            const handledProjectCodes = new Set();
+            (result.assignedProjects || []).forEach(p => handledProjectCodes.add((p.originalCode || p.id || '').trim().toUpperCase()));
+            (result.inProgressProjects || []).forEach(p => handledProjectCodes.add((p.originalCode || p.id || '').trim().toUpperCase()));
+            (result.nextProjects || []).forEach(p => handledProjectCodes.add((p.originalCode || p.id || '').trim().toUpperCase()));
+            (result.completedProjects || []).forEach(p => handledProjectCodes.add((p.originalCode || p.id || '').trim().toUpperCase()));
+
+            console.log(`[PROJECTS TO TRY] Excluding ${handledProjectCodes.size} handled projects`);
+
+            // Filter projects: must be in student's track and not already handled
+            const candidateProjects = [];
+            projectMap.forEach((projectInfo, projectCode) => {
+                // Check if project's tracks include the student's track
+                const projectTracks = (projectInfo.tracks || '').toUpperCase().split(',').map(t => t.trim());
+                const matchesTrack = projectTracks.some(t => t === studentTrack);
+
+                if (matchesTrack && !handledProjectCodes.has(projectCode)) {
+                    candidateProjects.push({
+                        id: projectCode,
+                        name: `${projectCode} - ${projectInfo.name}`,
+                        originalCode: projectCode,
+                        category: projectInfo.category,
+                        points: projectInfo.points,
+                        difficulty: projectInfo.difficulty || 9999
+                    });
+                }
+            });
+
+            // Sort by difficulty (ascending - easiest first)
+            candidateProjects.sort((a, b) => a.difficulty - b.difficulty);
+
+            console.log(`[PROJECTS TO TRY] Found ${candidateProjects.length} candidate projects for track ${studentTrack}`);
+
+            result.projectsToTry = candidateProjects;
+            result.totalProjectsToTry = candidateProjects.length;
+        }
 
         return result;
 

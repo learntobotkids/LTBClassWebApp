@@ -47,8 +47,7 @@ module.exports = {
      * Can be set via environment variable SPREADSHEET_ID
      */
     //SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1W6ojeogcA__vqYcQvwpav07rP9g5rAMpYXvHHY3sRKM',
-    // SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1mkfyTOrcflampKY_BG13yjst7-AfEK4Oxvl-VU9BFME', // Potentially reading old env?
-    SPREADSHEET_ID: '1mkfyTOrcflampKY_BG13yjst7-AfEK4Oxvl-VU9BFME', // HARDCODED FORCE NEW SHEET
+    SPREADSHEET_ID: process.env.SPREADSHEET_ID || '1mkfyTOrcflampKY_BG13yjst7-AfEK4Oxvl-VU9BFME', // Uses env variable, fallback to default
     // ========================================================================
     // GOOGLE DRIVE CONFIGURATION
     // ========================================================================
@@ -256,8 +255,9 @@ module.exports = {
         STUDENT_ACTIVITY: 4,// Column E: What child did in this project
         ICON: 12,           // Column M: Project Icon/Cover Image URL
         POINTS: 55,         // Column BD: Points (0-indexed, BD=55)
-        RECOMMENDED_TRACK: 56, // Column BE: Recommended Tracks
-        CATEGORY: 57        // Column BF: Type of Project (0-indexed, A=0, BF=57)
+        RECOMMENDED_TRACK: 56, // Column BE: Recommended Tracks (comma-separated)
+        CATEGORY: 57,       // Column BF: Type of Project (BUILDING, CODING, BOTH)
+        DIFFICULTY: 59      // Column BH: Project Difficulty (number for sorting)
     },
 
     // ========================================================================
@@ -288,6 +288,7 @@ module.exports = {
         EMAIL: 1,           // Column B: Parent Email
         HEADSHOT: 8,        // Column I: Headshot
         NOTE: 23,           // Column X: Note for child
+        TRACK: 28,          // Column AC: Student's assigned track
         TOTAL_POINTS: 33,   // Column AH: Total Points (All Time)
         AGE: 3,             // Column D: Child Age
         SERVICE_TITLE: 10   // Column K: Service Title

@@ -2273,8 +2273,8 @@
             }
 
             // Render multiple project sections
-            function renderAssignedProjects(assigned, next, completed) {
-                console.log('renderAssignedProjects called with:', { assigned: assigned?.length, next: next?.length, completed: completed?.length });
+            function renderAssignedProjects(assigned, next, completed, projectsToTry) {
+                console.log('renderAssignedProjects called with:', { assigned: assigned?.length, next: next?.length, completed: completed?.length, projectsToTry: projectsToTry?.length });
 
                 const container = document.getElementById('assignedProjectsContainer');
 
@@ -2315,6 +2315,7 @@
                 assigned = (assigned || []).map(enrichProject);
                 next = (next || []).map(enrichProject);
                 completed = (completed || []).map(enrichProject);
+                projectsToTry = (projectsToTry || []).map(enrichProject);
 
                 // If nothing at all
                 if ((!assigned || assigned.length === 0) && (!next || next.length === 0) && (!completed || completed.length === 0)) {
@@ -2397,6 +2398,11 @@
                 // 2. Next Projects
                 if (next && next.length > 0) {
                     html += createSection('Next Projects', next, '🔮', 'assigned-badge', '🔮 NEXT PROJECT', '#c084fc');
+                }
+
+                // 2b. Projects To Try (Online Only)
+                if (window.DEPLOYMENT_MODE === 'online' && projectsToTry && projectsToTry.length > 0) {
+                    html += createSection('Projects To Try', projectsToTry, '✨', 'assigned-badge', '✨ TRY THIS', '#FCD34D', true, '', '');
                 }
 
                 // 3. Completed
@@ -2594,21 +2600,31 @@
                 }
 
                 try {
-                    // Try local cache first (works offline)
-                    console.log('Trying to load student progress from local cache...');
-                    let response = await fetch(`/api/student-assignments/${encodeURIComponent(studentName)}`);
-                    let data = await response.json();
+                    // In ONLINE mode, prioritize Google Sheets API (has projectsToTry calculation)
+                    // In OFFLINE mode, try local cache first
+                    let response, data;
 
-                    // If cache doesn't exist or needs sync, fall back to Google Sheets
-                    if (data.needsSync || (!data.success && response.status === 404)) {
-                        console.log('Local cache not found, falling back to Google Sheets...');
+                    if (window.DEPLOYMENT_MODE === 'online') {
+                        console.log('Online mode: Fetching from Google Sheets API...');
                         response = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(studentName)}`);
                         data = await response.json();
+                    } else {
+                        // Try local cache first (works offline)
+                        console.log('Trying to load student progress from local cache...');
+                        response = await fetch(`/api/student-assignments/${encodeURIComponent(studentName)}`);
+                        data = await response.json();
 
-                        if (!data.success) {
-                            console.warn('Google Sheets also failed. Student progress unavailable.');
-                            console.warn('Please sync students from the Teacher Panel when online.');
+                        // If cache doesn't exist or needs sync, fall back to Google Sheets
+                        if (data.needsSync || (!data.success && response.status === 404)) {
+                            console.log('Local cache not found, falling back to Google Sheets...');
+                            response = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(studentName)}`);
+                            data = await response.json();
                         }
+                    }
+
+                    if (!data.success) {
+                        console.warn('Google Sheets also failed. Student progress unavailable.');
+                        console.warn('Please sync students from the Teacher Panel when online.');
                     }
 
                     if (data.success && data.data) {
@@ -2627,11 +2643,12 @@
                             // But let's assume if it's not there, we just don't update it to avoid breaking offline cache.
                         }
 
-                        // 3 DISTINCT LISTS
+                        // 3 DISTINCT LISTS + Projects To Try
                         renderAssignedProjects(
                             studentProgress.assignedProjects || [],
                             studentProgress.nextProjects || [],
-                            studentProgress.completedProjects || []
+                            studentProgress.completedProjects || [],
+                            studentProgress.projectsToTry || []
                         );
 
                         // Refresh the current display to show completion status
