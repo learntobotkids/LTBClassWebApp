@@ -1056,6 +1056,7 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
             console.log(`[PROJECTS TO TRY] Student track: ${studentTrack}`);
 
             // Get the project list map (already fetched in getStudentProjects)
+            // Get the project list map (already fetched in getStudentProjects)
             const projectMap = await fetchProjectList(false);
 
             // Collect all project codes that are already assigned, in progress, next, or completed
@@ -1073,6 +1074,8 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
                 // Check if project's tracks include the student's track
                 const projectTracks = (projectInfo.tracks || '').toUpperCase().split(',').map(t => t.trim());
                 const matchesTrack = projectTracks.some(t => t === studentTrack);
+
+
 
                 if (matchesTrack && !handledProjectCodes.has(projectCode)) {
                     candidateProjects.push({

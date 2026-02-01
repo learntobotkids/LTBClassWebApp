@@ -1,0 +1,36 @@
+<!-- How To Use Modal -->
+<div id="howToUseModal" class="modal-overlay" onclick="if(event.target === this) toggleHowToUseModal()">
+    <div class="modal"
+        style="max-width: 600px; padding: 20px; background: #1F2937; border-radius: 12px; border: 1px solid #374151; text-align: center;">
+        <div class="modal-header"
+            style="justify-content: space-between; align-items: center; display: flex; margin-bottom: 15px;">
+            <h2 style="margin: 0; font-size: 1.5rem; color: #F3F4F6;">🚀 Portal Tour</h2>
+            <button class="close-modal" onclick="toggleHowToUseModal()"
+                style="background: none; border: none; font-size: 2rem; color: #9CA3AF; cursor: pointer;">×</button>
+        </div>
+
+        <div style="margin-bottom: 20px; background: #000; border-radius: 8px; overflow: hidden;">
+            <img src="/howtouse.gif" alt="How to use the portal" style="width: 100%; height: auto; display: block;">
+        </div>
+
+        <p style="color: #D1D5DB; margin-bottom: 20px; font-size: 1rem; line-height: 1.5;">
+            Welcome to the LearnToBot Portal — a quick guide to viewing progress, assigned projects, and downloading files.
+        </p>
+
+        <button onclick="toggleHowToUseModal()"
+            style="background: #3B82F6; color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem;">
+            Got it!
+        </button>
+    </div>
+</div>
+
+<script>
+    function toggleHowToUseModal() {
+        const modal = document.getElementById('howToUseModal');
+        if (modal.style.display === 'flex') {
+            modal.style.display = 'none';
+        } else {
+            modal.style.display = 'flex';
+        }
+    }
+</script>

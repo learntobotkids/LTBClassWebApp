@@ -39,6 +39,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     console.log('[Mobile Nav] Initialized');
+
+    // MOBILE ONLY: Inject Tour into the menu
+    const tourLi = document.createElement('li');
+    tourLi.className = 'mobile-only'; // Add class to hide on desktop
+    tourLi.innerHTML = '<a href="#" class="navbar-link" onclick="if(window.toggleHowToUseModal) { window.toggleHowToUseModal(); toggleMenu(); } return false;">🚀 Tour</a>';
+    navbarMenu.appendChild(tourLi);
 });
 
 // GLOBAL AUTH UI HANDLER
@@ -103,6 +109,20 @@ async function updateAuthUI() {
             fetchStudentDataRecursive(studentName, img, document.getElementById('navUserPoints'));
         }
 
+        // Tour Button (Logged In)
+        const tourBtn = document.createElement('button');
+        tourBtn.className = 'navbar-btn tour-desktop-btn'; // New class for hiding on mobile if needed
+        tourBtn.style.marginRight = '8px';
+        tourBtn.style.background = 'rgba(59, 130, 246, 0.1)';
+        tourBtn.style.border = '1px solid rgba(59, 130, 246, 0.5)';
+        tourBtn.style.padding = '6px 10px'; // Compact padding
+        tourBtn.style.fontSize = '0.9em'; // Current font size
+        tourBtn.innerHTML = '🚀 Tour';
+        tourBtn.onclick = () => {
+            if (window.toggleHowToUseModal) window.toggleHowToUseModal();
+        };
+        navbarAuth.appendChild(tourBtn);
+
         // Logout Button
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'navbar-btn logout';
@@ -112,6 +132,20 @@ async function updateAuthUI() {
 
     } else {
         // LOGGED OUT STATE
+
+        // Tour Button (Logged Out)
+        const tourBtn = document.createElement('button');
+        tourBtn.className = 'navbar-btn tour-desktop-btn';
+        tourBtn.style.marginRight = '8px';
+        tourBtn.style.background = 'rgba(59, 130, 246, 0.1)';
+        tourBtn.style.border = '1px solid rgba(59, 130, 246, 0.5)';
+        tourBtn.style.padding = '6px 10px'; // Compact
+        tourBtn.style.fontSize = '0.9em';
+        tourBtn.innerHTML = '🚀 Tour';
+        tourBtn.onclick = () => {
+            if (window.toggleHowToUseModal) window.toggleHowToUseModal();
+        };
+        navbarAuth.appendChild(tourBtn);
         const loginBtn = document.createElement('button');
         loginBtn.className = 'navbar-btn';
         loginBtn.id = 'navbarLoginBtn';

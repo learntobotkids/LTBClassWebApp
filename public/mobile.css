@@ -140,6 +140,11 @@
         animation: slideDown 0.3s ease-out;
     }
 
+    /* Hide desktop version of tour button just in case */
+    .tour-desktop-btn {
+        display: none !important;
+    }
+
     .navbar-link {
         width: 100%;
         display: block;
@@ -273,5 +278,12 @@
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+/* Hide mobile-only elements on desktop */
+@media (min-width: 769px) {
+    .mobile-only {
+        display: none !important;
     }
 }
