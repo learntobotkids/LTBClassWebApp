@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="kids-theme.css">
     <link rel="stylesheet" href="mobile.css">
     <link rel="stylesheet" href="navbar.css">
-    <script src="analytics.js"></script> <!-- Analytics Telemetry -->
+    <script src="analytics.js" defer></script> <!-- Analytics Telemetry -->
     <style>
         * {
             margin: 0;
@@ -1415,6 +1415,7 @@
                 <li><a href="/child-progress.html" class="navbar-link">Student Progress</a></li>
                 <li><a href="/prizes.html" class="navbar-link">Prizes</a></li>
                 <li><a href="/leaderboard.html" class="navbar-link">Leaders</a></li>
+                <li><a href="/teacher.html" class="navbar-link">Teacher</a></li>
 
             </ul>
 
@@ -2337,7 +2338,7 @@
                         const demoUrl = demoVideo ? '/projects/' + encodeURIComponent(project.id) + '/' + encodeURIComponent(demoVideo) : '';
 
                         const iconHTML = project.icon
-                            ? `<img src="${getIconUrl(project.icon, project.id)}" alt="${project.name}" onerror="this.parentNode.innerHTML='🎮'">`
+                            ? `<img src="${getIconUrl(project.icon, project.id)}" alt="${project.name}" loading="lazy" onerror="this.parentNode.innerHTML='🎮'">`
                             : '🎮';
 
                         const clickHandler = project.notFound ? '' : `onclick="openProject('${project.id}')"`;
@@ -2442,7 +2443,7 @@
 
                 const resultsHTML = projects.map(project => {
                     const iconHTML = project.icon
-                        ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}">`
+                        ? `<img src="/projects/${encodeURIComponent(project.id)}/${encodeURIComponent(project.icon)}" alt="${project.name}" loading="lazy">`
                         : '🎮';
 
                     const pdfCount = project.pdf ? 1 : 0;
@@ -2708,7 +2709,7 @@
                     const fallback = `this.onerror=null; this.outerHTML='<div class=&quot;student-initial&quot; style=&quot;background:#3B82F6&quot;>${name.charAt(0)}</div>'`;
 
                     const headshotHtml = headshotUrl
-                        ? `<img src="${headshotUrl}" alt="${name}" class="student-headshot" onerror="${fallback}">`
+                        ? `<img src="${headshotUrl}" alt="${name}" class="student-headshot" loading="lazy" onerror="${fallback}">`
                         : `<div class="student-initial">${name.charAt(0)}</div>`;
 
                     return `
@@ -3247,19 +3248,87 @@
                 copyText.setSelectionRange(0, 99999); // For mobile devices
                 navigator.clipboard.writeText(copyText.value).then(() => {
                     // Visual feedback
-                    const btn = document.querySelector('#folder-path-container button');
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = '✅';
+                    const btn = document.querySelector('.copy-btn');
+                    const origText = btn.innerHTML;
+                    btn.innerHTML = '✅ Copied!';
                     setTimeout(() => {
-                        btn.innerHTML = originalText;
-                    }, 1500);
+                        btn.innerHTML = origText;
+                    }, 2000);
                 });
             }
+
+            // ============================================================================
+            // AUTO-LOGOUT & SESSION ENFORCEMENT
+            // ============================================================================
+
+            // 1. FRESH START CHECK (Logout if server restarted)
+            async function checkServerSession() {
+                try {
+                    const response = await fetch('/api/config');
+                    const data = await response.json();
+
+                    if (data.serverStartTime) {
+                        const storedSession = localStorage.getItem('serverSession');
+                        const currentSession = String(data.serverStartTime);
+
+                        if (!storedSession) {
+                            // First time connecting this browser ever (or after clear)
+                            localStorage.setItem('serverSession', currentSession);
+                        } else if (storedSession !== currentSession) {
+                            // Server has restarted since last login!
+                            console.log('[SESSION] Server restart detected. Forcing logout.');
+                            localStorage.setItem('serverSession', currentSession);
+
+                            // If user was logged in, force logout
+                            if (localStorage.getItem('studentName')) {
+                                doAutoLogout();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Session check failed", e);
+                }
+            }
+
+            // 2. INACTIVITY TIMER (10 Minutes)
+            let inactivityTimeout;
+            const LOGOUT_TIME = 10 * 60 * 1000; // 10 minutes
+
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimeout);
+                // Only set timer if user is actually logged in
+                if (localStorage.getItem('studentName')) {
+                    inactivityTimeout = setTimeout(doAutoLogout, LOGOUT_TIME);
+                }
+            }
+
+            function doAutoLogout() {
+                console.log('[AUTO-LOGOUT] User inactive for 10 minutes');
+                localStorage.removeItem('studentName');
+                localStorage.removeItem('studentFolder');
+                window.location.reload();
+            }
+
+            // Listen for any activity
+            ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll'].forEach(evt => {
+                document.addEventListener(evt, resetInactivityTimer, true);
+            });
+
+            // Initialize timer on load
+            resetInactivityTimer();
+            checkServerSession(); // Check session on load
+
+            // ============================================================================
+
 
             // Open folder on client (Protocol Handler)
             function openFolder(folderName) {
                 const serverName = window.location.hostname;
-                const protocolUrl = `studentfolder://${serverName}/${encodeURIComponent(folderName)}`;
+                // [WINDOWS FIX] Windows explorer doesn't decode %20 automatically in UNC paths from simple handlers.
+                // We keep spaces literal (browsers usually handle this for custom protocols or at least pass it along)
+                // We also strictly encode other special chars, but spaces are the main issue.
+                let safeFolder = encodeURIComponent(folderName).replace(/%20/g, ' ');
+                const protocolUrl = `studentfolder://${serverName}/${safeFolder}`;
                 console.log(`Launching Folder: ${protocolUrl}`);
 
                 // Visual Feedback
@@ -4147,7 +4216,24 @@
                 modal.style.display = 'flex';
             }
         }
+
+        // [NEW] Fetch and display Site Version
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/api/config')
+                .then(r => r.json())
+                .then(data => {
+                    const versionEl = document.getElementById('site-version-text');
+                    if (versionEl && data.siteVersion) {
+                        versionEl.textContent = 'v' + data.siteVersion;
+                    }
+                })
+                .catch(e => console.error('Version fetch failed', e));
+        });
     </script>
+    <div id="site-version"
+        style="position: fixed; bottom: 5px; right: 5px; color: rgba(255,255,255,0.2); font-size: 0.8rem; pointer-events: none; user-select: none; font-family: monospace; z-index: 9999;">
+        <span id="site-version-text">v...</span>
+    </div>
 </body>
 
 </html>

@@ -63,6 +63,9 @@ const upload = multer({
 });
 const http = require('http');              // Creates HTTP server (the foundation of web servers)
 const socketIO = require('socket.io');     // Enables real-time, two-way communication (like walkie-talkies)
+const compression = require('compression'); // Gzip compression
+const statusMonitor = require('express-status-monitor'); // Real-time server monitoring
+const si = require('systeminformation'); // [NEW] System Information
 
 console.log('[DEBUG] Importing google-sheets-service...');
 const googleSheetsService = require('./google-sheets-service'); // Our custom code for Google Sheets
@@ -74,13 +77,98 @@ console.log('[DEBUG] Importing child_process...');
 const { exec } = require('child_process'); // Execute system commands (to open folders)
 console.log('[DEBUG] Imports complete');
 
+// Port: Use environment variable for cloud hosting (Render), default to 3000 for local/classroom use
+const PORT = process.env.PORT || 3000;
+const SERVER_START_TIME = Date.now();     // Remember when we started (for uptime tracking)
+const SITE_VERSION = '0.0001'; // [NEW] Site Version
+
+// ============================================================================
+// BANDWIDTH MONITORING (Global)
+// ============================================================================
+let bandwidthMonitor = {
+    rx_sec: 0,
+    tx_sec: 0,
+    percent: 0,
+    speed: 0
+};
+
+// Update bandwidth stats every 2 seconds
+setInterval(async () => {
+    try {
+        const stats = await si.networkStats();
+        // default interface might not be the first one, but systeminformation usually handles 'default' well.
+        // Let's get the default interface first to be safe
+        const defaultIf = await si.networkInterfaceDefault();
+        const myStats = stats.find(s => s.iface === defaultIf) || stats[0];
+
+        if (myStats) {
+            // Get interface speed
+            const interfaces = await si.networkInterfaces();
+            const myIf = interfaces.find(i => i.iface === defaultIf) || interfaces[0];
+            const speedMbps = myIf ? myIf.speed : 100; // Default to 100Mbps if unknown
+
+            const rx = myStats.rx_sec || 0; // Bytes per second
+            const tx = myStats.tx_sec || 0;
+
+            // Calculate total bandwidth usage in Mbps
+            const totalMbps = ((rx + tx) * 8) / (1000 * 1000);
+
+            // Calculate Percentage
+            const percent = (totalMbps / speedMbps) * 100;
+
+            bandwidthMonitor = {
+                rx_sec: rx,
+                tx_sec: tx,
+                percent: Math.min(percent, 100).toFixed(1), // Cap at 100%
+                speed: speedMbps
+            };
+        }
+    } catch (e) {
+        // console.error('[BANDWIDTH] Error updating stats', e);
+    }
+}, 2000);
+
 // ============================================================================
 // STEP 2: CREATE THE MAIN APPLICATION OBJECTS
 // ============================================================================
 
+// Initialize Express
 const app = express();                     // Create the Express application (our web server)
 const server = http.createServer(app);     // Create HTTP server using our Express app
 const io = socketIO(server);               // Add Socket.IO to enable real-time features
+
+// PERFORMANCE: Real-time dashboard at /status
+app.use(statusMonitor({ websocket: io }));
+
+// PERFORMANCE: Compress all responses (exclude socket.io to prevent connection issues)
+app.use(compression({
+    filter: (req, res) => {
+        if (req.path.includes('/socket.io/')) return false;
+        return compression.filter(req, res);
+    }
+}));
+
+// SMART REDIRECT: If accessing from localhost/server, go straight to Teacher Panel
+app.use((req, res, next) => {
+    // Only apply to root URL
+    if (req.path === '/') {
+        // Check if hostname is localhost or 127.0.0.1
+        const isLocal = req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '::1';
+
+        if (isLocal) {
+            console.log('[REDIRECT] Localhost detected, sending to Teacher Panel');
+            return res.redirect('/teacher.html');
+        }
+    }
+    next();
+});
+
+// PERFORMANCE: Cache static files for 1 hour to speed up reloads
+// PERFORMANCE: Cache static files for 24 hours to speed up reloads (Crucial for offline class)
+const dayCache = 86400000; // 24 hours
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: dayCache }));
+app.use('/scripts', express.static(path.join(__dirname, 'scripts'), { maxAge: dayCache }));
+app.use('/data', express.static(path.join(__dirname, 'data'), { maxAge: dayCache })); // Be careful with dynamic data here? No, 'data' folder is usually served as static files for reading. Ratings accumulate but are read via API.
 
 // DEBUG MIDDLEWARE: Log all requests
 app.use((req, res, next) => {
@@ -91,10 +179,6 @@ app.use((req, res, next) => {
 // Middleware to parse JSON bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Port: Use environment variable for cloud hosting (Render), default to 3000 for local/classroom use
-const PORT = process.env.PORT || 3000;
-const SERVER_START_TIME = Date.now();     // Remember when we started (for uptime tracking)
 
 // ============================================================================
 // STEP 3: CONFIGURE FOLDER PATHS
@@ -875,6 +959,62 @@ function formatDuration(ms) {
 }
 
 // ============================================================================
+// STEP 11.4: API ENDPOINT - SYSTEM HEALTH (New Integration)
+// ============================================================================
+// Provides a simplified "Health Score" for the Teacher Dashboard
+app.get('/api/health', (req, res) => {
+    try {
+        const freeMem = os.freemem();
+        const totalMem = os.totalmem();
+        const memUsage = (totalMem - freeMem) / totalMem; // 0.0 to 1.0
+
+        const cpus = os.cpus().length || 1; // Prevent division by zero
+        const loadAvg = os.loadavg()[0]; // 1-minute load average
+        const cpuUsage = loadAvg / cpus; // Rough estimate of utilization
+
+        const uptime = process.uptime();
+
+        let status = 'BAD';
+        let statusColor = '#ef4444'; // Red
+        let message = 'Critical Load';
+
+        // Logic for "Human Readable" status
+        if (memUsage < 0.60 && cpuUsage < 0.40) {
+            status = 'AWESOME';
+            statusColor = '#10b981'; // Emerald Green
+            message = 'System is flying!';
+        } else if (memUsage < 0.85 && cpuUsage < 0.70) {
+            status = 'GOOD';
+            statusColor = '#3b82f6'; // Blue
+            message = 'Running smoothly.';
+        } else if (memUsage < 0.95 && cpuUsage < 0.90) {
+            status = 'BARELY WORKING';
+            statusColor = '#f59e0b'; // Amber/Orange
+            message = 'High load detected.';
+        } else {
+            status = 'BAD';
+            statusColor = '#ef4444'; // Red
+            message = 'MOVE KIDS TO ANOTHER SERVER';
+        }
+
+        res.json({
+            status,
+            statusColor,
+            message,
+            cpu: (cpuUsage * 100).toFixed(1),
+            memory: (memUsage * 100).toFixed(1),
+            uptime: uptime,
+            load: loadAvg.toFixed(2),
+            bandwidth: bandwidthMonitor, // [NEW] Return bandwidth stats
+            timestamp: Date.now()
+        });
+    } catch (err) {
+        console.error('Health Check Error:', err);
+        res.status(500).json({ status: 'ERROR', message: 'Health check failed' });
+    }
+});
+
+// ============================================================================
 // STEP 11.5: API ENDPOINT - SERVER CONFIGURATION
 // ============================================================================
 // Returns public configuration to help frontend decide logic
@@ -909,7 +1049,9 @@ app.get('/api/config', (req, res) => {
         mode: modeString,           // Used by index.html inline logic
         deploymentMode: modeString, // Used by fetchDeploymentMode
         isOnline: isOnline,
-        projectFolderExists: fs.existsSync(PROJECT_FOLDER)
+        projectFolderExists: fs.existsSync(PROJECT_FOLDER),
+        serverStartTime: SERVER_START_TIME, // [NEW] For session enforcement
+        siteVersion: SITE_VERSION // [NEW] Site Version
     });
 });
 
@@ -1217,7 +1359,32 @@ io.on('connection', (socket) => {
         connectedAt: Date.now(),
         studentName: null,
         currentPage: null,
-        ip: socket.handshake.address
+        ip: socket.handshake.address,
+        // Performance Telemetry
+        rtt: 0,
+        bufferHealth: -1,
+        bufferingCount: 0,
+        loadTime: 0,
+        lastTelemetry: Date.now()
+    });
+
+    // Listen for telemetry data
+    socket.on('client-telemetry', (data) => {
+        const client = connectedClients.get(socket.id);
+        if (client) {
+            client.rtt = data.rtt || 0;
+            client.bufferHealth = data.bufferHealth;
+            client.bufferingCount = data.bufferingCount;
+            // [NEW] Track Activity
+            client.currentVideo = data.currentVideo || null;
+            if (data.loadTime > 0) client.loadTime = data.loadTime;
+            client.lastTelemetry = Date.now();
+        }
+    });
+
+    // Listen for ping (latency check)
+    socket.on('telemetry-ping', (data, callback) => {
+        if (callback) callback();
     });
 
     // Listen for student login event
@@ -1346,7 +1513,13 @@ app.get('/api/teacher/clients', (req, res) => {
         studentName: client.studentName || 'Guest',
         currentPage: client.currentPage || 'Unknown',
         connectedFor: Date.now() - client.connectedAt,
-        ip: client.ip
+        ip: client.ip,
+        // Performance Monitoring
+        rtt: client.rtt,
+        bufferHealth: client.bufferHealth,
+        loadTime: client.loadTime,
+        currentVideo: client.currentVideo, // [NEW] Activity
+        lastTelemetry: client.lastTelemetry
     }));
 
     res.json({ clients, totalClients: clients.length });
@@ -3099,8 +3272,8 @@ app.post('/api/login', async (req, res) => {
 
         // (Optional) Check Parent Email if provided
         if (parentEmail && student.parentEmail && student.parentEmail.toLowerCase() !== parentEmail.toLowerCase()) {
-             // Since we rely on name locally, this is a secondary check if data is available
-             // But for now, we trust the name if the ID matches what we expect
+            // Since we rely on name locally, this is a secondary check if data is available
+            // But for now, we trust the name if the ID matches what we expect
         }
 
         res.json({ success: true, student });
