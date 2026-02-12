@@ -83,26 +83,50 @@ const SERVER_START_TIME = Date.now();     // Remember when we started (for uptim
 const SITE_VERSION = '0.0001'; // [NEW] Site Version
 
 // ============================================================================
-// BANDWIDTH MONITORING (Global)
+// SYSTEM MONITORING (Global) - [CRITICAL FOR WINDOWS COMPATIBILITY]
 // ============================================================================
-let bandwidthMonitor = {
-    rx_sec: 0,
-    tx_sec: 0,
-    percent: 0,
-    speed: 0
+// We use a background loop to fetch system stats so the API never hangs.
+// Windows calls to os.loadavg() are often broken/zero, so we use systeminformation.
+
+let systemMonitor = {
+    cpu: 0,
+    memory: 0,
+    uptime: 0,
+    load: 0,
+    bandwidth: {
+        rx_sec: 0,
+        tx_sec: 0,
+        percent: 0,
+        speed: 100
+    },
+    status: 'INITIALIZING',
+    statusColor: '#6b7280', // Grey
+    message: 'Starting monitors...'
 };
 
-// Update bandwidth stats every 2 seconds
+// Update system stats every 2 seconds
 setInterval(async () => {
     try {
+        // 1. CPU Load (Cross-platform)
+        const load = await si.currentLoad();
+        const cpuUsage = load.currentLoad; // Percentage 0-100
+
+        // 2. Memory Usage (Fast OS call)
+        const freeMem = os.freemem();
+        const totalMem = os.totalmem();
+        const memUsage = ((totalMem - freeMem) / totalMem) * 100;
+
+        // 3. Bandwidth
         const stats = await si.networkStats();
-        // default interface might not be the first one, but systeminformation usually handles 'default' well.
-        // Let's get the default interface first to be safe
         const defaultIf = await si.networkInterfaceDefault();
         const myStats = stats.find(s => s.iface === defaultIf) || stats[0];
 
+        let bandwidthData = systemMonitor.bandwidth;
+
         if (myStats) {
             // Get interface speed
+            // Note: This can be slow, might want to cache interface speed, but for now it's okay in async loop
+            // Optimization: We could move getNetworkInterfaces outside/less frequent if needed
             const interfaces = await si.networkInterfaces();
             const myIf = interfaces.find(i => i.iface === defaultIf) || interfaces[0];
             const speedMbps = myIf ? myIf.speed : 100; // Default to 100Mbps if unknown
@@ -110,21 +134,63 @@ setInterval(async () => {
             const rx = myStats.rx_sec || 0; // Bytes per second
             const tx = myStats.tx_sec || 0;
 
-            // Calculate total bandwidth usage in Mbps
-            const totalMbps = ((rx + tx) * 8) / (1000 * 1000);
+            // Calculate active throughput in Mbps
+            const currentMbps = ((rx + tx) * 8) / (1000 * 1000);
 
-            // Calculate Percentage
-            const percent = (totalMbps / speedMbps) * 100;
+            // Calculate Percentage of link capacity
+            const percent = (currentMbps / speedMbps) * 100;
 
-            bandwidthMonitor = {
+            bandwidthData = {
                 rx_sec: rx,
                 tx_sec: tx,
-                percent: Math.min(percent, 100).toFixed(1), // Cap at 100%
+                percent: Math.min(percent, 100).toFixed(1),
                 speed: speedMbps
             };
         }
+
+        // 4. Health Logic
+        let status = 'BAD';
+        let statusColor = '#ef4444'; // Red
+        let message = 'Critical Load';
+
+        const cpu = cpuUsage;     // 0-100
+        const mem = memUsage;     // 0-100
+
+        if (mem < 60 && cpu < 40) {
+            status = 'AWESOME';
+            statusColor = '#10b981'; // Emerald Green
+            message = 'System is flying!';
+        } else if (mem < 85 && cpu < 70) {
+            status = 'GOOD';
+            statusColor = '#3b82f6'; // Blue
+            message = 'Running smoothly.';
+        } else if (mem < 95 && cpu < 90) {
+            status = 'BARELY WORKING';
+            statusColor = '#f59e0b'; // Amber/Orange
+            message = 'High load detected.';
+        } else {
+            status = 'BAD';
+            statusColor = '#ef4444'; // Red
+            message = 'MOVE KIDS TO ANOTHER SERVER';
+        }
+
+        // Update Global State
+        systemMonitor = {
+            cpu: cpu.toFixed(1),
+            memory: mem.toFixed(1),
+            uptime: process.uptime(),
+            load: os.loadavg()[0].toFixed(2), // Keep for reference
+            bandwidth: bandwidthData,
+            status: status,
+            statusColor: statusColor,
+            message: message,
+            timestamp: Date.now()
+        };
+
     } catch (e) {
-        // console.error('[BANDWIDTH] Error updating stats', e);
+        console.error('[MONITOR] Error updating system stats', e);
+        // On error, keep old data but maybe mark status?
+        // systemMonitor.message = 'Monitor Error'; 
     }
 }, 2000);
 
@@ -962,51 +1028,14 @@ function formatDuration(ms) {
 // STEP 11.4: API ENDPOINT - SYSTEM HEALTH (New Integration)
 // ============================================================================
 // Provides a simplified "Health Score" for the Teacher Dashboard
+// NOW USES CACHED DATA FROM BACKGROUND LOOP to prevent Windows hangs
 app.get('/api/health', (req, res) => {
     try {
-        const freeMem = os.freemem();
-        const totalMem = os.totalmem();
-        const memUsage = (totalMem - freeMem) / totalMem; // 0.0 to 1.0
-
-        const cpus = os.cpus().length || 1; // Prevent division by zero
-        const loadAvg = os.loadavg()[0]; // 1-minute load average
-        const cpuUsage = loadAvg / cpus; // Rough estimate of utilization
-
-        const uptime = process.uptime();
-
-        let status = 'BAD';
-        let statusColor = '#ef4444'; // Red
-        let message = 'Critical Load';
-
-        // Logic for "Human Readable" status
-        if (memUsage < 0.60 && cpuUsage < 0.40) {
-            status = 'AWESOME';
-            statusColor = '#10b981'; // Emerald Green
-            message = 'System is flying!';
-        } else if (memUsage < 0.85 && cpuUsage < 0.70) {
-            status = 'GOOD';
-            statusColor = '#3b82f6'; // Blue
-            message = 'Running smoothly.';
-        } else if (memUsage < 0.95 && cpuUsage < 0.90) {
-            status = 'BARELY WORKING';
-            statusColor = '#f59e0b'; // Amber/Orange
-            message = 'High load detected.';
-        } else {
-            status = 'BAD';
-            statusColor = '#ef4444'; // Red
-            message = 'MOVE KIDS TO ANOTHER SERVER';
-        }
-
+        // Return mostly the cached object
+        // but ensure timestamp is fresh-ish
         res.json({
-            status,
-            statusColor,
-            message,
-            cpu: (cpuUsage * 100).toFixed(1),
-            memory: (memUsage * 100).toFixed(1),
-            uptime: uptime,
-            load: loadAvg.toFixed(2),
-            bandwidth: bandwidthMonitor, // [NEW] Return bandwidth stats
-            timestamp: Date.now()
+            ...systemMonitor,
+            timestamp: Date.now() // Response timestamp
         });
     } catch (err) {
         console.error('Health Check Error:', err);

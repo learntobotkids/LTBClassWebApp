@@ -227,3 +227,42 @@
     }
 
 })();
+
+// ============================================================================
+// PERFORMANCE MONITOR (USER REQUESTED)
+// ============================================================================
+window.addEventListener('load', () => {
+    // Wait a tick to ensure layout is done and calc is accurate
+    setTimeout(() => {
+        // performance.now() gives accurate time since navigation start (timeOrigin)
+        const loadTime = Math.round(performance.now());
+
+        const el = document.createElement('div');
+        el.id = 'perf-monitor';
+        // Add styling: Top right, green on black transculent
+        el.style.cssText = `
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            z-index: 99999; 
+            background: rgba(0,0,0,0.85); 
+            color: #4ade80; 
+            padding: 5px 10px; 
+            font-family: monospace; 
+            font-size: 12px; 
+            font-weight: bold;
+            border-top-right-radius: 10px; 
+            box-shadow: 4px -4px 10px rgba(0,0,0,0.5);
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+            border-right: 1px solid #4ade80;
+            border-top: 1px solid #4ade80;
+            text-shadow: 0 0 5px #4ade80;
+            opacity: 0.8;
+        `;
+        el.innerHTML = `⚡ Load: ${loadTime}ms`;
+        document.body.appendChild(el);
+
+        console.log(`[Performance] Page Load Time: ${loadTime}ms`);
+    }, 0);
+});

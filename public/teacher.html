@@ -467,6 +467,7 @@
             }
         }
     </style>
+    <script src="inactivity.js" defer></script>
 </head>
 
 <body>
@@ -1104,7 +1105,8 @@
             if (!tbody) return;
 
             // Filter out guests if desired, or keep everyone. Let's show logged in mainly.
-            const activeStudents = clients.filter(c => c.studentName !== 'Guest' || c.currentVideo);
+            // [UPDATED] User Request: Show ALL connected clients even if not logged in
+            const activeStudents = clients;
 
             if (activeStudents.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="3" style="padding: 10px; text-align: center; color: #6b7280;">No active students...</td></tr>';
