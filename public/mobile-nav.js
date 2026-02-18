@@ -298,6 +298,14 @@ if (window.location.search.includes('login=true')) {
     const CHECK_INTERVAL = 5000;   // Check every 5 seconds
     const SLEEP_THRESHOLD = 60000; // If gap > 60s (plus interval), assume sleep
 
+    // [ONLINE MODE FIX]
+    // Disable sleep detector in online mode to prevent accidental logouts
+    // when users switch tabs or minimize the browser.
+    if (window.DEPLOYMENT_MODE === 'online') {
+        console.log('[Sleep Detector] Disabled in Online Mode');
+        return;
+    }
+
     setInterval(() => {
         const now = Date.now();
         const diff = now - lastTick;

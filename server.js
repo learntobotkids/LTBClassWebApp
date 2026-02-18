@@ -221,7 +221,9 @@ app.use((req, res, next) => {
         // Check if hostname is localhost or 127.0.0.1
         const isLocal = req.hostname === 'localhost' || req.hostname === '127.0.0.1' || req.hostname === '::1';
 
-        if (isLocal) {
+        // [ONLINE MODE FIX] Do not redirect localhost users if we are in ONLINE mode
+        // This allows testing the student portal locally without being forced to teacher panel
+        if (isLocal && process.env.DEPLOYMENT_MODE !== 'online') {
             console.log('[REDIRECT] Localhost detected, sending to Teacher Panel');
             return res.redirect('/teacher.html');
         }
