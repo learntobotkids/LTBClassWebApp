@@ -1072,6 +1072,18 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
 
             // Filter projects: must be in student's track and not already handled
             const candidateProjects = [];
+
+            // DEBUG: Log first 5 project tracks to see format
+            let debugCount = 0;
+            projectMap.forEach((projectInfo, projectCode) => {
+                if (debugCount < 5) {
+                    console.log(`[PROJECTS TO TRY DEBUG] Project ${projectCode} tracks raw: "${projectInfo.tracks}"`);
+                    debugCount++;
+                }
+            });
+            console.log(`[PROJECTS TO TRY DEBUG] Student track to match: "${studentTrack}" (length: ${studentTrack.length})`);
+            console.log(`[PROJECTS TO TRY DEBUG] Total projects in map: ${projectMap.size}`);
+
             projectMap.forEach((projectInfo, projectCode) => {
                 // Check if project's tracks include the student's track
                 const projectTracks = (projectInfo.tracks || '').toUpperCase().split(',').map(t => t.trim());

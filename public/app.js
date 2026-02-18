@@ -213,7 +213,8 @@ async function loadProjects() {
                     renderAssignedProjects(
                         studentProgress.assignedProjects,
                         studentProgress.nextProjects,
-                        studentProgress.completedProjects
+                        studentProgress.completedProjects,
+                        studentProgress.projectsToTry || []
                     );
                 }
 
@@ -313,7 +314,8 @@ async function fetchProjectsFromNetwork(isBackground) {
                 renderAssignedProjects(
                     studentProgress.assignedProjects,
                     studentProgress.nextProjects,
-                    studentProgress.completedProjects
+                    studentProgress.completedProjects,
+                    studentProgress.projectsToTry || []
                 );
             }
 
@@ -368,7 +370,8 @@ async function fetchProjectsFromNetwork(isBackground) {
             renderAssignedProjects(
                 studentProgress.assignedProjects,
                 studentProgress.nextProjects,
-                studentProgress.completedProjects
+                studentProgress.completedProjects,
+                studentProgress.projectsToTry || []
             );
         }
     } catch (error) {
@@ -759,6 +762,7 @@ function renderAssignedProjects(assigned, next, completed, projectsToTry) {
     assigned = (assigned || []).map(enrichProject);
     next = (next || []).map(enrichProject);
     completed = (completed || []).map(enrichProject);
+    projectsToTry = (projectsToTry || []).map(enrichProject);
 
 
     // If nothing at all
@@ -849,6 +853,11 @@ function renderAssignedProjects(assigned, next, completed, projectsToTry) {
     // 3. Completed
     if (completed && completed.length > 0) {
         html += createSection('Completed Projects', completed, '✅', 'completion-badge', '✓ COMPLETED', '#4ade80', true, 'compact-grid', 'compact');
+    }
+
+    // 4. Projects To Try
+    if (projectsToTry && projectsToTry.length > 0) {
+        html += createSection('Projects to Try', projectsToTry, '💡', 'try-badge', '💡 TRY THIS', '#facc15', true, 'compact-grid', 'compact');
     }
 
     html += '</div>';

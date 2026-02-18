@@ -215,6 +215,13 @@ button:hover,
     border-radius: var(--ltb-border-radius) !important;
 }
 
+.try-badge {
+    background-color: #F59E0B !important;
+    /* Amber/yellow for "try this" */
+    color: #1F2937 !important;
+    border-radius: var(--ltb-border-radius) !important;
+}
+
 /* Global Headers */
 h1,
 h2,
@@ -375,7 +382,8 @@ body {
     margin-bottom: 2px !important;
 }
 
-.project-card.compact .completion-badge {
+.project-card.compact .completion-badge,
+.project-card.compact .try-badge {
     position: static !important;
     /* Move badge into flow */
     display: inline-block;
