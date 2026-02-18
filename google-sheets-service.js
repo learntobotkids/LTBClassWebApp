@@ -282,7 +282,7 @@ async function fetchStudents(forceRefresh = false) {
         // Range "A:AH" to include Total Points (Column AH)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
-            range: `${config.STUDENT_NAMES_SHEET}!A:AH`,
+            range: `${config.STUDENT_NAMES_SHEET}!A:AI`,
         });
 
         // Extract rows from response
@@ -336,7 +336,8 @@ async function fetchStudents(forceRefresh = false) {
                     headshot: headshot,
                     note: row[23] ? row[23].trim() : '', // Column X
                     track: row[28] ? row[28].trim() : '', // Column AC (Index 28)
-                    totalPoints: row[33] ? parseInt(row[33].replace(/\D/g, '') || '0', 10) : 0 // Column AH (Total Points)
+                    totalPoints: row[33] ? parseInt(row[33].replace(/\D/g, '') || '0', 10) : 0, // Column AH (Total Points)
+                    allProjectAccess: (row[34] && ['yes', 'true'].includes(row[34].trim().toLowerCase())) // Column AI: All Project Access
                 };
             });
 
@@ -588,7 +589,7 @@ async function fetchStudentNamesForLogin(forceRefresh = false) {
                     name,
                     headshot,
                     fileLink,
-                    allProjectAccess: allProjectAccess === 'yes'
+                    allProjectAccess: allProjectAccess === ''
                 };
             });
 
@@ -1048,6 +1049,7 @@ async function getStudentProjectsByName(studentName, forceRefresh = false) {
         result.studentId = student.id; // NEW: Return resolved ID
         result.fileLink = student.fileLink; // Pass the Drive Link to the frontend
         result.track = student.track;       // Pass the Track to the frontend for filtering
+        result.allProjectAccess = student.allProjectAccess; // Pass the Unlocking Flag to the frontend
 
         // 4. Calculate "Projects To Try" based on student's track
         result.projectsToTry = [];

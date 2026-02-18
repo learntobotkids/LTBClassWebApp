@@ -759,7 +759,7 @@ function renderAssignedProjects(assigned, next, completed, projectsToTry) {
     assigned = (assigned || []).map(enrichProject);
     next = (next || []).map(enrichProject);
     completed = (completed || []).map(enrichProject);
-    projectsToTry = (projectsToTry || []).map(enrichProject);
+
 
     // If nothing at all
     if ((!assigned || assigned.length === 0) && (!next || next.length === 0) && (!completed || completed.length === 0)) {
@@ -844,10 +844,7 @@ function renderAssignedProjects(assigned, next, completed, projectsToTry) {
         html += createSection('Next Projects', next, '🔮', 'assigned-badge', '🔮 NEXT PROJECT', '#c084fc');
     }
 
-    // 2b. Projects To Try (Online Only)
-    if (window.DEPLOYMENT_MODE === 'online' && projectsToTry && projectsToTry.length > 0) {
-        html += createSection('Projects To Try', projectsToTry, '✨', 'assigned-badge', '✨ TRY THIS', '#FCD34D', true, '', '');
-    }
+
 
     // 3. Completed
     if (completed && completed.length > 0) {
@@ -1050,8 +1047,28 @@ async function loadStudentProgress(studentName) {
 
         if (window.DEPLOYMENT_MODE === 'online') {
             console.log('Online mode: Fetching from Google Sheets API...');
-            response = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(studentName)}`);
-            data = await response.json();
+            try {
+                response = await fetch(`/api/google-sheets/student-projects/${encodeURIComponent(studentName)}`);
+                data = await response.json();
+            } catch (e) {
+                console.warn('Google Sheets API network error. Attempting local fallback...');
+                data = { success: false, error: e.message };
+            }
+
+            // FALLBACK LOGIC
+            if (!data.success) {
+                console.warn('Google Sheets API failed. Attempting local fallback...');
+                try {
+                    const fbRes = await fetch(`/api/student-assignments/${encodeURIComponent(studentName)}`);
+                    const fbData = await fbRes.json();
+                    if (fbData.success) {
+                        data = fbData;
+                        console.log('✅ Fallback to local cache successful.');
+                    }
+                } catch (e) {
+                    console.error('Fallback failed:', e);
+                }
+            }
         } else {
             // Try local cache first (works offline)
             console.log('Trying to load student progress from local cache...');
@@ -1080,11 +1097,13 @@ async function loadStudentProgress(studentName) {
             if (studentProgress.fileLink) {
                 console.log('Caching File Link:', studentProgress.fileLink);
                 localStorage.setItem('currentStudentFileLink', studentProgress.fileLink);
+            }
+
+            // [NEW] Cache All Project Access Flag
+            if (studentProgress.allProjectAccess) {
+                localStorage.setItem('allProjectAccess', 'yes');
             } else {
-                // Only remove if we are in online mode and expected it? 
-                // Better safe: don't remove if missing unless we are sure. 
-                // Actually, if it's missing from fresh data, we should probably remove stale data.
-                // But let's assume if it's not there, we just don't update it to avoid breaking offline cache.
+                localStorage.removeItem('allProjectAccess');
             }
 
             // 3 DISTINCT LISTS + Projects To Try
@@ -1116,8 +1135,35 @@ async function loadStudentProgress(studentName) {
         }
     } catch (error) {
         console.error('Error fetching student progress:', error);
-        studentProgress = null;
-        renderAssignedProjects([]);
+
+        // FALLBACK IN CATCH BLOCK
+        try {
+            console.warn('Exception occurred. Attempting local fallback...');
+            const fbRes = await fetch(`/api/student-assignments/${encodeURIComponent(studentName)}`);
+            const fbData = await fbRes.json();
+            if (fbData.success && fbData.data) {
+                studentProgress = fbData.data;
+                renderAssignedProjects(
+                    studentProgress.assignedProjects || [],
+                    studentProgress.nextProjects || [],
+                    studentProgress.completedProjects || [],
+                    []
+                );
+
+                if (studentProgress.allProjectAccess) {
+                    localStorage.setItem('allProjectAccess', 'yes');
+                } else {
+                    localStorage.removeItem('allProjectAccess');
+                }
+
+                console.log('✅ Fallback (catch) successful.');
+            } else {
+                throw new Error('Fallback failed');
+            }
+        } catch (fbError) {
+            studentProgress = null;
+            renderAssignedProjects([]);
+        }
     }
 }
 
